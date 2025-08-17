@@ -14,16 +14,191 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          plan_searches_limit: number | null
+          role: Database["public"]["Enums"]["user_role"]
+          searches_used: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          plan_searches_limit?: number | null
+          role?: Database["public"]["Enums"]["user_role"]
+          searches_used?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          plan_searches_limit?: number | null
+          role?: Database["public"]["Enums"]["user_role"]
+          searches_used?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      search_packages: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          price: number | null
+          searches_limit: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          price?: number | null
+          searches_limit: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          price?: number | null
+          searches_limit?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      search_results: {
+        Row: {
+          additional_data: Json | null
+          address: string | null
+          business_name: string
+          business_type: string | null
+          created_at: string
+          email: string | null
+          id: string
+          latitude: number | null
+          longitude: number | null
+          owner_name: string | null
+          phone: string | null
+          rating: number | null
+          reviews_count: number | null
+          search_id: string
+          social_media: Json | null
+          website: string | null
+        }
+        Insert: {
+          additional_data?: Json | null
+          address?: string | null
+          business_name: string
+          business_type?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          owner_name?: string | null
+          phone?: string | null
+          rating?: number | null
+          reviews_count?: number | null
+          search_id: string
+          social_media?: Json | null
+          website?: string | null
+        }
+        Update: {
+          additional_data?: Json | null
+          address?: string | null
+          business_name?: string
+          business_type?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          owner_name?: string | null
+          phone?: string | null
+          rating?: number | null
+          reviews_count?: number | null
+          search_id?: string
+          social_media?: Json | null
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "search_results_search_id_fkey"
+            columns: ["search_id"]
+            isOneToOne: false
+            referencedRelation: "searches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      searches: {
+        Row: {
+          category: string
+          city: string
+          created_at: string
+          id: string
+          results_count: number | null
+          search_query: string
+          state: string
+          status: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          city: string
+          created_at?: string
+          id?: string
+          results_count?: number | null
+          search_query: string
+          state: string
+          status?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          city?: string
+          created_at?: string
+          id?: string
+          results_count?: number | null
+          search_query?: string
+          state?: string
+          status?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_role: {
+        Args: { user_uuid: string }
+        Returns: Database["public"]["Enums"]["user_role"]
+      }
     }
     Enums: {
-      [_ in never]: never
+      user_role: "admin" | "premium" | "basic"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +325,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      user_role: ["admin", "premium", "basic"],
+    },
   },
 } as const
