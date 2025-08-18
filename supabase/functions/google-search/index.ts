@@ -19,9 +19,9 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { searchId, category, state, city } = await req.json();
+    const { searchId, category, state, city, neighborhood } = await req.json();
     
-    console.log('Starting search for:', { category, state, city });
+    console.log('Starting search for:', { category, state, city, neighborhood });
 
     // Atualizar status da busca
     await supabaseClient
@@ -29,10 +29,12 @@ serve(async (req) => {
       .update({ status: 'processing' })
       .eq('id', searchId);
 
-    const searchQuery = `${category} ${city} ${state}`;
+    // Construir query de busca mais específica
+    const locationQuery = neighborhood ? `${neighborhood}, ${city}, ${state}` : `${city}, ${state}`;
+    const searchQuery = `${category} ${locationQuery}`;
     
     // Busca real usando Google Places API
-    const searchResults = await searchGooglePlaces(searchQuery, category, city, state);
+    const searchResults = await searchGooglePlaces(searchQuery, category, city, state, neighborhood);
     
     // Salvar resultados no banco
     const { error: insertError } = await supabaseClient
@@ -87,7 +89,7 @@ serve(async (req) => {
 });
 
 // Função para buscar no Google Places API
-async function searchGooglePlaces(query: string, category: string, city: string, state: string) {
+async function searchGooglePlaces(query: string, category: string, city: string, state: string, neighborhood?: string) {
   const apiKey = Deno.env.get('GOOGLE_MAPS_API_KEY');
   
   if (!apiKey) {
@@ -99,12 +101,16 @@ async function searchGooglePlaces(query: string, category: string, city: string,
     // Text Search (New) API para buscar estabelecimentos
     const searchUrl = 'https://places.googleapis.com/v1/places:searchText';
     
+    // Construir query mais específica
+    const locationPart = neighborhood ? `${neighborhood}, ${city}, ${state}` : `${city}, ${state}`;
+    const textQuery = `${category} in ${locationPart}, Brazil`;
+    
     const requestBody = {
-      textQuery: `${category} in ${city}, ${state}, Brazil`,
+      textQuery,
       languageCode: 'pt-BR',
       regionCode: 'BR',
       maxResultCount: 20,
-      fieldMask: 'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri,places.rating,places.userRatingCount,places.location,places.businessStatus,places.types,places.regularOpeningHours'
+      fieldMask: 'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri,places.rating,places.userRatingCount,places.location,places.businessStatus,places.types,places.regularOpeningHours,places.googleMapsUri'
     };
 
     console.log('Making request to Google Places API:', { textQuery: requestBody.textQuery });
@@ -174,7 +180,7 @@ async function searchGooglePlaces(query: string, category: string, city: string,
     
     // Fallback para dados sintéticos se a API falhar
     console.log('Falling back to synthetic data due to API error');
-    return generateFallbackResults(category, city, state);
+    return generateFallbackResults(category, city, state, neighborhood);
   }
 }
 
@@ -224,7 +230,7 @@ function generateBrazilianPhone(): string {
 }
 
 // Função de fallback para dados sintéticos
-function generateFallbackResults(category: string, city: string, state: string) {
+function generateFallbackResults(category: string, city: string, state: string, neighborhood?: string) {
   const businessTypes: Record<string, string[]> = {
     'petshop': ['Pet Shop', 'Clínica Veterinária', 'Pet Care'],
     'médico': ['Consultório Médico', 'Clínica Médica', 'Hospital'],
@@ -244,10 +250,11 @@ function generateFallbackResults(category: string, city: string, state: string) 
   for (let i = 0; i < Math.floor(Math.random() * 8) + 3; i++) {
     const businessType = businesses[Math.floor(Math.random() * businesses.length)];
     const cleanBusinessType = businessType.toLowerCase().replace(/\s+/g, '');
+    const locationText = neighborhood ? `${neighborhood}, ${city}` : city;
     
     results.push({
-      business_name: `${businessType} ${city} ${i + 1}`,
-      address: `Rua ${Math.floor(Math.random() * 1000)}, ${city}, ${state}`,
+      business_name: `${businessType} ${locationText} ${i + 1}`,
+      address: `Rua ${Math.floor(Math.random() * 1000)}, ${locationText}, ${state}`,
       phone: generateBrazilianPhone(),
       email: `contato@${cleanBusinessType}${i + 1}.com.br`,
       website: `https://www.${cleanBusinessType}${i + 1}.com.br`,

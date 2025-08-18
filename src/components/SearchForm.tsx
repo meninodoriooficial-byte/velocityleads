@@ -4,19 +4,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Search, MapPin, Building } from "lucide-react";
 import { useCitiesByState } from "@/hooks/useCitiesByState";
+import { useNeighborhoodsByCity } from "@/hooks/useNeighborhoodsByCity";
 
 interface SearchFormProps {
   onSearch: (data: {
     category: string;
     state: string;
     city: string;
+    neighborhood?: string;
   }) => void;
 }
 
 export const SearchForm = ({ onSearch }: SearchFormProps) => {
   const [category, setCategory] = useState("");
   const [city, setCity] = useState("");
+  const [neighborhood, setNeighborhood] = useState("");
   const { selectedState, availableCities, updateState } = useCitiesByState();
+  const { selectedCity, availableNeighborhoods, updateCity } = useNeighborhoodsByCity();
 
   const categories = [
     "Petshop",
@@ -63,13 +67,20 @@ export const SearchForm = ({ onSearch }: SearchFormProps) => {
 
   const handleStateChange = (stateCode: string) => {
     updateState(stateCode);
-    setCity(""); // Reset city when state changes
+    setCity("");
+    setNeighborhood("");
+  };
+
+  const handleCityChange = (cityName: string) => {
+    setCity(cityName);
+    updateCity(cityName);
+    setNeighborhood("");
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (category && selectedState && city) {
-      onSearch({ category, state: selectedState, city });
+      onSearch({ category, state: selectedState, city, neighborhood });
     }
   };
 
@@ -85,7 +96,7 @@ export const SearchForm = ({ onSearch }: SearchFormProps) => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="space-y-2">
                   <label className="text-sm font-medium flex items-center gap-2">
                     <Building className="w-4 h-4" />
@@ -129,7 +140,7 @@ export const SearchForm = ({ onSearch }: SearchFormProps) => {
                     <MapPin className="w-4 h-4" />
                     Cidade
                   </label>
-                  <Select value={city} onValueChange={setCity} disabled={!selectedState}>
+                  <Select value={city} onValueChange={handleCityChange} disabled={!selectedState}>
                     <SelectTrigger>
                       <SelectValue placeholder={selectedState ? "Selecione a cidade" : "Primeiro selecione o estado"} />
                     </SelectTrigger>
@@ -137,6 +148,26 @@ export const SearchForm = ({ onSearch }: SearchFormProps) => {
                       {availableCities.map((cityOption) => (
                         <SelectItem key={cityOption.id} value={cityOption.name}>
                           {cityOption.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium flex items-center gap-2">
+                    <MapPin className="w-4 h-4" />
+                    Bairro (Opcional)
+                  </label>
+                  <Select value={neighborhood} onValueChange={setNeighborhood} disabled={!city}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={city ? "Selecione o bairro" : "Primeiro selecione a cidade"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Todos os bairros</SelectItem>
+                      {availableNeighborhoods.map((neighborhoodOption) => (
+                        <SelectItem key={neighborhoodOption.id} value={neighborhoodOption.name}>
+                          {neighborhoodOption.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
