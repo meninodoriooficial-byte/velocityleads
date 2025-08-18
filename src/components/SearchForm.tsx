@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Search, MapPin, Building } from "lucide-react";
+import { useCitiesByState } from "@/hooks/useCitiesByState";
 
 interface SearchFormProps {
   onSearch: (data: {
@@ -15,8 +15,8 @@ interface SearchFormProps {
 
 export const SearchForm = ({ onSearch }: SearchFormProps) => {
   const [category, setCategory] = useState("");
-  const [state, setState] = useState("");
   const [city, setCity] = useState("");
+  const { selectedState, availableCities, updateState } = useCitiesByState();
 
   const categories = [
     "Petshop",
@@ -32,15 +32,44 @@ export const SearchForm = ({ onSearch }: SearchFormProps) => {
   ];
 
   const states = [
-    "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA",
-    "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN",
-    "RS", "RO", "RR", "SC", "SP", "SE", "TO"
+    { code: "AC", name: "Acre" },
+    { code: "AL", name: "Alagoas" },
+    { code: "AP", name: "Amapá" },
+    { code: "AM", name: "Amazonas" },
+    { code: "BA", name: "Bahia" },
+    { code: "CE", name: "Ceará" },
+    { code: "DF", name: "Distrito Federal" },
+    { code: "ES", name: "Espírito Santo" },
+    { code: "GO", name: "Goiás" },
+    { code: "MA", name: "Maranhão" },
+    { code: "MT", name: "Mato Grosso" },
+    { code: "MS", name: "Mato Grosso do Sul" },
+    { code: "MG", name: "Minas Gerais" },
+    { code: "PA", name: "Pará" },
+    { code: "PB", name: "Paraíba" },
+    { code: "PR", name: "Paraná" },
+    { code: "PE", name: "Pernambuco" },
+    { code: "PI", name: "Piauí" },
+    { code: "RJ", name: "Rio de Janeiro" },
+    { code: "RN", name: "Rio Grande do Norte" },
+    { code: "RS", name: "Rio Grande do Sul" },
+    { code: "RO", name: "Rondônia" },
+    { code: "RR", name: "Roraima" },
+    { code: "SC", name: "Santa Catarina" },
+    { code: "SP", name: "São Paulo" },
+    { code: "SE", name: "Sergipe" },
+    { code: "TO", name: "Tocantins" }
   ];
+
+  const handleStateChange = (stateCode: string) => {
+    updateState(stateCode);
+    setCity(""); // Reset city when state changes
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (category && state && city) {
-      onSearch({ category, state, city });
+    if (category && selectedState && city) {
+      onSearch({ category, state: selectedState, city });
     }
   };
 
@@ -81,14 +110,14 @@ export const SearchForm = ({ onSearch }: SearchFormProps) => {
                     <MapPin className="w-4 h-4" />
                     Estado
                   </label>
-                  <Select value={state} onValueChange={setState}>
+                  <Select value={selectedState} onValueChange={handleStateChange}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o estado" />
                     </SelectTrigger>
                     <SelectContent>
-                      {states.map((st) => (
-                        <SelectItem key={st} value={st}>
-                          {st}
+                      {states.map((state) => (
+                        <SelectItem key={state.code} value={state.code}>
+                          {state.name} ({state.code})
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -96,13 +125,22 @@ export const SearchForm = ({ onSearch }: SearchFormProps) => {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Cidade</label>
-                  <Input
-                    type="text"
-                    placeholder="Digite a cidade"
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                  />
+                  <label className="text-sm font-medium flex items-center gap-2">
+                    <MapPin className="w-4 h-4" />
+                    Cidade
+                  </label>
+                  <Select value={city} onValueChange={setCity} disabled={!selectedState}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={selectedState ? "Selecione a cidade" : "Primeiro selecione o estado"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableCities.map((cityOption) => (
+                        <SelectItem key={cityOption.id} value={cityOption.name}>
+                          {cityOption.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -111,7 +149,7 @@ export const SearchForm = ({ onSearch }: SearchFormProps) => {
                   type="submit" 
                   size="lg" 
                   className="min-w-[200px]"
-                  disabled={!category || !state || !city}
+                  disabled={!category || !selectedState || !city}
                 >
                   <Search className="w-5 h-5 mr-2" />
                   Buscar Empresas
