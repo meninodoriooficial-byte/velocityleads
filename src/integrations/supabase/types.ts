@@ -154,6 +154,7 @@ export type Database = {
           city: string
           created_at: string
           id: string
+          neighborhood: string | null
           results_count: number | null
           search_query: string
           state: string
@@ -166,6 +167,7 @@ export type Database = {
           city: string
           created_at?: string
           id?: string
+          neighborhood?: string | null
           results_count?: number | null
           search_query: string
           state: string
@@ -178,6 +180,7 @@ export type Database = {
           city?: string
           created_at?: string
           id?: string
+          neighborhood?: string | null
           results_count?: number | null
           search_query?: string
           state?: string
