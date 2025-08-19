@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,13 +7,12 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 
 interface ResultsListProps {
   results: any[];
-  currentPage: number;
-  totalPages: number;
-  onPageChange: (page: number) => void;
   isLoading: boolean;
+  hasMore: boolean;
+  onLoadMore: () => void;
 }
 
-export const ResultsList = ({ results, currentPage, totalPages, onPageChange, isLoading }: ResultsListProps) => {
+export const ResultsList = ({ results, isLoading, hasMore, onLoadMore }: ResultsListProps) => {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
   const toggleExpanded = (id: string) => {
@@ -25,6 +24,20 @@ export const ResultsList = ({ results, currentPage, totalPages, onPageChange, is
     }
     setExpandedItems(newExpanded);
   };
+
+  // Infinite scroll effect
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - 1000) {
+        if (!isLoading && hasMore) {
+          onLoadMore();
+        }
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [isLoading, hasMore, onLoadMore]);
 
   if (isLoading) {
     return (
@@ -195,59 +208,28 @@ export const ResultsList = ({ results, currentPage, totalPages, onPageChange, is
         })}
       </div>
 
-      {/* Paginação */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center space-x-2 pt-6">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onPageChange(currentPage - 1)}
-            disabled={currentPage === 1}
-          >
-            Anterior
-          </Button>
-          
-          <div className="flex items-center space-x-1">
-            {[...Array(Math.min(totalPages, 5))].map((_, index) => {
-              let pageNumber;
-              if (totalPages <= 5) {
-                pageNumber = index + 1;
-              } else if (currentPage <= 3) {
-                pageNumber = index + 1;
-              } else if (currentPage >= totalPages - 2) {
-                pageNumber = totalPages - 4 + index;
-              } else {
-                pageNumber = currentPage - 2 + index;
-              }
-
-              return (
-                <Button
-                  key={pageNumber}
-                  variant={currentPage === pageNumber ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => onPageChange(pageNumber)}
-                  className="w-8 h-8 p-0"
-                >
-                  {pageNumber}
-                </Button>
-              );
-            })}
-          </div>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onPageChange(currentPage + 1)}
-            disabled={currentPage === totalPages}
-          >
-            Próxima
-          </Button>
+      {/* Carregamento e botão carregar mais */}
+      {(isLoading || hasMore) && (
+        <div className="text-center py-8">
+          {isLoading ? (
+            <div className="flex items-center justify-center space-x-2">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+              <span className="text-muted-foreground">Carregando mais resultados...</span>
+            </div>
+          ) : hasMore ? (
+            <Button onClick={onLoadMore} variant="outline" size="lg">
+              Carregar mais resultados
+            </Button>
+          ) : null}
         </div>
       )}
 
-      {/* Informações da paginação */}
+      {/* Informações dos resultados */}
       <div className="text-center text-sm text-muted-foreground">
-        Página {currentPage} de {totalPages} • {results.length} resultados por página
+        {results.length} resultado{results.length !== 1 ? 's' : ''} encontrado{results.length !== 1 ? 's' : ''}
+        {!isLoading && !hasMore && results.length > 0 && (
+          <span className="block mt-1">Todos os resultados foram carregados</span>
+        )}
       </div>
     </div>
   );

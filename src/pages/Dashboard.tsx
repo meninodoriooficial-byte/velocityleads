@@ -56,7 +56,7 @@ export default function Dashboard() {
     }
   };
 
-  const handleSearch = async (searchData: { category: string; state: string; city: string }) => {
+  const handleSearch = async (searchData: { category: string; state: string; city: string; neighborhood?: string }) => {
     if (!profile) return;
 
     if (profile.searches_used >= profile.plan_searches_limit) {
@@ -77,7 +77,8 @@ export default function Dashboard() {
           category: searchData.category,
           state: searchData.state,
           city: searchData.city,
-          search_query: `${searchData.category} ${searchData.city} ${searchData.state}`,
+          neighborhood: searchData.neighborhood,
+          search_query: `${searchData.category} ${searchData.city} ${searchData.state}${searchData.neighborhood ? ` ${searchData.neighborhood}` : ''}`,
           status: 'pending'
         })
         .select()
@@ -92,12 +93,13 @@ export default function Dashboard() {
         .eq('user_id', user?.id);
 
       // Call search function
-      const { error: functionError } = await supabase.functions.invoke('google-search', {
+      const { error: functionError } = await supabase.functions.invoke('web-search', {
         body: {
           searchId: searchRecord.id,
           category: searchData.category,
           state: searchData.state,
-          city: searchData.city
+          city: searchData.city,
+          neighborhood: searchData.neighborhood
         }
       });
 

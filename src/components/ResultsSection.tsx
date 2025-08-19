@@ -12,37 +12,97 @@ interface ResultsSectionProps {
 
 export const ResultsSection = ({ searchData }: ResultsSectionProps) => {
   const [allResults, setAllResults] = useState([]);
-  const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
-  
-  const resultsPerPage = 50;
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
 
   useEffect(() => {
     if (searchData?.id) {
-      fetchResults();
-      setCurrentPage(1); // Reset to first page on new search
+      setAllResults([]);
+      setCurrentPage(1);
+      setHasMore(true);
+      fetchResults(true);
     }
   }, [searchData?.id]);
 
-  const fetchResults = async () => {
+  const fetchResults = async (isNewSearch = false) => {
     if (!searchData?.id) return;
     
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      if (isNewSearch) {
+        // Para nova busca, buscar resultados existentes primeiro
+        const { data: existingData, error: existingError } = await supabase
+          .from('search_results')
+          .select('*')
+          .eq('search_id', searchData.id)
+          .order('created_at', { ascending: false });
+
+        if (existingError) throw existingError;
+        
+        if (existingData && existingData.length > 0) {
+          setAllResults(existingData);
+          setHasMore(false); // Se já tem resultados, não tem mais para carregar
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Chamar a nova função de busca web
+      const { data: functionData, error: functionError } = await supabase.functions.invoke('web-search', {
+        body: {
+          searchId: searchData.id,
+          category: searchData.category,
+          state: searchData.state,
+          city: searchData.city,
+          neighborhood: searchData.neighborhood,
+          page: currentPage
+        }
+      });
+
+      if (functionError) throw functionError;
+
+      // Buscar os novos resultados
+      const { data: newResults, error: fetchError } = await supabase
         .from('search_results')
         .select('*')
         .eq('search_id', searchData.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setAllResults(data || []);
+      if (fetchError) throw fetchError;
+
+      if (isNewSearch) {
+        setAllResults(newResults || []);
+      } else {
+        // Adicionar apenas os novos resultados (evitar duplicatas)
+        const existingIds = new Set(allResults.map((r: any) => r.id));
+        const uniqueNewResults = (newResults || []).filter((r: any) => !existingIds.has(r.id));
+        setAllResults(prev => [...prev, ...uniqueNewResults]);
+      }
+
+      // Verificar se há mais resultados
+      setHasMore(functionData?.hasMore || false);
+      
     } catch (error) {
       console.error('Error fetching results:', error);
+      setHasMore(false);
     } finally {
       setLoading(false);
     }
   };
+
+  const loadMoreResults = () => {
+    if (!loading && hasMore) {
+      setCurrentPage(prev => prev + 1);
+    }
+  };
+
+  // Carregar mais quando a página muda
+  useEffect(() => {
+    if (currentPage > 1 && searchData?.id) {
+      fetchResults(false);
+    }
+  }, [currentPage]);
 
   const exportToCSV = () => {
     if (allResults.length === 0) return;
@@ -97,16 +157,11 @@ export const ResultsSection = ({ searchData }: ResultsSectionProps) => {
     document.body.removeChild(link);
   };
 
-  // Calcular dados para paginação
-  const totalPages = Math.ceil(allResults.length / resultsPerPage);
-  const startIndex = (currentPage - 1) * resultsPerPage;
-  const endIndex = startIndex + resultsPerPage;
-  const currentResults = allResults.slice(startIndex, endIndex);
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-    // Scroll to top of results
-    document.getElementById('results-section')?.scrollIntoView({ behavior: 'smooth' });
+  const refreshResults = () => {
+    setAllResults([]);
+    setCurrentPage(1);
+    setHasMore(true);
+    fetchResults(true);
   };
 
   if (!searchData) return null;
@@ -127,7 +182,7 @@ export const ResultsSection = ({ searchData }: ResultsSectionProps) => {
               <Badge variant={searchStatus === 'completed' ? 'default' : 'secondary'}>
                 {searchStatus === 'completed' ? 'Concluída' : 'Processando...'}
               </Badge>
-              <Button onClick={fetchResults} size="sm" variant="outline">
+              <Button onClick={refreshResults} size="sm" variant="outline">
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Atualizar
               </Button>
@@ -146,11 +201,10 @@ export const ResultsSection = ({ searchData }: ResultsSectionProps) => {
           </div>
 
           <ResultsList
-            results={currentResults}
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={handlePageChange}
+            results={allResults}
             isLoading={isLoading}
+            hasMore={hasMore}
+            onLoadMore={loadMoreResults}
           />
         </div>
       </div>
