@@ -164,7 +164,7 @@ export const SearchForm = ({ onSearch }: SearchFormProps) => {
                       <SelectValue placeholder={city ? "Selecione o bairro" : "Primeiro selecione a cidade"} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Todos os bairros</SelectItem>
+                      <SelectItem value="all">Todos os bairros</SelectItem>
                       {availableNeighborhoods.map((neighborhoodOption) => (
                         <SelectItem key={neighborhoodOption.id} value={neighborhoodOption.name}>
                           {neighborhoodOption.name}
