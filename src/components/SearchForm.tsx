@@ -80,7 +80,8 @@ export const SearchForm = ({ onSearch }: SearchFormProps) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (category && selectedState && city) {
-      onSearch({ category, state: selectedState, city, neighborhood });
+      const finalNeighborhood = neighborhood === "all" ? "" : neighborhood;
+      onSearch({ category, state: selectedState, city, neighborhood: finalNeighborhood });
     }
   };
 
