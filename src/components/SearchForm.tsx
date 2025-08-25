@@ -26,7 +26,7 @@ export const SearchForm = ({ onSearch }: SearchFormProps) => {
 
   const categories = [
     "Petshop",
-    "Médico",
+    "Médico", 
     "Dentista",
     "Farmácia",
     "Restaurante",
@@ -68,12 +68,14 @@ export const SearchForm = ({ onSearch }: SearchFormProps) => {
   ];
 
   const handleStateChange = (stateCode: string) => {
+    console.log('Estado selecionado:', stateCode);
     updateState(stateCode);
     setCity("");
     setNeighborhood("");
   };
 
   const handleCityChange = (cityName: string) => {
+    console.log('Cidade selecionada:', cityName);
     setCity(cityName);
     updateCity(cityName);
     setNeighborhood("");
@@ -81,6 +83,8 @@ export const SearchForm = ({ onSearch }: SearchFormProps) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Iniciando busca:', { category, selectedState, city, neighborhood });
+    
     if (category && selectedState && city) {
       const finalNeighborhood = neighborhood === "all" ? "" : neighborhood;
       
@@ -90,9 +94,18 @@ export const SearchForm = ({ onSearch }: SearchFormProps) => {
         searchTerms.push(finalNeighborhood);
       }
       const mapsUrl = `https://www.google.com/maps/search/${searchTerms.join('+').replace(/\s+/g, '+')}`;
+      
+      console.log('URL do Google Maps gerada:', mapsUrl);
       setBrowserUrl(mapsUrl);
       
+      // Chamar a função de busca
       onSearch({ category, state: selectedState, city, neighborhood: finalNeighborhood });
+    } else {
+      console.log('Campos obrigatórios não preenchidos:', { 
+        category: !!category, 
+        selectedState: !!selectedState, 
+        city: !!city 
+      });
     }
   };
 
