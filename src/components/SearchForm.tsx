@@ -20,6 +20,7 @@ export const SearchForm = ({ onSearch }: SearchFormProps) => {
   const [category, setCategory] = useState("");
   const [city, setCity] = useState("");
   const [neighborhood, setNeighborhood] = useState("");
+  const [browserUrl, setBrowserUrl] = useState("https://www.google.com.br");
   const { selectedState, availableCities, updateState } = useCitiesByState();
   const { selectedCity, availableNeighborhoods, updateCity } = useNeighborhoodsByCity();
 
@@ -82,6 +83,15 @@ export const SearchForm = ({ onSearch }: SearchFormProps) => {
     e.preventDefault();
     if (category && selectedState && city) {
       const finalNeighborhood = neighborhood === "all" ? "" : neighborhood;
+      
+      // Construir URL do Google Maps
+      const searchTerms = [category, city];
+      if (finalNeighborhood) {
+        searchTerms.push(finalNeighborhood);
+      }
+      const mapsUrl = `https://www.google.com/maps/search/${searchTerms.join('+').replace(/\s+/g, '+')}`;
+      setBrowserUrl(mapsUrl);
+      
       onSearch({ category, state: selectedState, city, neighborhood: finalNeighborhood });
     }
   };
@@ -198,7 +208,7 @@ export const SearchForm = ({ onSearch }: SearchFormProps) => {
       {/* Navegador Web */}
       <section className="py-8 bg-background">
         <div className="container mx-auto px-6">
-          <SimpleBrowser />
+          <SimpleBrowser initialUrl={browserUrl} key={browserUrl} />
         </div>
       </section>
     </div>
