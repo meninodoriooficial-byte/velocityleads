@@ -210,17 +210,7 @@ export default function Dashboard() {
           </TabsList>
 
           <TabsContent value="search" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Fazer Nova Busca</CardTitle>
-                <CardDescription>
-                  Busque empresas por categoria, estado e cidade
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <SearchForm onSearch={handleSearch} />
-              </CardContent>
-            </Card>
+            <SearchForm onSearch={handleSearch} />
           </TabsContent>
 
           <TabsContent value="results" className="space-y-6">
