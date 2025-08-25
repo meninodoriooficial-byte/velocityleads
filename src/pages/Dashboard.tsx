@@ -202,11 +202,14 @@ export default function Dashboard() {
 
         {/* Main Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className={`grid w-full ${profile?.role === 'admin' ? 'grid-cols-5' : 'grid-cols-4'}`}>
             <TabsTrigger value="search">Nova Busca</TabsTrigger>
             <TabsTrigger value="results">Resultados</TabsTrigger>
             <TabsTrigger value="history">Histórico</TabsTrigger>
             <TabsTrigger value="plans">Planos</TabsTrigger>
+            {profile?.role === 'admin' && (
+              <TabsTrigger value="admin">Admin</TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="search" className="space-y-6">
@@ -301,6 +304,42 @@ export default function Dashboard() {
               ))}
             </div>
           </TabsContent>
+
+          {profile?.role === 'admin' && (
+            <TabsContent value="admin" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="w-5 h-5" />
+                    Configurações de Administrador
+                  </CardTitle>
+                  <CardDescription>
+                    Gerencie as configurações do sistema e API keys
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-lg font-semibold mb-2">Google Maps API</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Configure a chave da API do Google Maps para permitir buscas no navegador integrado.
+                      </p>
+                      <Button 
+                        onClick={() => {
+                          // This will trigger the secret modal
+                          window.dispatchEvent(new CustomEvent('request-google-api-key'));
+                        }}
+                        className="w-full sm:w-auto"
+                      >
+                        <MapPin className="w-4 h-4 mr-2" />
+                        Configurar Google Maps API Key
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </div>
