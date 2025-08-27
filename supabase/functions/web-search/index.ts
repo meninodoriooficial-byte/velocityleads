@@ -105,6 +105,8 @@ async function performWebSearch(category: string, city: string, state: string, n
       return generateFallbackResults(category, city, state, neighborhood, page);
     }
 
+    console.log('Using Google Places API with key:', googleApiKey.substring(0, 10) + '...');
+
     // Construir query de busca
     const location = neighborhood ? `${neighborhood}, ${city}, ${state}` : `${city}, ${state}`;
     const query = `${category} ${location}`;
