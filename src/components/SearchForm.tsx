@@ -88,15 +88,18 @@ export const SearchForm = ({ onSearch }: SearchFormProps) => {
     if (category && selectedState && city) {
       const finalNeighborhood = neighborhood === "all" ? "" : neighborhood;
       
-      // Construir URL do Google Maps
+      // Construir URL do Google Maps Embed (iframe-friendly)
       const searchTerms = [category, city];
       if (finalNeighborhood) {
         searchTerms.push(finalNeighborhood);
       }
-      const mapsUrl = `https://www.google.com/maps/search/${searchTerms.join('+').replace(/\s+/g, '+')}`;
       
-      console.log('URL do Google Maps gerada:', mapsUrl);
-      setBrowserUrl(mapsUrl);
+      // Use Google Maps Embed API for iframe compatibility
+      const searchQuery = searchTerms.join(' ').replace(/\s+/g, '+');
+      const embedUrl = `https://www.google.com/maps/embed/v1/search?key=AIzaSyCtE7LJwDOHecc2lJHB5HZK1rwy5JVMJ_c&q=${encodeURIComponent(searchQuery)}`;
+      
+      console.log('URL do Google Maps Embed gerada:', embedUrl);
+      setBrowserUrl(embedUrl);
       
       // Chamar a função de busca
       onSearch({ category, state: selectedState, city, neighborhood: finalNeighborhood });

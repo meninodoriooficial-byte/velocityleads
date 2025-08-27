@@ -68,12 +68,36 @@ export const SimpleBrowser = ({ initialUrl = "https://www.google.com/maps", heig
     console.log('Erro ao carregar iframe:', currentUrl);
     setHasError(true);
     setIsLoading(false);
+    
+    // Show error immediately for known problematic domains
+    const problematicDomains = ['google.com', 'maps.google.com', 'facebook.com', 'instagram.com'];
+    const currentDomain = new URL(currentUrl).hostname;
+    if (problematicDomains.some(domain => currentDomain.includes(domain))) {
+      console.log('Domínio conhecido por bloquear iframes:', currentDomain);
+    }
   };
 
   const handleIframeLoad = () => {
     console.log('Iframe carregado com sucesso:', currentUrl);
     setIsLoading(false);
     setHasError(false);
+    
+    // Check if iframe actually loaded content or was blocked
+    setTimeout(() => {
+      const iframe = document.getElementById('browser-iframe') as HTMLIFrameElement;
+      if (iframe) {
+        try {
+          // Try to access iframe content to detect if it was blocked
+          if (iframe.contentDocument === null) {
+            console.log('Iframe bloqueado por política de segurança');
+            setHasError(true);
+          }
+        } catch (error) {
+          console.log('Acesso ao iframe bloqueado:', error);
+          setHasError(true);
+        }
+      }
+    }, 1000);
   };
 
   return (
@@ -143,19 +167,37 @@ export const SimpleBrowser = ({ initialUrl = "https://www.google.com/maps", heig
       
       <CardContent className="p-0">
         {hasError && (
-          <Alert className="m-4 border-orange-200 bg-orange-50">
+          <Alert className="m-4 border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              Não foi possível carregar este site. Alguns sites não permitem carregamento em frames por segurança. 
-              Tente acessar diretamente: 
-              <a 
-                href={currentUrl} 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="text-blue-600 hover:underline ml-1"
-              >
-                {currentUrl}
-              </a>
+              <div className="space-y-2">
+                <p className="font-medium">Não foi possível carregar este site no navegador integrado.</p>
+                <p className="text-sm">
+                  Muitos sites (incluindo Google Maps) bloqueiam carregamento em frames por segurança.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-2 mt-3">
+                  <a 
+                    href={currentUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-primary rounded-md hover:bg-primary/90 transition-colors"
+                  >
+                    Abrir em Nova Aba
+                  </a>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const embedUrl = `https://www.google.com/maps/embed/v1/search?key=AIzaSyCtE7LJwDOHecc2lJHB5HZK1rwy5JVMJ_c&q=${encodeURIComponent(currentUrl.split('/search/')[1] || '')}`;
+                      setCurrentUrl(embedUrl);
+                      setHasError(false);
+                      setIsLoading(true);
+                    }}
+                  >
+                    Tentar Versão Incorporável
+                  </Button>
+                </div>
+              </div>
             </AlertDescription>
           </Alert>
         )}
