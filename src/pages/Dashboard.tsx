@@ -213,7 +213,7 @@ export default function Dashboard() {
           </TabsList>
 
           <TabsContent value="search" className="space-y-6">
-            <SearchForm onSearch={handleSearch} />
+            <SearchForm onSearch={handleSearch} selectedSearch={selectedSearch} />
           </TabsContent>
 
           <TabsContent value="results" className="space-y-6">

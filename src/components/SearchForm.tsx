@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Search, MapPin, Building } from "lucide-react";
 import { useCitiesByState } from "@/hooks/useCitiesByState";
 import { useNeighborhoodsByCity } from "@/hooks/useNeighborhoodsByCity";
-import { SimpleBrowser } from "./SimpleBrowser";
+import { ResultsSection } from "./ResultsSection";
 
 interface SearchFormProps {
   onSearch: (data: {
@@ -14,13 +14,13 @@ interface SearchFormProps {
     city: string;
     neighborhood?: string;
   }) => void;
+  selectedSearch?: any;
 }
 
-export const SearchForm = ({ onSearch }: SearchFormProps) => {
+export const SearchForm = ({ onSearch, selectedSearch }: SearchFormProps) => {
   const [category, setCategory] = useState("");
   const [city, setCity] = useState("");
   const [neighborhood, setNeighborhood] = useState("");
-  const [browserUrl, setBrowserUrl] = useState("https://www.google.com/maps");
   const { selectedState, availableCities, updateState } = useCitiesByState();
   const { selectedCity, availableNeighborhoods, updateCity } = useNeighborhoodsByCity();
 
@@ -88,20 +88,7 @@ export const SearchForm = ({ onSearch }: SearchFormProps) => {
     if (category && selectedState && city) {
       const finalNeighborhood = neighborhood === "all" ? "" : neighborhood;
       
-      // Construir URL do Google Maps Embed (iframe-friendly)
-      const searchTerms = [category, city];
-      if (finalNeighborhood) {
-        searchTerms.push(finalNeighborhood);
-      }
-      
-      // Use Google Maps Embed API for iframe compatibility
-      const searchQuery = searchTerms.join(' ').replace(/\s+/g, '+');
-      const embedUrl = `https://www.google.com/maps/embed/v1/search?key=AIzaSyCtE7LJwDOHecc2lJHB5HZK1rwy5JVMJ_c&q=${encodeURIComponent(searchQuery)}`;
-      
-      console.log('URL do Google Maps Embed gerada:', embedUrl);
-      setBrowserUrl(embedUrl);
-      
-      // Chamar a função de busca
+      // Chamar a função de busca diretamente
       onSearch({ category, state: selectedState, city, neighborhood: finalNeighborhood });
     } else {
       console.log('Campos obrigatórios não preenchidos:', { 
@@ -221,12 +208,10 @@ export const SearchForm = ({ onSearch }: SearchFormProps) => {
         </div>
       </section>
       
-      {/* Navegador Web */}
-      <section className="py-8 bg-background">
-        <div className="container mx-auto px-6">
-          <SimpleBrowser initialUrl={browserUrl} key={browserUrl} />
-        </div>
-      </section>
+      {/* Resultados da Busca */}
+      {selectedSearch && (
+        <ResultsSection searchData={selectedSearch} />
+      )}
     </div>
   );
 };
