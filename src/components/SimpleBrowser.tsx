@@ -11,7 +11,7 @@ interface SimpleBrowserProps {
   height?: string;
 }
 
-export const SimpleBrowser = ({ initialUrl = "https://www.google.com.br", height = "600px" }: SimpleBrowserProps) => {
+export const SimpleBrowser = ({ initialUrl = "https://www.google.com/maps", height = "600px" }: SimpleBrowserProps) => {
   const [currentUrl, setCurrentUrl] = useState(initialUrl);
   const [inputUrl, setInputUrl] = useState(initialUrl);
   const [isLoading, setIsLoading] = useState(false);
@@ -43,7 +43,7 @@ export const SimpleBrowser = ({ initialUrl = "https://www.google.com.br", height
   };
 
   const goHome = () => {
-    const homeUrl = "https://www.google.com.br";
+    const homeUrl = "https://www.google.com/maps";
     setInputUrl(homeUrl);
     setCurrentUrl(homeUrl);
     setHasError(false);

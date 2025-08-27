@@ -20,7 +20,7 @@ export const SearchForm = ({ onSearch }: SearchFormProps) => {
   const [category, setCategory] = useState("");
   const [city, setCity] = useState("");
   const [neighborhood, setNeighborhood] = useState("");
-  const [browserUrl, setBrowserUrl] = useState("https://www.google.com.br");
+  const [browserUrl, setBrowserUrl] = useState("https://www.google.com/maps");
   const { selectedState, availableCities, updateState } = useCitiesByState();
   const { selectedCity, availableNeighborhoods, updateCity } = useNeighborhoodsByCity();
 
