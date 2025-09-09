@@ -14,7 +14,155 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          plan_searches_limit: number
+          role: string
+          searches_used: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          plan_searches_limit?: number
+          role?: string
+          searches_used?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          plan_searches_limit?: number
+          role?: string
+          searches_used?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      search_packages: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          price: number
+          searches_limit: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          price?: number
+          searches_limit: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          price?: number
+          searches_limit?: number
+        }
+        Relationships: []
+      }
+      search_results: {
+        Row: {
+          address: string | null
+          business_name: string
+          created_at: string
+          id: string
+          phone: string | null
+          rating: number | null
+          search_id: string
+          source: string
+          website: string | null
+        }
+        Insert: {
+          address?: string | null
+          business_name: string
+          created_at?: string
+          id?: string
+          phone?: string | null
+          rating?: number | null
+          search_id: string
+          source: string
+          website?: string | null
+        }
+        Update: {
+          address?: string | null
+          business_name?: string
+          created_at?: string
+          id?: string
+          phone?: string | null
+          rating?: number | null
+          search_id?: string
+          source?: string
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "search_results_search_id_fkey"
+            columns: ["search_id"]
+            isOneToOne: false
+            referencedRelation: "searches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      searches: {
+        Row: {
+          category: string
+          city: string
+          created_at: string
+          id: string
+          neighborhood: string | null
+          search_query: string
+          state: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          city: string
+          created_at?: string
+          id?: string
+          neighborhood?: string | null
+          search_query: string
+          state: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          city?: string
+          created_at?: string
+          id?: string
+          neighborhood?: string | null
+          search_query?: string
+          state?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

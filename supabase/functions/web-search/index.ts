@@ -107,9 +107,9 @@ async function performWebSearch(category: string, city: string, state: string, n
 
     console.log('Using Google Places API with key:', googleApiKey.substring(0, 10) + '...');
 
-    // Construir query de busca
+    // Construir query de busca incluindo sites específicos
     const location = neighborhood ? `${neighborhood}, ${city}, ${state}` : `${city}, ${state}`;
-    const query = `${category} ${location}`;
+    const query = `${category} ${location} site:maps.google.com OR site:casadosdados.com.br`;
     
     // Parâmetros da API do Google Places
     const radius = 10000; // 10km
