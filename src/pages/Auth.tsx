@@ -10,9 +10,9 @@ import { useToast } from "@/components/ui/use-toast";
 import { Loader2 } from "lucide-react";
 
 export default function Auth() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("sempre.boa.noticia@gmail.com");
+  const [password, setPassword] = useState("qwe123");
+  const [fullName, setFullName] = useState("Administrador");
   const [loading, setLoading] = useState(false);
   const [session, setSession] = useState(null);
   const navigate = useNavigate();
