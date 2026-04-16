@@ -10,37 +10,40 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "13.0.5"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
       profiles: {
         Row: {
           created_at: string
+          email: string | null
           full_name: string | null
           id: string
-          is_admin: boolean
-          max_searches: number
+          plan: string
+          plan_searches_limit: number
           searches_used: number
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
+          email?: string | null
           full_name?: string | null
           id?: string
-          is_admin?: boolean
-          max_searches?: number
+          plan?: string
+          plan_searches_limit?: number
           searches_used?: number
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
+          email?: string | null
           full_name?: string | null
           id?: string
-          is_admin?: boolean
-          max_searches?: number
+          plan?: string
+          plan_searches_limit?: number
           searches_used?: number
           updated_at?: string
           user_id?: string
@@ -55,7 +58,7 @@ export type Database = {
           is_active: boolean
           name: string
           price: number
-          search_limit: number
+          searches_limit: number
         }
         Insert: {
           created_at?: string
@@ -63,8 +66,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
-          price: number
-          search_limit: number
+          price?: number
+          searches_limit?: number
         }
         Update: {
           created_at?: string
@@ -73,51 +76,63 @@ export type Database = {
           is_active?: boolean
           name?: string
           price?: number
-          search_limit?: number
+          searches_limit?: number
         }
         Relationships: []
       }
       search_results: {
         Row: {
+          additional_data: Json | null
           address: string | null
           business_name: string
-          category: string | null
+          business_type: string | null
           created_at: string
+          email: string | null
           id: string
           latitude: number | null
           longitude: number | null
+          owner_name: string | null
           phone: string | null
           rating: number | null
-          review_count: number | null
+          reviews_count: number | null
           search_id: string
+          social_media: Json | null
           website: string | null
         }
         Insert: {
+          additional_data?: Json | null
           address?: string | null
           business_name: string
-          category?: string | null
+          business_type?: string | null
           created_at?: string
+          email?: string | null
           id?: string
           latitude?: number | null
           longitude?: number | null
+          owner_name?: string | null
           phone?: string | null
           rating?: number | null
-          review_count?: number | null
+          reviews_count?: number | null
           search_id: string
+          social_media?: Json | null
           website?: string | null
         }
         Update: {
+          additional_data?: Json | null
           address?: string | null
           business_name?: string
-          category?: string | null
+          business_type?: string | null
           created_at?: string
+          email?: string | null
           id?: string
           latitude?: number | null
           longitude?: number | null
+          owner_name?: string | null
           phone?: string | null
           rating?: number | null
-          review_count?: number | null
+          reviews_count?: number | null
           search_id?: string
+          social_media?: Json | null
           website?: string | null
         }
         Relationships: [
@@ -137,7 +152,8 @@ export type Database = {
           created_at: string
           id: string
           neighborhood: string | null
-          search_query: string
+          results_count: number | null
+          search_query: string | null
           state: string
           status: string
           updated_at: string
@@ -149,7 +165,8 @@ export type Database = {
           created_at?: string
           id?: string
           neighborhood?: string | null
-          search_query: string
+          results_count?: number | null
+          search_query?: string | null
           state: string
           status?: string
           updated_at?: string
@@ -161,10 +178,29 @@ export type Database = {
           created_at?: string
           id?: string
           neighborhood?: string | null
-          search_query?: string
+          results_count?: number | null
+          search_query?: string | null
           state?: string
           status?: string
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
         Relationships: []
@@ -174,10 +210,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -304,6 +346,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator", "user"],
+    },
   },
 } as const

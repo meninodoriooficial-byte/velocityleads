@@ -12,7 +12,7 @@ import { LogOut, Package, Search, BarChart3, Users, MapPin } from "lucide-react"
 import { ResultsSection } from "@/components/ResultsSection";
 
 export default function Dashboard() {
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, isAdmin, signOut } = useAuth();
   const [searches, setSearches] = useState([]);
   const [packages, setPackages] = useState([]);
   const [activeTab, setActiveTab] = useState("search");
@@ -33,7 +33,6 @@ export default function Dashboard() {
         .select('*')
         .eq('user_id', user?.id)
         .order('created_at', { ascending: false });
-
       if (error) throw error;
       setSearches(data || []);
     } catch (error) {
@@ -48,7 +47,6 @@ export default function Dashboard() {
         .select('*')
         .eq('is_active', true)
         .order('searches_limit');
-
       if (error) throw error;
       setPackages(data || []);
     } catch (error) {
@@ -69,7 +67,6 @@ export default function Dashboard() {
     }
 
     try {
-      // Create search record
       const { data: searchRecord, error: searchError } = await supabase
         .from('searches')
         .insert({
@@ -86,13 +83,11 @@ export default function Dashboard() {
 
       if (searchError) throw searchError;
 
-      // Update searches used count
       await supabase
         .from('profiles')
         .update({ searches_used: profile.searches_used + 1 })
         .eq('user_id', user?.id);
 
-      // Call search function
       const { error: functionError } = await supabase.functions.invoke('web-search', {
         body: {
           searchId: searchRecord.id,
@@ -107,10 +102,9 @@ export default function Dashboard() {
 
       toast({
         title: "Busca iniciada",
-        description: "Sua busca está sendo processada. Aguarde os resultados.",
+        description: "Sua busca está sendo processada.",
       });
 
-      // Refresh searches
       fetchUserSearches();
       setSelectedSearch(searchRecord);
       setActiveTab("results");
@@ -125,31 +119,17 @@ export default function Dashboard() {
     }
   };
 
-  const getRoleColor = (role: string) => {
-    switch (role) {
-      case 'admin': return 'bg-red-500';
-      case 'premium': return 'bg-gold';
-      case 'basic': return 'bg-gray-500';
-      default: return 'bg-gray-500';
-    }
-  };
-
   const usagePercentage = profile ? (profile.searches_used / profile.plan_searches_limit) * 100 : 0;
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="border-b bg-card">
         <div className="container mx-auto px-6 py-4 flex justify-between items-center">
           <div className="flex items-center space-x-4">
             <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
               Business Finder
             </h1>
-            {profile && (
-              <Badge className={getRoleColor(profile.role)}>
-                {profile.role.toUpperCase()}
-              </Badge>
-            )}
+            {isAdmin && <Badge className="bg-red-500">ADMIN</Badge>}
           </div>
           <div className="flex items-center space-x-4">
             <span className="text-sm text-muted-foreground">
@@ -164,7 +144,6 @@ export default function Dashboard() {
       </header>
 
       <div className="container mx-auto px-6 py-8">
-        {/* Usage Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -195,28 +174,25 @@ export default function Dashboard() {
               <Package className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold capitalize">{profile?.role || 'Basic'}</div>
+              <div className="text-2xl font-bold capitalize">{profile?.plan || 'Basic'}</div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Main Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className={`grid w-full ${profile?.role === 'admin' ? 'grid-cols-5' : 'grid-cols-4'}`}>
+          <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-5' : 'grid-cols-4'}`}>
             <TabsTrigger value="search">Nova Busca</TabsTrigger>
             <TabsTrigger value="results">Resultados</TabsTrigger>
             <TabsTrigger value="history">Histórico</TabsTrigger>
             <TabsTrigger value="plans">Planos</TabsTrigger>
-            {profile?.role === 'admin' && (
-              <TabsTrigger value="admin">Admin</TabsTrigger>
-            )}
+            {isAdmin && <TabsTrigger value="admin">Admin</TabsTrigger>}
           </TabsList>
 
-          <TabsContent value="search" className="space-y-6">
+          <TabsContent value="search">
             <SearchForm onSearch={handleSearch} selectedSearch={selectedSearch} />
           </TabsContent>
 
-          <TabsContent value="results" className="space-y-6">
+          <TabsContent value="results">
             {selectedSearch ? (
               <ResultsSection searchData={selectedSearch} />
             ) : (
@@ -230,7 +206,7 @@ export default function Dashboard() {
             )}
           </TabsContent>
 
-          <TabsContent value="history" className="space-y-6">
+          <TabsContent value="history">
             <Card>
               <CardHeader>
                 <CardTitle>Histórico de Buscas</CardTitle>
@@ -251,13 +227,7 @@ export default function Dashboard() {
                             {search.status}
                           </Badge>
                           {search.status === 'completed' && (
-                            <Button 
-                              size="sm" 
-                              onClick={() => {
-                                setSelectedSearch(search);
-                                setActiveTab("results");
-                              }}
-                            >
+                            <Button size="sm" onClick={() => { setSelectedSearch(search); setActiveTab("results"); }}>
                               Ver Resultados
                             </Button>
                           )}
@@ -266,18 +236,16 @@ export default function Dashboard() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-center text-muted-foreground">
-                    Nenhuma busca realizada ainda
-                  </p>
+                  <p className="text-center text-muted-foreground">Nenhuma busca realizada ainda</p>
                 )}
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="plans" className="space-y-6">
+          <TabsContent value="plans">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {packages.map((pkg: any) => (
-                <Card key={pkg.id} className={pkg.name.toLowerCase() === profile?.role ? 'border-primary' : ''}>
+                <Card key={pkg.id} className={pkg.name.toLowerCase() === profile?.plan ? 'border-primary' : ''}>
                   <CardHeader>
                     <CardTitle>{pkg.name}</CardTitle>
                     <CardDescription>{pkg.description}</CardDescription>
@@ -293,11 +261,8 @@ export default function Dashboard() {
                         {pkg.searches_limit} buscas por mês
                       </div>
                     </div>
-                    <Button 
-                      className="w-full" 
-                      disabled={pkg.name.toLowerCase() === profile?.role}
-                    >
-                      {pkg.name.toLowerCase() === profile?.role ? 'Plano Atual' : 'Fazer Upgrade'}
+                    <Button className="w-full" disabled={pkg.name.toLowerCase() === profile?.plan}>
+                      {pkg.name.toLowerCase() === profile?.plan ? 'Plano Atual' : 'Fazer Upgrade'}
                     </Button>
                   </CardContent>
                 </Card>
@@ -305,36 +270,26 @@ export default function Dashboard() {
             </div>
           </TabsContent>
 
-          {profile?.role === 'admin' && (
-            <TabsContent value="admin" className="space-y-6">
+          {isAdmin && (
+            <TabsContent value="admin">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Users className="w-5 h-5" />
                     Configurações de Administrador
                   </CardTitle>
-                  <CardDescription>
-                    Gerencie as configurações do sistema e API keys
-                  </CardDescription>
+                  <CardDescription>Gerencie as configurações do sistema</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-6">
+                <CardContent>
                   <div className="space-y-4">
-                    <div>
-                      <h3 className="text-lg font-semibold mb-2">Google Maps API</h3>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Configure a chave da API do Google Maps para permitir buscas no navegador integrado.
-                      </p>
-                      <Button 
-                        onClick={() => {
-                          // This will trigger the secret modal
-                          window.dispatchEvent(new CustomEvent('request-google-api-key'));
-                        }}
-                        className="w-full sm:w-auto"
-                      >
-                        <MapPin className="w-4 h-4 mr-2" />
-                        Configurar Google Maps API Key
-                      </Button>
-                    </div>
+                    <h3 className="text-lg font-semibold">Google Maps API</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Configure a chave da API do Google Maps para buscas reais.
+                    </p>
+                    <Button>
+                      <MapPin className="w-4 h-4 mr-2" />
+                      Configurar Google Maps API Key
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
