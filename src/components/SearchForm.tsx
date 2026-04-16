@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Search, MapPin, Building } from "lucide-react";
-import { useCitiesByState } from "@/hooks/useCitiesByState";
-import { useNeighborhoodsByCity } from "@/hooks/useNeighborhoodsByCity";
 import { ResultsSection } from "./ResultsSection";
 
 interface SearchFormProps {
@@ -17,85 +16,46 @@ interface SearchFormProps {
   selectedSearch?: any;
 }
 
+const states = [
+  { code: "AC", name: "Acre" },
+  { code: "AL", name: "Alagoas" },
+  { code: "AP", name: "Amapá" },
+  { code: "AM", name: "Amazonas" },
+  { code: "BA", name: "Bahia" },
+  { code: "CE", name: "Ceará" },
+  { code: "DF", name: "Distrito Federal" },
+  { code: "ES", name: "Espírito Santo" },
+  { code: "GO", name: "Goiás" },
+  { code: "MA", name: "Maranhão" },
+  { code: "MT", name: "Mato Grosso" },
+  { code: "MS", name: "Mato Grosso do Sul" },
+  { code: "MG", name: "Minas Gerais" },
+  { code: "PA", name: "Pará" },
+  { code: "PB", name: "Paraíba" },
+  { code: "PR", name: "Paraná" },
+  { code: "PE", name: "Pernambuco" },
+  { code: "PI", name: "Piauí" },
+  { code: "RJ", name: "Rio de Janeiro" },
+  { code: "RN", name: "Rio Grande do Norte" },
+  { code: "RS", name: "Rio Grande do Sul" },
+  { code: "RO", name: "Rondônia" },
+  { code: "RR", name: "Roraima" },
+  { code: "SC", name: "Santa Catarina" },
+  { code: "SP", name: "São Paulo" },
+  { code: "SE", name: "Sergipe" },
+  { code: "TO", name: "Tocantins" }
+];
+
 export const SearchForm = ({ onSearch, selectedSearch }: SearchFormProps) => {
   const [category, setCategory] = useState("");
+  const [selectedState, setSelectedState] = useState("");
   const [city, setCity] = useState("");
   const [neighborhood, setNeighborhood] = useState("");
-  const { selectedState, availableCities, updateState } = useCitiesByState();
-  const { selectedCity, availableNeighborhoods, updateCity } = useNeighborhoodsByCity();
-
-  const categories = [
-    "Petshop",
-    "Médico", 
-    "Dentista",
-    "Farmácia",
-    "Restaurante",
-    "Academia",
-    "Salão de Beleza",
-    "Oficina Mecânica",
-    "Loja de Roupas",
-    "Supermercado"
-  ];
-
-  const states = [
-    { code: "AC", name: "Acre" },
-    { code: "AL", name: "Alagoas" },
-    { code: "AP", name: "Amapá" },
-    { code: "AM", name: "Amazonas" },
-    { code: "BA", name: "Bahia" },
-    { code: "CE", name: "Ceará" },
-    { code: "DF", name: "Distrito Federal" },
-    { code: "ES", name: "Espírito Santo" },
-    { code: "GO", name: "Goiás" },
-    { code: "MA", name: "Maranhão" },
-    { code: "MT", name: "Mato Grosso" },
-    { code: "MS", name: "Mato Grosso do Sul" },
-    { code: "MG", name: "Minas Gerais" },
-    { code: "PA", name: "Pará" },
-    { code: "PB", name: "Paraíba" },
-    { code: "PR", name: "Paraná" },
-    { code: "PE", name: "Pernambuco" },
-    { code: "PI", name: "Piauí" },
-    { code: "RJ", name: "Rio de Janeiro" },
-    { code: "RN", name: "Rio Grande do Norte" },
-    { code: "RS", name: "Rio Grande do Sul" },
-    { code: "RO", name: "Rondônia" },
-    { code: "RR", name: "Roraima" },
-    { code: "SC", name: "Santa Catarina" },
-    { code: "SP", name: "São Paulo" },
-    { code: "SE", name: "Sergipe" },
-    { code: "TO", name: "Tocantins" }
-  ];
-
-  const handleStateChange = (stateCode: string) => {
-    console.log('Estado selecionado:', stateCode);
-    updateState(stateCode);
-    setCity("");
-    setNeighborhood("");
-  };
-
-  const handleCityChange = (cityName: string) => {
-    console.log('Cidade selecionada:', cityName);
-    setCity(cityName);
-    updateCity(cityName);
-    setNeighborhood("");
-  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Iniciando busca:', { category, selectedState, city, neighborhood });
-    
     if (category && selectedState && city) {
-      const finalNeighborhood = neighborhood === "all" ? "" : neighborhood;
-      
-      // Chamar a função de busca diretamente
-      onSearch({ category, state: selectedState, city, neighborhood: finalNeighborhood });
-    } else {
-      console.log('Campos obrigatórios não preenchidos:', { 
-        category: !!category, 
-        selectedState: !!selectedState, 
-        city: !!city 
-      });
+      onSearch({ category, state: selectedState, city, neighborhood: neighborhood || undefined });
     }
   };
 
@@ -118,18 +78,11 @@ export const SearchForm = ({ onSearch, selectedSearch }: SearchFormProps) => {
                       <Building className="w-4 h-4" />
                       Ramo de Atividade
                     </label>
-                    <Select value={category} onValueChange={setCategory}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione uma categoria" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories.map((cat) => (
-                          <SelectItem key={cat} value={cat.toLowerCase()}>
-                            {cat}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Input
+                      value={category}
+                      onChange={(e) => setCategory(e.target.value)}
+                      placeholder="Ex: Petshop, Dentista..."
+                    />
                   </div>
 
                   <div className="space-y-2">
@@ -137,7 +90,7 @@ export const SearchForm = ({ onSearch, selectedSearch }: SearchFormProps) => {
                       <MapPin className="w-4 h-4" />
                       Estado
                     </label>
-                    <Select value={selectedState} onValueChange={handleStateChange}>
+                    <Select value={selectedState} onValueChange={setSelectedState}>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione o estado" />
                       </SelectTrigger>
@@ -156,18 +109,12 @@ export const SearchForm = ({ onSearch, selectedSearch }: SearchFormProps) => {
                       <MapPin className="w-4 h-4" />
                       Cidade
                     </label>
-                    <Select value={city} onValueChange={handleCityChange} disabled={!selectedState}>
-                      <SelectTrigger>
-                        <SelectValue placeholder={selectedState ? "Selecione a cidade" : "Primeiro selecione o estado"} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableCities.map((cityOption) => (
-                          <SelectItem key={cityOption.id} value={cityOption.name}>
-                            {cityOption.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Input
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      placeholder="Digite a cidade"
+                      disabled={!selectedState}
+                    />
                   </div>
 
                   <div className="space-y-2">
@@ -175,19 +122,12 @@ export const SearchForm = ({ onSearch, selectedSearch }: SearchFormProps) => {
                       <MapPin className="w-4 h-4" />
                       Bairro (Opcional)
                     </label>
-                    <Select value={neighborhood} onValueChange={setNeighborhood} disabled={!city}>
-                      <SelectTrigger>
-                        <SelectValue placeholder={city ? "Selecione o bairro" : "Primeiro selecione a cidade"} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos os bairros</SelectItem>
-                        {availableNeighborhoods.map((neighborhoodOption) => (
-                          <SelectItem key={neighborhoodOption.id} value={neighborhoodOption.name}>
-                            {neighborhoodOption.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Input
+                      value={neighborhood}
+                      onChange={(e) => setNeighborhood(e.target.value)}
+                      placeholder="Digite o bairro"
+                      disabled={!city}
+                    />
                   </div>
                 </div>
 
@@ -208,7 +148,6 @@ export const SearchForm = ({ onSearch, selectedSearch }: SearchFormProps) => {
         </div>
       </section>
       
-      {/* Resultados da Busca */}
       {selectedSearch && (
         <ResultsSection searchData={selectedSearch} />
       )}
