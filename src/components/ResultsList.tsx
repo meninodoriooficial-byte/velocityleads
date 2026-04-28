@@ -1,7 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Star, Instagram, Facebook, MapPin } from "lucide-react";
+import { Star, Instagram, Facebook, MapPin, Sparkles, Loader2 } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -10,6 +10,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface ResultsListProps {
   results: any[];
@@ -32,6 +41,43 @@ const facebookUrl = (value: string) => {
 };
 
 export const ResultsList = ({ results, isLoading, hasMore, onLoadMore }: ResultsListProps) => {
+  const { toast } = useToast();
+  const [enrichingId, setEnrichingId] = useState<string | null>(null);
+  const [enrichedMap, setEnrichedMap] = useState<Record<string, any>>({});
+  const [openDialog, setOpenDialog] = useState<string | null>(null);
+
+  const handleEnrich = async (r: any) => {
+    setEnrichingId(r.id);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData?.session) {
+        const exp = sessionData.session.expires_at ?? 0;
+        const now = Math.floor(Date.now() / 1000);
+        if (exp - now < 60) await supabase.auth.refreshSession();
+      }
+
+      const { data, error } = await supabase.functions.invoke("enrich-lead", {
+        body: { resultId: r.id },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+
+      const enriched = (data as any).enriched_data;
+      setEnrichedMap((prev) => ({ ...prev, [r.id]: { data: enriched, source: (data as any).source } }));
+      setOpenDialog(r.id);
+      toast({ title: "Dados enriquecidos", description: `Fonte: ${(data as any).source}` });
+    } catch (e: any) {
+      toast({ title: "Falha ao enriquecer", description: e?.message || "Tente novamente", variant: "destructive" });
+    } finally {
+      setEnrichingId(null);
+    }
+  };
+
+  const getEnriched = (r: any) =>
+    enrichedMap[r.id] || (r.enriched_data && Object.keys(r.enriched_data || {}).length
+      ? { data: r.enriched_data, source: r.enriched_source }
+      : null);
+
   // Infinite scroll
   useEffect(() => {
     const handleScroll = () => {
@@ -80,6 +126,7 @@ export const ResultsList = ({ results, isLoading, hasMore, onLoadMore }: Results
               <TableHead>Avaliação</TableHead>
               <TableHead>Mapa</TableHead>
               <TableHead>Fonte</TableHead>
+              <TableHead>Enriquecer</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -176,6 +223,45 @@ export const ResultsList = ({ results, isLoading, hasMore, onLoadMore }: Results
                 <TableCell>
                   <Badge variant="outline" className="text-xs">{r.source_api ?? "—"}</Badge>
                 </TableCell>
+                <TableCell>
+                  {(() => {
+                    const enr = getEnriched(r);
+                    if (enr) {
+                      return (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => setOpenDialog(r.id)}
+                          className="text-xs"
+                        >
+                          <Sparkles className="w-3 h-3 mr-1" />
+                          Ver dados
+                        </Button>
+                      );
+                    }
+                    return (
+                      <Button
+                        size="sm"
+                        variant="default"
+                        onClick={() => handleEnrich(r)}
+                        disabled={enrichingId === r.id}
+                        className="text-xs"
+                      >
+                        {enrichingId === r.id ? (
+                          <>
+                            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                            Buscando...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-3 h-3 mr-1" />
+                            Enriquecer
+                          </>
+                        )}
+                      </Button>
+                    );
+                  })()}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -205,6 +291,67 @@ export const ResultsList = ({ results, isLoading, hasMore, onLoadMore }: Results
           <span className="block mt-1">Todos os resultados foram carregados</span>
         )}
       </div>
+
+      <Dialog open={!!openDialog} onOpenChange={(o) => !o && setOpenDialog(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Dados Enriquecidos</DialogTitle>
+            <DialogDescription>
+              {(() => {
+                const r = results.find((x: any) => x.id === openDialog);
+                const enr = r ? getEnriched(r) : null;
+                return r ? `${r.business_name} • Fonte: ${enr?.source || "—"}` : "";
+              })()}
+            </DialogDescription>
+          </DialogHeader>
+          {(() => {
+            const r = results.find((x: any) => x.id === openDialog);
+            const enr = r ? getEnriched(r) : null;
+            if (!enr) return null;
+            const cdd = enr.data?.casadosdados;
+            const ai = enr.data?.ai;
+            return (
+              <div className="space-y-4 text-sm">
+                {cdd && (
+                  <div className="border rounded-md p-3 bg-muted/30">
+                    <h4 className="font-semibold mb-2">Casa dos Dados (CNPJ)</h4>
+                    <dl className="grid grid-cols-2 gap-2">
+                      {cdd.cnpj && <><dt className="text-muted-foreground">CNPJ</dt><dd>{cdd.cnpj}</dd></>}
+                      {cdd.razao_social && <><dt className="text-muted-foreground">Razão Social</dt><dd>{cdd.razao_social}</dd></>}
+                      {cdd.nome_fantasia && <><dt className="text-muted-foreground">Nome Fantasia</dt><dd>{cdd.nome_fantasia}</dd></>}
+                      {cdd.atividade_principal && <><dt className="text-muted-foreground">Atividade</dt><dd>{typeof cdd.atividade_principal === "string" ? cdd.atividade_principal : JSON.stringify(cdd.atividade_principal)}</dd></>}
+                      {cdd.porte && <><dt className="text-muted-foreground">Porte</dt><dd>{cdd.porte}</dd></>}
+                      {cdd.capital_social && <><dt className="text-muted-foreground">Capital Social</dt><dd>{cdd.capital_social}</dd></>}
+                      {cdd.data_abertura && <><dt className="text-muted-foreground">Abertura</dt><dd>{cdd.data_abertura}</dd></>}
+                    </dl>
+                  </div>
+                )}
+                {ai && (
+                  <div className="border rounded-md p-3 bg-muted/30">
+                    <h4 className="font-semibold mb-2">Insights IA</h4>
+                    <dl className="space-y-2">
+                      {ai.descricao && <div><dt className="text-muted-foreground">Descrição</dt><dd>{ai.descricao}</dd></div>}
+                      {ai.segmento && <div><dt className="text-muted-foreground">Segmento</dt><dd>{ai.segmento}</dd></div>}
+                      {ai.porte_estimado && <div><dt className="text-muted-foreground">Porte estimado</dt><dd>{ai.porte_estimado}</dd></div>}
+                      {ai.publico_alvo && <div><dt className="text-muted-foreground">Público-alvo</dt><dd>{ai.publico_alvo}</dd></div>}
+                      {Array.isArray(ai.produtos_servicos) && ai.produtos_servicos.length > 0 && (
+                        <div><dt className="text-muted-foreground">Produtos/Serviços</dt><dd>{ai.produtos_servicos.join(", ")}</dd></div>
+                      )}
+                      {Array.isArray(ai.diferenciais) && ai.diferenciais.length > 0 && (
+                        <div><dt className="text-muted-foreground">Diferenciais</dt><dd>{ai.diferenciais.join(", ")}</dd></div>
+                      )}
+                      {ai.pitch_abordagem && <div><dt className="text-muted-foreground">Pitch sugerido</dt><dd className="italic">{ai.pitch_abordagem}</dd></div>}
+                    </dl>
+                  </div>
+                )}
+                {!cdd && !ai && (
+                  <p className="text-muted-foreground">Nenhum dado adicional encontrado.</p>
+                )}
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
