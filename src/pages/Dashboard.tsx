@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/components/ui/use-toast";
 import { SearchForm } from "@/components/SearchForm";
-import { Package, Search, TrendingUp, Users, Sparkles, CheckCircle2 } from "lucide-react";
+import { TrendingUp, Users, Sparkles, CheckCircle2 } from "lucide-react";
 import { ResultsSection } from "@/components/ResultsSection";
 import { ApiConfigManager } from "@/components/admin/ApiConfigManager";
 import { ApiErrorLogs } from "@/components/admin/ApiErrorLogs";
