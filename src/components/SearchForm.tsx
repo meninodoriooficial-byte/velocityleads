@@ -202,37 +202,43 @@ out tags;`;
 
   return (
     <div className="space-y-6">
-      <section className="py-16 bg-secondary/30">
-        <div className="container mx-auto px-6">
-          <Card className="max-w-4xl mx-auto shadow-lg border-0 bg-card/80 backdrop-blur-sm">
-            <CardHeader className="text-center">
-              <CardTitle className="text-2xl font-semibold flex items-center justify-center gap-2">
-                <Search className="w-6 h-6 text-primary" />
-                Buscar Empresas
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+      <Card className="card-elevated overflow-hidden border-border/60">
+        <CardHeader className="bg-gradient-to-b from-card to-secondary/30 border-b border-border/60 px-6 py-5">
+          <div className="flex items-center gap-4">
+            <div className="size-10 bg-accent rounded-full flex items-center justify-center text-accent-foreground font-bold shrink-0">
+              <Search className="size-5" />
+            </div>
+            <div>
+              <CardTitle className="text-lg font-bold">Definir parâmetros da prospecção</CardTitle>
+              <p className="text-sm text-muted-foreground font-medium mt-0.5">
+                Configure seu alvo para gerar uma nova lista de leads enriquecidos.
+              </p>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-6">
               <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium flex items-center gap-2">
-                      <Building className="w-4 h-4" />
-                      Ramo de Atividade
+                    <label className="text-sm font-bold flex items-center gap-2">
+                      <Building className="w-4 h-4 text-muted-foreground" />
+                      Ramo de Atividade <span className="text-destructive">*</span>
                     </label>
                     <Input
                       value={category}
                       onChange={(e) => setCategory(e.target.value)}
                       placeholder="Ex: Petshop, Dentista..."
+                      className="h-12 bg-secondary/40 border-2 border-transparent hover:border-border focus-visible:bg-card focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-secondary rounded-xl font-medium px-4"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium flex items-center gap-2">
-                      <MapPin className="w-4 h-4" />
-                      Estado
+                    <label className="text-sm font-bold flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-muted-foreground" />
+                      Estado <span className="text-destructive">*</span>
                     </label>
                     <Select value={selectedState} onValueChange={setSelectedState}>
-                      <SelectTrigger>
+                      <SelectTrigger className="h-12 bg-secondary/40 border-2 border-transparent hover:border-border focus:bg-card focus:border-primary rounded-xl font-medium px-4">
                         <SelectValue placeholder="Selecione o estado" />
                       </SelectTrigger>
                       <SelectContent>
@@ -246,12 +252,12 @@ out tags;`;
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium flex items-center gap-2">
-                      <MapPin className="w-4 h-4" />
-                      Cidade
+                    <label className="text-sm font-bold flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-muted-foreground" />
+                      Cidade <span className="text-destructive">*</span>
                     </label>
                     <Select value={city} onValueChange={setCity} disabled={!selectedState || loadingCities}>
-                      <SelectTrigger>
+                      <SelectTrigger className="h-12 bg-secondary/40 border-2 border-transparent hover:border-border focus:bg-card focus:border-primary rounded-xl font-medium px-4">
                         <SelectValue placeholder={
                           !selectedState
                             ? "Selecione o estado"
@@ -271,8 +277,8 @@ out tags;`;
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium flex items-center gap-2">
-                      <MapPin className="w-4 h-4" />
+                    <label className="text-sm font-bold flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-muted-foreground" />
                       Bairro (Opcional)
                     </label>
                     <Select
@@ -280,7 +286,7 @@ out tags;`;
                       onValueChange={(v) => setNeighborhood(v === "__all__" ? "" : v)}
                       disabled={!city || loadingNeighborhoods}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="h-12 bg-secondary/40 border-2 border-transparent hover:border-border focus:bg-card focus:border-primary rounded-xl font-medium px-4">
                         <SelectValue
                           placeholder={
                             !city
@@ -305,31 +311,29 @@ out tags;`;
                   </div>
                 </div>
 
-                <div className="text-center">
-                  <Button 
-                    type="submit" 
-                    size="lg" 
-                    className="min-w-[200px]"
+                <div className="flex justify-end pt-4 border-t border-border/60">
+                  <Button
+                    type="submit"
+                    size="lg"
+                    className="btn-volt min-w-[240px] h-14 text-base rounded-xl active:scale-[0.98]"
                     disabled={!category || !selectedState || !city || isSearching}
                   >
                     {isSearching ? (
                       <>
-                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                        <Loader2 className="w-5 h-5 animate-spin" />
                         Buscando...
                       </>
                     ) : (
                       <>
-                        <Search className="w-5 h-5 mr-2" />
-                        Buscar Empresas
+                        Acelerar Extração
+                        <span className="text-xl">→</span>
                       </>
                     )}
                   </Button>
                 </div>
               </form>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
+        </CardContent>
+      </Card>
 
       {isSearching && (
         <div

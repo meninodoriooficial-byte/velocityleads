@@ -7,8 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/components/ui/use-toast";
 import { SearchForm } from "@/components/SearchForm";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LogOut, Package, Search, BarChart3, Users, MapPin } from "lucide-react";
+import { TrendingUp, Users, Sparkles, CheckCircle2 } from "lucide-react";
 import { ResultsSection } from "@/components/ResultsSection";
 import { ApiConfigManager } from "@/components/admin/ApiConfigManager";
 import { ApiErrorLogs } from "@/components/admin/ApiErrorLogs";
@@ -17,12 +16,14 @@ import { SourceHistory } from "@/components/admin/SourceHistory";
 import { AllUserResults } from "@/components/AllUserResults";
 import { UserManager } from "@/components/admin/UserManager";
 import { explainEdgeError } from "@/lib/edgeFunction";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { AppSidebar, type DashboardTab } from "@/components/AppSidebar";
 
 export default function Dashboard() {
   const { user, profile, isAdmin, signOut } = useAuth();
   const [searches, setSearches] = useState([]);
   const [packages, setPackages] = useState([]);
-  const [activeTab, setActiveTab] = useState("search");
+  const [activeTab, setActiveTab] = useState<DashboardTab>("search");
   const [selectedSearch, setSelectedSearch] = useState(null);
   const { toast } = useToast();
 
@@ -132,108 +133,156 @@ export default function Dashboard() {
   };
 
   const usagePercentage = profile ? (profile.searches_used / profile.plan_searches_limit) * 100 : 0;
+  const remaining = Math.max(0, (profile?.plan_searches_limit || 0) - (profile?.searches_used || 0));
+
+  const headlines: Record<DashboardTab, { title: string; subtitle: string }> = {
+    search: {
+      title: "Preparado para o próximo sprint?",
+      subtitle: `Você tem ${remaining} buscas restantes para acelerar suas metas.`,
+    },
+    results: { title: "Suas leads minerados", subtitle: "Explore, filtre e enriqueça os contatos extraídos." },
+    history: { title: "Histórico de prospecções", subtitle: "Revise tudo o que você já buscou." },
+    plans: { title: "Escolha sua velocidade", subtitle: "Faça upgrade para ampliar seus limites mensais." },
+    admin: { title: "Painel administrativo", subtitle: "Gerencie usuários, APIs e configurações." },
+  };
+  const head = headlines[activeTab];
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-6 py-4 flex justify-between items-center">
-          <div className="flex items-center space-x-4">
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-              Business Finder
-            </h1>
-            {isAdmin && <Badge className="bg-red-500">ADMIN</Badge>}
-          </div>
-          <div className="flex items-center space-x-4">
-            <span className="text-sm text-muted-foreground">
-              Olá, {profile?.full_name || user?.email}
-            </span>
-            <Button variant="outline" size="sm" onClick={signOut}>
-              <LogOut className="w-4 h-4 mr-2" />
-              Sair
-            </Button>
-          </div>
-        </div>
-      </header>
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full bg-background">
+        <AppSidebar active={activeTab} onChange={setActiveTab} isAdmin={isAdmin} />
 
-      <div className="container mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Buscas Utilizadas</CardTitle>
-              <Search className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {profile?.searches_used || 0} / {profile?.plan_searches_limit || 0}
-              </div>
-              <Progress value={usagePercentage} className="mt-2" />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total de Buscas</CardTitle>
-              <BarChart3 className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{searches.length}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Plano Atual</CardTitle>
-              <Package className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold capitalize">{profile?.plan || 'Basic'}</div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-5' : 'grid-cols-4'}`}>
-            <TabsTrigger value="search">Nova Busca</TabsTrigger>
-            <TabsTrigger value="results">Resultados</TabsTrigger>
-            <TabsTrigger value="history">Histórico</TabsTrigger>
-            <TabsTrigger value="plans">Planos</TabsTrigger>
-            {isAdmin && <TabsTrigger value="admin">Admin</TabsTrigger>}
-          </TabsList>
-
-          <TabsContent value="search">
-            <SearchForm onSearch={handleSearch} selectedSearch={selectedSearch} />
-          </TabsContent>
-
-          <TabsContent value="results">
-            <div className="space-y-6">
-              {selectedSearch && <ResultsSection searchData={selectedSearch} />}
-              <AllUserResults />
+        <div className="flex-1 flex flex-col min-w-0">
+          <header className="h-16 sticky top-0 z-20 bg-background/80 backdrop-blur-md border-b border-border flex items-center px-4 md:px-8 gap-4">
+            <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
+            <div className="flex-1 min-w-0">
+              <h1 className="text-base font-semibold truncate">{head.title}</h1>
             </div>
-          </TabsContent>
+            {isAdmin && (
+              <Badge className="bg-primary text-accent hover:bg-primary/90">
+                <ShieldBadgeIcon /> ADMIN
+              </Badge>
+            )}
+          </header>
 
-          <TabsContent value="history">
-            <Card>
-              <CardHeader>
-                <CardTitle>Histórico de Buscas</CardTitle>
-              </CardHeader>
-              <CardContent>
+          <main className="flex-1 px-4 md:px-10 py-8 max-w-7xl w-full mx-auto animate-fade-in">
+            {/* Hero/heading */}
+            <div className="mb-8 flex items-end justify-between gap-4 flex-wrap">
+              <div>
+                <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-balance mb-2">{head.title}</h2>
+                <p className="text-muted-foreground font-medium text-pretty">{head.subtitle}</p>
+              </div>
+              {activeTab === "search" && (
+                <div className="flex items-center gap-3 px-4 py-2 rounded-xl bg-card border border-border/60">
+                  <div className="size-2 rounded-full bg-accent animate-pulse" />
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Pace
+                  </span>
+                  <span className="text-sm font-bold tabular-nums">{profile?.searches_used || 0} buscas</span>
+                </div>
+              )}
+            </div>
+
+            {/* Stats */}
+            {activeTab === "search" && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+                <div className="card-elevated p-6 flex flex-col justify-between min-h-[140px]">
+                  <div className="flex justify-between items-start">
+                    <span className="text-sm font-semibold text-muted-foreground">Volume de Buscas</span>
+                    <Badge variant="secondary" className="text-[10px] font-bold">CICLO</Badge>
+                  </div>
+                  <div>
+                    <div className="flex items-baseline gap-1.5 mb-3">
+                      <span className="text-3xl font-bold tabular-nums tracking-tight">
+                        {profile?.searches_used || 0}
+                      </span>
+                      <span className="text-sm font-medium text-muted-foreground">
+                        / {profile?.plan_searches_limit || 0}
+                      </span>
+                    </div>
+                    <Progress value={usagePercentage} className="h-2" />
+                  </div>
+                </div>
+
+                <div className="card-elevated p-6 flex flex-col justify-between min-h-[140px]">
+                  <div className="flex justify-between items-start">
+                    <span className="text-sm font-semibold text-muted-foreground">Total Histórico</span>
+                    <span className="text-xs font-bold text-success bg-success/10 px-2 py-1 rounded-md flex items-center gap-1">
+                      <TrendingUp className="size-3" /> ativo
+                    </span>
+                  </div>
+                  <div>
+                    <div className="text-3xl font-bold tabular-nums tracking-tight">{searches.length}</div>
+                    <div className="text-sm font-medium text-muted-foreground mt-1">prospecções realizadas</div>
+                  </div>
+                </div>
+
+                <div className="bg-primary text-primary-foreground p-6 rounded-2xl shadow-card flex flex-col justify-between min-h-[140px] relative overflow-hidden">
+                  <div className="absolute -right-6 -top-6 size-32 border-[10px] border-accent/20 rounded-full" />
+                  <div className="absolute -right-10 -bottom-10 size-32 border-[10px] border-accent/10 rounded-full" />
+                  <div className="relative z-10 flex justify-between items-start">
+                    <span className="text-sm font-medium text-primary-foreground/70">Plano Atual</span>
+                    <span className="size-2 bg-accent rounded-full animate-pulse" />
+                  </div>
+                  <div className="relative z-10">
+                    <div className="text-xl font-bold text-accent capitalize tracking-tight mb-1">
+                      {profile?.plan || "Basic"}
+                    </div>
+                    <div className="text-sm font-medium text-primary-foreground/70">
+                      {remaining} buscas restantes
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Content per tab */}
+            {activeTab === "search" && (
+              <SearchForm onSearch={handleSearch} selectedSearch={selectedSearch} />
+            )}
+
+            {activeTab === "results" && (
+              <div className="space-y-6">
+                {selectedSearch && <ResultsSection searchData={selectedSearch} />}
+                <AllUserResults />
+              </div>
+            )}
+
+            {activeTab === "history" && (
+              <div className="card-elevated p-6">
+                <h3 className="font-bold text-lg mb-4">Histórico de Buscas</h3>
                 {searches.length > 0 ? (
-                  <div className="space-y-4">
+                  <div className="flex flex-col gap-3">
                     {searches.map((search: any) => (
-                      <div key={search.id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div>
-                          <div className="font-medium">{search.search_query}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {new Date(search.created_at).toLocaleDateString('pt-BR')}
+                      <div
+                        key={search.id}
+                        className="group flex items-center justify-between p-4 rounded-xl bg-secondary/40 hover:bg-secondary transition-colors"
+                      >
+                        <div className="flex items-center gap-4 min-w-0">
+                          <div className="size-10 bg-background rounded-lg flex items-center justify-center font-bold text-sm shrink-0 group-hover:bg-accent group-hover:text-accent-foreground transition-colors">
+                            {(search.state || "?").slice(0, 2)}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="font-bold truncate">{search.search_query}</div>
+                            <div className="text-xs font-medium text-muted-foreground">
+                              {new Date(search.created_at).toLocaleString("pt-BR")}
+                            </div>
                           </div>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <Badge variant={search.status === 'completed' ? 'default' : 'secondary'}>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <Badge variant={search.status === "completed" ? "default" : "secondary"}>
                             {search.status}
                           </Badge>
-                          {search.status === 'completed' && (
-                            <Button size="sm" onClick={() => { setSelectedSearch(search); setActiveTab("results"); }}>
-                              Ver Resultados
+                          {search.status === "completed" && (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => {
+                                setSelectedSearch(search);
+                                setActiveTab("results");
+                              }}
+                            >
+                              Abrir Lista
                             </Button>
                           )}
                         </div>
@@ -241,70 +290,81 @@ export default function Dashboard() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-center text-muted-foreground">Nenhuma busca realizada ainda</p>
+                  <p className="text-center text-muted-foreground py-8">Nenhuma busca realizada ainda</p>
                 )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+              </div>
+            )}
 
-          <TabsContent value="plans">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {packages.map((pkg: any) => (
-                <Card key={pkg.id} className={pkg.name.toLowerCase() === profile?.plan ? 'border-primary' : ''}>
+            {activeTab === "plans" && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {packages.map((pkg: any) => {
+                  const isCurrent = pkg.name.toLowerCase() === profile?.plan;
+                  return (
+                    <div
+                      key={pkg.id}
+                      className={`card-elevated p-6 flex flex-col gap-4 relative ${
+                        isCurrent ? "ring-2 ring-accent" : ""
+                      }`}
+                    >
+                      {isCurrent && (
+                        <div className="absolute -top-3 right-4 px-3 py-1 bg-accent text-accent-foreground text-xs font-bold rounded-full">
+                          ATUAL
+                        </div>
+                      )}
+                      <div>
+                        <h3 className="font-bold text-xl tracking-tight">{pkg.name}</h3>
+                        <p className="text-sm text-muted-foreground mt-1">{pkg.description}</p>
+                      </div>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-4xl font-bold tracking-tight">R$ {pkg.price}</span>
+                        <span className="text-sm font-medium text-muted-foreground">/mês</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <CheckCircle2 className="size-4 text-success" />
+                        {pkg.searches_limit} buscas mensais
+                      </div>
+                      <Button
+                        className={isCurrent ? "" : "btn-volt"}
+                        disabled={isCurrent}
+                        variant={isCurrent ? "secondary" : "default"}
+                      >
+                        {isCurrent ? "Plano Atual" : "Fazer Upgrade"}
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {activeTab === "admin" && isAdmin && (
+              <div className="space-y-6">
+                <UserManager />
+                <Card>
                   <CardHeader>
-                    <CardTitle>{pkg.name}</CardTitle>
-                    <CardDescription>{pkg.description}</CardDescription>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="w-5 h-5" />
+                      Configurações de APIs
+                    </CardTitle>
+                    <CardDescription>
+                      Gerencie as chaves de APIs e integrações do sistema
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-3xl font-bold mb-4">
-                      R$ {pkg.price}
-                      <span className="text-sm font-normal text-muted-foreground">/mês</span>
-                    </div>
-                    <div className="space-y-2 mb-4">
-                      <div className="flex items-center">
-                        <Search className="w-4 h-4 mr-2" />
-                        {pkg.searches_limit} buscas por mês
-                      </div>
-                    </div>
-                    <Button className="w-full" disabled={pkg.name.toLowerCase() === profile?.plan}>
-                      {pkg.name.toLowerCase() === profile?.plan ? 'Plano Atual' : 'Fazer Upgrade'}
-                    </Button>
+                    <ApiConfigManager />
                   </CardContent>
                 </Card>
-              ))}
-            </div>
-          </TabsContent>
-
-          {isAdmin && (
-            <TabsContent value="admin">
-              <div className="mb-4">
-                <UserManager />
-              </div>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="w-5 h-5" />
-                    Configurações de Administrador
-                  </CardTitle>
-                  <CardDescription>Gerencie as chaves de APIs e integrações do sistema</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ApiConfigManager />
-                </CardContent>
-              </Card>
-              <div className="mt-4">
                 <SystemSettings />
-              </div>
-              <div className="mt-4">
                 <SourceHistory />
-              </div>
-              <div className="mt-4">
                 <ApiErrorLogs keyName="GOOGLE_MAPS_API_KEY" />
               </div>
-            </TabsContent>
-          )}
-        </Tabs>
+            )}
+          </main>
+        </div>
       </div>
-    </div>
+    </SidebarProvider>
   );
+}
+
+function ShieldBadgeIcon() {
+  return <Sparkles className="size-3 mr-1" />;
 }
