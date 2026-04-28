@@ -16,6 +16,8 @@ interface ApiConfig {
   description: string | null;
   api_key: string | null;
   is_active: boolean;
+  provider: string | null;
+  priority: number;
 }
 
 export const ApiConfigManager = () => {
@@ -29,6 +31,8 @@ export const ApiConfigManager = () => {
   const [testingId, setTestingId] = useState<string | null>(null);
   const [testResults, setTestResults] = useState<Record<string, { ok: boolean; message: string; details?: string }>>({});
   const [newConfig, setNewConfig] = useState({ key_name: "", display_name: "", description: "", api_key: "" });
+  const [newProvider, setNewProvider] = useState<string>("google_places");
+  const [newPriority, setNewPriority] = useState<number>(100);
   const [showAddForm, setShowAddForm] = useState(false);
   const { toast } = useToast();
 
@@ -41,7 +45,8 @@ export const ApiConfigManager = () => {
     const { data, error } = await supabase
       .from("api_configs")
       .select("*")
-      .order("display_name");
+      .order("provider", { ascending: true })
+      .order("priority", { ascending: true });
     if (error) {
       toast({ title: "Erro ao carregar APIs", description: error.message, variant: "destructive" });
     } else {
