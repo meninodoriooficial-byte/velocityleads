@@ -120,7 +120,17 @@ export default function Dashboard() {
 
       fetchUserSearches();
       setSelectedSearch(searchRecord);
-      setActiveTab("results");
+
+      const newUsed = profile.searches_used + 1;
+      if (newUsed >= profile.plan_searches_limit) {
+        toast({
+          title: "Pacote esgotado",
+          description: "Esta foi sua última busca. Faça upgrade para continuar.",
+        });
+        setActiveTab("plans");
+      } else {
+        setActiveTab("results");
+      }
 
     } catch (error: any) {
       console.error('Error starting search:', error);
