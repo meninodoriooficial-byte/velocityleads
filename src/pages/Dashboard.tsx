@@ -14,6 +14,7 @@ import { ApiConfigManager } from "@/components/admin/ApiConfigManager";
 import { ApiErrorLogs } from "@/components/admin/ApiErrorLogs";
 import { SystemSettings } from "@/components/admin/SystemSettings";
 import { SourceHistory } from "@/components/admin/SourceHistory";
+import { AllUserResults } from "@/components/AllUserResults";
 
 export default function Dashboard() {
   const { user, profile, isAdmin, signOut } = useAuth();
@@ -197,17 +198,10 @@ export default function Dashboard() {
           </TabsContent>
 
           <TabsContent value="results">
-            {selectedSearch ? (
-              <ResultsSection searchData={selectedSearch} />
-            ) : (
-              <Card>
-                <CardContent className="pt-6">
-                  <p className="text-center text-muted-foreground">
-                    Faça uma busca para ver os resultados aqui
-                  </p>
-                </CardContent>
-              </Card>
-            )}
+            <div className="space-y-6">
+              {selectedSearch && <ResultsSection searchData={selectedSearch} />}
+              <AllUserResults />
+            </div>
           </TabsContent>
 
           <TabsContent value="history">
