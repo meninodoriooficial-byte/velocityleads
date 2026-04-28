@@ -34,6 +34,14 @@ import {
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ArrowUpDown } from "lucide-react";
 
 interface ResultsListProps {
   results: any[];
@@ -62,6 +70,9 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [openDialog, setOpenDialog] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+  const [sortBy, setSortBy] = useState<
+    "relevance" | "rating_desc" | "rating_asc" | "reviews_desc" | "name_asc" | "proximity"
+  >("relevance");
   const pageSize = 10;
 
   useEffect(() => {
@@ -115,10 +126,68 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
     );
   }
 
-  const totalPages = Math.max(1, Math.ceil(results.length / pageSize));
+  // Ordenação aplicada antes da paginação
+  const sortedResults = useMemo(() => {
+    const arr = [...results];
+    const num = (v: any) => (typeof v === "number" ? v : v ? Number(v) : 0);
+
+    // Centroide para "proximidade" (sem geo do usuário, usa o centro dos resultados)
+    const withCoords = arr.filter(
+      (r) => r.latitude != null && r.longitude != null
+    );
+    const centroid =
+      withCoords.length > 0
+        ? {
+            lat:
+              withCoords.reduce((s, r) => s + Number(r.latitude), 0) /
+              withCoords.length,
+            lng:
+              withCoords.reduce((s, r) => s + Number(r.longitude), 0) /
+              withCoords.length,
+          }
+        : null;
+    const dist = (r: any) => {
+      if (!centroid || r.latitude == null || r.longitude == null)
+        return Number.POSITIVE_INFINITY;
+      const dx = Number(r.latitude) - centroid.lat;
+      const dy = Number(r.longitude) - centroid.lng;
+      return Math.sqrt(dx * dx + dy * dy);
+    };
+
+    switch (sortBy) {
+      case "rating_desc":
+        return arr.sort(
+          (a, b) =>
+            num(b.rating) - num(a.rating) ||
+            num(b.reviews_count) - num(a.reviews_count)
+        );
+      case "rating_asc":
+        return arr.sort(
+          (a, b) => num(a.rating) - num(b.rating) || num(a.reviews_count) - num(b.reviews_count)
+        );
+      case "reviews_desc":
+        return arr.sort((a, b) => num(b.reviews_count) - num(a.reviews_count));
+      case "name_asc":
+        return arr.sort((a, b) =>
+          String(a.business_name || "").localeCompare(
+            String(b.business_name || ""),
+            "pt-BR",
+            { sensitivity: "base" }
+          )
+        );
+      case "proximity":
+        return arr.sort((a, b) => dist(a) - dist(b));
+      case "relevance":
+      default:
+        // Ordem original (como retornado pela busca)
+        return arr;
+    }
+  }, [results, sortBy]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedResults.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const startIdx = (currentPage - 1) * pageSize;
-  const pageResults = results.slice(startIdx, startIdx + pageSize);
+  const pageResults = sortedResults.slice(startIdx, startIdx + pageSize);
 
   const goToPage = (p: number) => {
     const next = Math.min(Math.max(1, p), totalPages);
