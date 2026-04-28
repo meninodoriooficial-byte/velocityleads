@@ -24,20 +24,20 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Verify caller is admin
+    // Verify caller via JWT
     const userClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
     const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims?.sub) {
-      console.error("getClaims error:", claimsError);
+    const { data: userData, error: userErr } = await userClient.auth.getUser(token);
+    if (userErr || !userData?.user?.id) {
+      console.error("getUser error:", userErr);
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const callerId = claimsData.claims.sub as string;
+    const callerId = userData.user.id;
 
     const admin = createClient(supabaseUrl, serviceKey);
     const { data: roleData } = await admin
