@@ -284,6 +284,31 @@ export const ApiConfigManager = () => {
                 placeholder="Cole a chave aqui"
               />
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Provider (grupo de fallback)</Label>
+                <Input
+                  value={newProvider}
+                  onChange={(e) => setNewProvider(e.target.value)}
+                  placeholder="ex: google_places"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Chaves com o mesmo provider são tentadas em sequência.
+                </p>
+              </div>
+              <div>
+                <Label>Prioridade</Label>
+                <Input
+                  type="number"
+                  value={newPriority}
+                  onChange={(e) => setNewPriority(parseInt(e.target.value) || 100)}
+                  placeholder="100"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Menor número = tentada primeiro.
+                </p>
+              </div>
+            </div>
             <div className="flex gap-2">
               <Button onClick={addConfig} size="sm">Adicionar</Button>
               <Button onClick={() => setShowAddForm(false)} variant="outline" size="sm">Cancelar</Button>
@@ -311,6 +336,11 @@ export const ApiConfigManager = () => {
                         {config.is_active ? "Ativa" : "Inativa"}
                       </Badge>
                       {config.api_key && <Badge variant="outline">Configurada</Badge>}
+                      {config.provider && (
+                        <Badge variant="outline" className="font-mono text-xs">
+                          {config.provider} #{config.priority}
+                        </Badge>
+                      )}
                     </CardTitle>
                     <CardDescription className="mt-1">
                       <code className="text-xs">{config.key_name}</code>
