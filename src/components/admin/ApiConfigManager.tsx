@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
-import { Key, Save, Plus, Trash2, Eye, EyeOff, CheckCircle2, Pencil, X } from "lucide-react";
+import { Key, Save, Plus, Trash2, Eye, EyeOff, CheckCircle2, Pencil, X, Zap, AlertCircle, Loader2 } from "lucide-react";
 
 interface ApiConfig {
   id: string;
@@ -26,6 +26,8 @@ export const ApiConfigManager = () => {
   const [editing, setEditing] = useState<Record<string, Partial<ApiConfig>>>({});
   const [editingKey, setEditingKey] = useState<Record<string, boolean>>({});
   const [savedId, setSavedId] = useState<string | null>(null);
+  const [testingId, setTestingId] = useState<string | null>(null);
+  const [testResults, setTestResults] = useState<Record<string, { ok: boolean; message: string; details?: string }>>({});
   const [newConfig, setNewConfig] = useState({ key_name: "", display_name: "", description: "", api_key: "" });
   const [showAddForm, setShowAddForm] = useState(false);
   const { toast } = useToast();
@@ -168,6 +170,48 @@ export const ApiConfigManager = () => {
     setVisibleKeys((prev) => ({ ...prev, [id]: false }));
   };
 
+  const testApi = async (config: ApiConfig) => {
+    setTestingId(config.id);
+    setTestResults((prev) => {
+      const next = { ...prev };
+      delete next[config.id];
+      return next;
+    });
+    try {
+      const { data, error } = await supabase.functions.invoke("test-api", {
+        body: { key_name: config.key_name },
+      });
+      if (error) throw error;
+      const ok = !!data?.ok;
+      const details = [
+        data?.elapsed_ms != null ? `${data.elapsed_ms}ms` : null,
+        data?.results_count != null ? `${data.results_count} resultados` : null,
+        data?.google_status ? `status: ${data.google_status}` : null,
+        data?.google_error ? `${data.google_error}` : null,
+      ]
+        .filter(Boolean)
+        .join(" • ");
+
+      setTestResults((prev) => ({
+        ...prev,
+        [config.id]: { ok, message: data?.message || (ok ? "Sucesso" : "Falha"), details },
+      }));
+      toast({
+        title: ok ? "✓ API funcionando" : "Falha no teste",
+        description: data?.message || "",
+        variant: ok ? "default" : "destructive",
+      });
+    } catch (e: any) {
+      setTestResults((prev) => ({
+        ...prev,
+        [config.id]: { ok: false, message: e.message || "Erro ao testar a API" },
+      }));
+      toast({ title: "Erro ao testar", description: e.message, variant: "destructive" });
+    } finally {
+      setTestingId(null);
+    }
+  };
+
   if (loading) {
     return <p className="text-center text-muted-foreground py-8">Carregando configurações...</p>;
   }
@@ -245,6 +289,8 @@ export const ApiConfigManager = () => {
           const isVisible = visibleKeys[config.id];
           const isEditingThisKey = !!editingKey[config.id];
           const justSaved = savedId === config.id;
+          const testResult = testResults[config.id];
+          const isTesting = testingId === config.id;
           return (
             <Card key={config.id}>
               <CardHeader className="pb-3">
@@ -310,6 +356,27 @@ export const ApiConfigManager = () => {
                     </p>
                   )}
                 </div>
+                {testResult && (
+                  <div
+                    className={`text-xs rounded-md p-2 flex items-start gap-2 ${
+                      testResult.ok
+                        ? "bg-green-500/10 text-green-700 dark:text-green-400"
+                        : "bg-destructive/10 text-destructive"
+                    }`}
+                  >
+                    {testResult.ok ? (
+                      <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                    )}
+                    <div className="flex-1">
+                      <p className="font-medium">{testResult.message}</p>
+                      {testResult.details && (
+                        <p className="opacity-80 mt-0.5">{testResult.details}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <Button
                     variant="ghost"
@@ -320,10 +387,26 @@ export const ApiConfigManager = () => {
                     <Trash2 className="w-4 h-4 mr-2" />
                     Remover
                   </Button>
-                  <Button onClick={() => saveConfig(config)} disabled={!isDirty || savingId === config.id} size="sm">
-                    <Save className="w-4 h-4 mr-2" />
-                    {savingId === config.id ? "Salvando..." : "Salvar"}
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => testApi(config)}
+                      disabled={isTesting || !config.api_key}
+                      title={!config.api_key ? "Configure uma chave primeiro" : "Testar conexão com a API"}
+                    >
+                      {isTesting ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Zap className="w-4 h-4 mr-2" />
+                      )}
+                      {isTesting ? "Testando..." : "Testar API"}
+                    </Button>
+                    <Button onClick={() => saveConfig(config)} disabled={!isDirty || savingId === config.id} size="sm">
+                      <Save className="w-4 h-4 mr-2" />
+                      {savingId === config.id ? "Salvando..." : "Salvar"}
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
