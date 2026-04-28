@@ -372,9 +372,22 @@ export const ApiConfigManager = () => {
                   <div className="flex-1">
                     <CardTitle className="text-base flex items-center gap-2">
                       {config.display_name}
-                      <Badge variant={config.is_active ? "default" : "secondary"}>
-                        {config.is_active ? "Ativa" : "Inativa"}
-                      </Badge>
+                      {(() => {
+                        if (!config.is_active) {
+                          return <Badge variant="secondary">Inativa</Badge>;
+                        }
+                        if (testResult?.ok) {
+                          return (
+                            <Badge className="bg-green-600 hover:bg-green-600 text-white border-transparent">
+                              Ativa • OK
+                            </Badge>
+                          );
+                        }
+                        if (testResult && !testResult.ok) {
+                          return <Badge variant="destructive">Ativa • falha</Badge>;
+                        }
+                        return <Badge variant="default">Ativa</Badge>;
+                      })()}
                       {hasKey && (
                         <Badge variant="outline" className="gap-1">
                           <Lock className="w-3 h-3" />
