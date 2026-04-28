@@ -16,6 +16,7 @@ import { SystemSettings } from "@/components/admin/SystemSettings";
 import { SourceHistory } from "@/components/admin/SourceHistory";
 import { AllUserResults } from "@/components/AllUserResults";
 import { UserManager } from "@/components/admin/UserManager";
+import { explainEdgeError } from "@/lib/edgeFunction";
 
 export default function Dashboard() {
   const { user, profile, isAdmin, signOut } = useAuth();
@@ -104,7 +105,11 @@ export default function Dashboard() {
         }
       });
 
-      if (functionError) throw functionError;
+      if (functionError) {
+        const ex = explainEdgeError(functionError);
+        toast({ title: ex.title, description: ex.description, variant: "destructive" });
+        return;
+      }
 
       toast({
         title: "Busca iniciada",
@@ -117,9 +122,10 @@ export default function Dashboard() {
 
     } catch (error: any) {
       console.error('Error starting search:', error);
+      const ex = explainEdgeError(error);
       toast({
-        title: "Erro na busca",
-        description: error.message || "Erro ao iniciar a busca",
+        title: ex.title,
+        description: ex.description,
         variant: "destructive",
       });
     }
