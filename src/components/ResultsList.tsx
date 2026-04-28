@@ -12,6 +12,19 @@ interface ResultsListProps {
   onLoadMore: () => void;
 }
 
+const instagramUrl = (handle: string) => {
+  if (!handle) return "#";
+  if (/^https?:\/\//i.test(handle)) return handle;
+  const username = handle.replace(/^@/, "").trim();
+  return `https://instagram.com/${encodeURIComponent(username)}`;
+};
+
+const facebookUrl = (value: string) => {
+  if (!value) return "#";
+  if (/^https?:\/\//i.test(value)) return value;
+  return `https://www.facebook.com/${encodeURIComponent(value.trim())}`;
+};
+
 export const ResultsList = ({ results, isLoading, hasMore, onLoadMore }: ResultsListProps) => {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
