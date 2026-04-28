@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Star, Instagram, Facebook, MapPin, Sparkles, Loader2 } from "lucide-react";
+import { Star, Instagram, Facebook, MapPin, Sparkles, Loader2, MoreVertical } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -17,6 +17,13 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -116,30 +123,21 @@ export const ResultsList = ({ results, isLoading, hasMore, onLoadMore }: Results
           <TableHeader>
             <TableRow>
               <TableHead className="min-w-[200px]">Empresa</TableHead>
-              <TableHead>Tipo</TableHead>
               <TableHead className="min-w-[220px]">Endereço</TableHead>
               <TableHead>Telefone</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Website</TableHead>
               <TableHead>Instagram</TableHead>
               <TableHead>Facebook</TableHead>
-              <TableHead>Avaliação</TableHead>
               <TableHead>Mapa</TableHead>
-              <TableHead>Fonte</TableHead>
               <TableHead>Enriquecer</TableHead>
+              <TableHead className="w-10">Mais</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {results.map((r: any) => (
               <TableRow key={r.id}>
                 <TableCell className="font-medium">{r.business_name}</TableCell>
-                <TableCell>
-                  {r.business_type ? (
-                    <Badge variant="secondary" className="text-xs">{r.business_type}</Badge>
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
-                  )}
-                </TableCell>
                 <TableCell className="text-sm">{r.address || <span className="text-muted-foreground">—</span>}</TableCell>
                 <TableCell className="text-sm whitespace-nowrap">
                   {r.phone ? (
@@ -194,17 +192,6 @@ export const ResultsList = ({ results, isLoading, hasMore, onLoadMore }: Results
                     <span className="text-muted-foreground">—</span>
                   )}
                 </TableCell>
-                <TableCell className="whitespace-nowrap text-sm">
-                  {r.rating ? (
-                    <span className="inline-flex items-center gap-1">
-                      <Star className="w-3 h-3 text-yellow-500 fill-current" />
-                      {r.rating}
-                      {r.reviews_count ? <span className="text-muted-foreground">({r.reviews_count})</span> : null}
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
-                  )}
-                </TableCell>
                 <TableCell>
                   {r.additional_data?.google_url ? (
                     <a
@@ -219,9 +206,6 @@ export const ResultsList = ({ results, isLoading, hasMore, onLoadMore }: Results
                   ) : (
                     <span className="text-muted-foreground">—</span>
                   )}
-                </TableCell>
-                <TableCell>
-                  <Badge variant="outline" className="text-xs">{r.source_api ?? "—"}</Badge>
                 </TableCell>
                 <TableCell>
                   {(() => {
@@ -261,6 +245,49 @@ export const ResultsList = ({ results, isLoading, hasMore, onLoadMore }: Results
                       </Button>
                     );
                   })()}
+                </TableCell>
+                <TableCell>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreVertical className="w-4 h-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56 bg-popover">
+                      <DropdownMenuLabel>Detalhes</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <div className="px-2 py-1.5 text-xs space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="text-muted-foreground">Tipo</span>
+                          {r.business_type ? (
+                            <Badge variant="secondary" className="text-xs">{r.business_type}</Badge>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </div>
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="text-muted-foreground">Avaliação</span>
+                          {r.rating ? (
+                            <span className="inline-flex items-center gap-1">
+                              <Star className="w-3 h-3 text-yellow-500 fill-current" />
+                              {r.rating}
+                              {r.reviews_count ? (
+                                <span className="text-muted-foreground">({r.reviews_count})</span>
+                              ) : null}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </div>
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="text-muted-foreground">Fonte</span>
+                          <Badge variant="outline" className="text-xs">
+                            {r.source_api ?? "—"}
+                          </Badge>
+                        </div>
+                      </div>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </TableCell>
               </TableRow>
             ))}
