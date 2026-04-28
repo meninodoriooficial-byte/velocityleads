@@ -17,22 +17,31 @@ serve(async (req) => {
       return jsonResponse({ ok: false, error: 'Não autenticado' }, 401);
     }
 
+    // Cliente com contexto do usuário (para validar a sessão via JWT)
+    const userClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsErr } = await userClient.auth.getClaims(token);
+    if (claimsErr || !claimsData?.claims?.sub) {
+      console.error('getClaims error', claimsErr);
+      return jsonResponse({ ok: false, error: 'Sessão inválida' }, 401);
+    }
+    const userId = claimsData.claims.sub as string;
+
+    // Cliente service-role para acessar tabelas com bypass de RLS e RPC
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Verificar usuário e papel admin
-    const token = authHeader.replace('Bearer ', '');
-    const { data: userData, error: userErr } = await supabase.auth.getUser(token);
-    if (userErr || !userData.user) {
-      return jsonResponse({ ok: false, error: 'Sessão inválida' }, 401);
-    }
-
     const { data: roleRow } = await supabase
       .from('user_roles')
       .select('role')
-      .eq('user_id', userData.user.id)
+      .eq('user_id', userId)
       .eq('role', 'admin')
       .maybeSingle();
 
@@ -82,7 +91,7 @@ serve(async (req) => {
             error_status: (result as any).google_status || (result as any).status || 'ERROR',
             error_message: result.message,
             http_status: (result as any).http ?? null,
-            context: { triggered_by: 'admin_test', user_id: userData.user.id },
+            context: { triggered_by: 'admin_test', user_id: userId },
           });
         } catch (e) {
           console.error('Failed to persist test error', e);
@@ -101,7 +110,7 @@ serve(async (req) => {
             error_status: (result as any).status || 'ERROR',
             error_message: result.message,
             http_status: (result as any).http ?? null,
-            context: { triggered_by: 'admin_test', user_id: userData.user.id },
+            context: { triggered_by: 'admin_test', user_id: userId },
           });
         } catch (e) {
           console.error('Failed to persist test error', e);
