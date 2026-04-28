@@ -33,11 +33,10 @@ serve(async (req) => {
     // Carregar chaves ativas do provider google_places em ordem de prioridade,
     // com fallback para env (GOOGLE_MAPS_API_KEY).
     const apiKeys = await loadProviderKeys(supabaseClient, 'google_places', 'GOOGLE_MAPS_API_KEY');
-    const allowSimulated = await getSetting(supabaseClient, 'allow_simulated_fallback', true);
 
-    // Executar busca tentando cada chave em sequência
+    // Executar busca tentando cada chave em sequência (sem fallback simulado)
     const { results: searchResults, warning } = await performWebSearch(
-      category, city, state, neighborhood, page, apiKeys, supabaseClient, allowSimulated
+      category, city, state, neighborhood, page, apiKeys, supabaseClient
     );
     
     // Salvar resultados no banco
