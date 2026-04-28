@@ -12,7 +12,7 @@ interface SearchFormProps {
     state: string;
     city: string;
     neighborhood?: string;
-  }) => void;
+  }) => void | Promise<void>;
   selectedSearch?: any;
 }
 
@@ -55,6 +55,7 @@ export const SearchForm = ({ onSearch, selectedSearch }: SearchFormProps) => {
   const [loadingCities, setLoadingCities] = useState(false);
   const [neighborhoods, setNeighborhoods] = useState<string[]>([]);
   const [loadingNeighborhoods, setLoadingNeighborhoods] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
     if (!selectedState) {
@@ -116,10 +117,15 @@ out tags;`;
       .finally(() => setLoadingNeighborhoods(false));
   }, [city, selectedState]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (category && selectedState && city) {
-      onSearch({ category, state: selectedState, city, neighborhood: neighborhood || undefined });
+    if (!category || !selectedState || !city) return;
+    setIsSearching(true);
+    try {
+      await onSearch({ category, state: selectedState, city, neighborhood: neighborhood || undefined });
+    } finally {
+      // Mantém a animação por um instante para feedback visual mesmo em buscas rápidas
+      setTimeout(() => setIsSearching(false), 600);
     }
   };
 
@@ -233,10 +239,19 @@ out tags;`;
                     type="submit" 
                     size="lg" 
                     className="min-w-[200px]"
-                    disabled={!category || !selectedState || !city}
+                    disabled={!category || !selectedState || !city || isSearching}
                   >
-                    <Search className="w-5 h-5 mr-2" />
-                    Buscar Empresas
+                    {isSearching ? (
+                      <>
+                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                        Buscando...
+                      </>
+                    ) : (
+                      <>
+                        <Search className="w-5 h-5 mr-2" />
+                        Buscar Empresas
+                      </>
+                    )}
                   </Button>
                 </div>
               </form>
@@ -244,7 +259,35 @@ out tags;`;
           </Card>
         </div>
       </section>
-      
+
+      {isSearching && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm animate-fade-in"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="bg-card border rounded-2xl shadow-2xl p-8 max-w-sm w-[90%] text-center animate-scale-in">
+            <div className="relative w-24 h-24 mx-auto mb-4">
+              <div className="absolute inset-0 rounded-full bg-primary/10 animate-ping" />
+              <div className="absolute inset-2 rounded-full bg-primary/20 animate-pulse" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Search className="w-10 h-10 text-primary animate-pulse" />
+              </div>
+            </div>
+            <h3 className="text-lg font-semibold mb-1">Buscando empresas...</h3>
+            <p className="text-sm text-muted-foreground">
+              {category} em {city}
+              {neighborhood ? ` • ${neighborhood}` : ""}
+            </p>
+            <div className="mt-4 flex justify-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0ms" }} />
+              <span className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "150ms" }} />
+              <span className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "300ms" }} />
+            </div>
+          </div>
+        </div>
+      )}
+
       {selectedSearch && (
         <ResultsSection searchData={selectedSearch} />
       )}
