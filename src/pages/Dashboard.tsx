@@ -71,6 +71,7 @@ export default function Dashboard() {
         description: "Faça upgrade do seu plano para continuar buscando.",
         variant: "destructive",
       });
+      setActiveTab("plans");
       return;
     }
 
