@@ -98,6 +98,7 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
+          is_suspended: boolean
           plan: string
           plan_searches_limit: number
           searches_used: number
@@ -109,6 +110,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          is_suspended?: boolean
           plan?: string
           plan_searches_limit?: number
           searches_used?: number
@@ -120,6 +122,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          is_suspended?: boolean
           plan?: string
           plan_searches_limit?: number
           searches_used?: number
