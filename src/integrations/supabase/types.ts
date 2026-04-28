@@ -47,6 +47,39 @@ export type Database = {
         }
         Relationships: []
       }
+      api_error_logs: {
+        Row: {
+          context: Json | null
+          created_at: string
+          error_message: string | null
+          error_status: string | null
+          http_status: number | null
+          id: string
+          key_name: string
+          source: string
+        }
+        Insert: {
+          context?: Json | null
+          created_at?: string
+          error_message?: string | null
+          error_status?: string | null
+          http_status?: number | null
+          id?: string
+          key_name: string
+          source?: string
+        }
+        Update: {
+          context?: Json | null
+          created_at?: string
+          error_message?: string | null
+          error_status?: string | null
+          http_status?: number | null
+          id?: string
+          key_name?: string
+          source?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
