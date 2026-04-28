@@ -10,6 +10,7 @@ import { SearchForm } from "@/components/SearchForm";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LogOut, Package, Search, BarChart3, Users, MapPin } from "lucide-react";
 import { ResultsSection } from "@/components/ResultsSection";
+import { ApiConfigManager } from "@/components/admin/ApiConfigManager";
 
 export default function Dashboard() {
   const { user, profile, isAdmin, signOut } = useAuth();
@@ -278,19 +279,10 @@ export default function Dashboard() {
                     <Users className="w-5 h-5" />
                     Configurações de Administrador
                   </CardTitle>
-                  <CardDescription>Gerencie as configurações do sistema</CardDescription>
+                  <CardDescription>Gerencie as chaves de APIs e integrações do sistema</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Google Maps API</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Configure a chave da API do Google Maps para buscas reais.
-                    </p>
-                    <Button>
-                      <MapPin className="w-4 h-4 mr-2" />
-                      Configurar Google Maps API Key
-                    </Button>
-                  </div>
+                  <ApiConfigManager />
                 </CardContent>
               </Card>
             </TabsContent>
