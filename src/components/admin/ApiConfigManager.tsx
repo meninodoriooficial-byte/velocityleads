@@ -141,12 +141,16 @@ export const ApiConfigManager = () => {
       display_name: newConfig.display_name,
       description: newConfig.description || null,
       api_key: newConfig.api_key || null,
+      provider: newProvider || null,
+      priority: Number.isFinite(newPriority) ? newPriority : 100,
     });
     if (error) {
       toast({ title: "Erro ao adicionar", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "API adicionada" });
       setNewConfig({ key_name: "", display_name: "", description: "", api_key: "" });
+      setNewProvider("google_places");
+      setNewPriority(100);
       setShowAddForm(false);
       fetchConfigs();
     }
