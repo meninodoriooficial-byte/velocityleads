@@ -166,6 +166,9 @@ export type Database = {
           business_type: string | null
           created_at: string
           email: string | null
+          enriched_at: string | null
+          enriched_data: Json | null
+          enriched_source: string | null
           id: string
           latitude: number | null
           longitude: number | null
@@ -185,6 +188,9 @@ export type Database = {
           business_type?: string | null
           created_at?: string
           email?: string | null
+          enriched_at?: string | null
+          enriched_data?: Json | null
+          enriched_source?: string | null
           id?: string
           latitude?: number | null
           longitude?: number | null
@@ -204,6 +210,9 @@ export type Database = {
           business_type?: string | null
           created_at?: string
           email?: string | null
+          enriched_at?: string | null
+          enriched_data?: Json | null
+          enriched_source?: string | null
           id?: string
           latitude?: number | null
           longitude?: number | null
