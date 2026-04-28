@@ -179,39 +179,30 @@ function jsonResponse(body: any, status = 200) {
 
 async function testCasaDosDados(apiKey: string) {
   const start = Date.now();
+  // Verifica apenas a disponibilidade do site público casadosdados.com.br.
+  // Não existe API REST pública oficial — o acesso é feito por scraping da página
+  // protegida por Cloudflare, então a "chave" salva é apenas opcional para planos pagos.
   try {
-    const url = 'https://api.casadosdados.com.br/v2/public/cnpj/search';
+    const url = 'https://casadosdados.com.br/';
     const res = await fetch(url, {
-      method: 'POST',
+      method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
+        'User-Agent': 'Mozilla/5.0 (compatible; LeadFinderBot/1.0)',
+        'Accept': 'text/html,application/xhtml+xml',
       },
-      body: JSON.stringify({
-        query: { termo: [], atividade_principal: [], natureza_juridica: [], uf: ['SP'], municipio: [] },
-        page: 1,
-      }),
     });
     const elapsed = Date.now() - start;
-    const text = await res.text();
-    let data: any = null;
-    try { data = JSON.parse(text); } catch { /* ignore */ }
+    await res.text(); // consume body
 
-    if (res.status === 401 || res.status === 403) {
+    if (res.status === 403 || res.status === 503) {
       return {
         ok: false,
-        status: 'unauthorized',
+        status: 'cloudflare_block',
         http: res.status,
-        message: 'Chave recusada pelo casadosdados (401/403). Verifique se o token é válido e está ativo.',
-        elapsed_ms: elapsed,
-      };
-    }
-    if (res.status === 429) {
-      return {
-        ok: false,
-        status: 'rate_limited',
-        http: 429,
-        message: 'Limite de requisições excedido na casadosdados.',
+        message:
+          `casadosdados.com.br retornou HTTP ${res.status} (proteção Cloudflare). ` +
+          `Não existe API REST pública oficial — a integração depende de scraping do site, ` +
+          `que pode estar temporariamente bloqueado. A chave salva é apenas referência e não é validada online.`,
         elapsed_ms: elapsed,
       };
     }
@@ -220,18 +211,20 @@ async function testCasaDosDados(apiKey: string) {
         ok: false,
         status: 'http_error',
         http: res.status,
-        message: `HTTP ${res.status} ao chamar casadosdados. ${data?.message || text.slice(0, 200)}`,
+        message: `HTTP ${res.status} ao acessar casadosdados.com.br. Site pode estar fora do ar.`,
         elapsed_ms: elapsed,
       };
     }
 
-    const count = data?.data?.length ?? data?.results?.length ?? 0;
     return {
       ok: true,
       status: 'success',
-      message: `Conexão OK — casadosdados respondeu em ${elapsed}ms (${count} registros na amostra).`,
+      message:
+        `Site casadosdados.com.br acessível (${elapsed}ms). ` +
+        `Observação: não há API REST pública — a chave salva (${apiKey ? 'presente' : 'ausente'}) ` +
+        `é apenas usada se você tiver plano pago. O modo padrão usa scraping público.`,
       elapsed_ms: elapsed,
-      results_count: count,
+      key_configured: !!apiKey,
     };
   } catch (e: any) {
     return { ok: false, status: 'network_error', message: `Erro de rede: ${e.message}` };
