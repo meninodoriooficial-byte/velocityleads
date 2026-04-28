@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
-import { Key, Save, Plus, Trash2, Eye, EyeOff } from "lucide-react";
+import { Key, Save, Plus, Trash2, Eye, EyeOff, CheckCircle2, Pencil, X } from "lucide-react";
 
 interface ApiConfig {
   id: string;
@@ -24,6 +24,8 @@ export const ApiConfigManager = () => {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [visibleKeys, setVisibleKeys] = useState<Record<string, boolean>>({});
   const [editing, setEditing] = useState<Record<string, Partial<ApiConfig>>>({});
+  const [editingKey, setEditingKey] = useState<Record<string, boolean>>({});
+  const [savedId, setSavedId] = useState<string | null>(null);
   const [newConfig, setNewConfig] = useState({ key_name: "", display_name: "", description: "", api_key: "" });
   const [showAddForm, setShowAddForm] = useState(false);
   const { toast } = useToast();
@@ -54,13 +56,37 @@ export const ApiConfigManager = () => {
     return editing[config.id]?.[field] ?? config[field];
   };
 
+  const maskKey = (key: string | null) => {
+    if (!key) return "";
+    if (key.length <= 8) return "••••••••";
+    return `${"•".repeat(Math.max(8, key.length - 4))}${key.slice(-4)}`;
+  };
+
+  const validateKey = (key: string): string | null => {
+    const trimmed = key.trim();
+    if (!trimmed) return "A chave não pode estar vazia.";
+    if (trimmed.length < 10) return "A chave parece muito curta (mínimo 10 caracteres).";
+    if (trimmed.length > 500) return "A chave excede o tamanho máximo (500 caracteres).";
+    if (/\s/.test(trimmed)) return "A chave não pode conter espaços.";
+    return null;
+  };
+
   const saveConfig = async (config: ApiConfig) => {
-    setSavingId(config.id);
     const updates = editing[config.id];
     if (!updates) {
-      setSavingId(null);
       return;
     }
+
+    if (typeof updates.api_key === "string") {
+      const err = validateKey(updates.api_key);
+      if (err) {
+        toast({ title: "Chave inválida", description: err, variant: "destructive" });
+        return;
+      }
+      updates.api_key = updates.api_key.trim();
+    }
+
+    setSavingId(config.id);
     const { error } = await supabase
       .from("api_configs")
       .update(updates)
@@ -69,12 +95,19 @@ export const ApiConfigManager = () => {
     if (error) {
       toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "API atualizada", description: `${config.display_name} foi salva com sucesso.` });
+      toast({
+        title: "✓ Chave salva com sucesso",
+        description: `${config.display_name} foi atualizada e está pronta para uso.`,
+      });
       setEditing((prev) => {
         const next = { ...prev };
         delete next[config.id];
         return next;
       });
+      setEditingKey((prev) => ({ ...prev, [config.id]: false }));
+      setVisibleKeys((prev) => ({ ...prev, [config.id]: false }));
+      setSavedId(config.id);
+      setTimeout(() => setSavedId((curr) => (curr === config.id ? null : curr)), 3000);
       fetchConfigs();
     }
     setSavingId(null);
@@ -114,6 +147,25 @@ export const ApiConfigManager = () => {
 
   const toggleVisibility = (id: string) => {
     setVisibleKeys((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const startEditingKey = (id: string) => {
+    setEditingKey((prev) => ({ ...prev, [id]: true }));
+    updateField(id, "api_key", "");
+  };
+
+  const cancelEditingKey = (id: string) => {
+    setEditingKey((prev) => ({ ...prev, [id]: false }));
+    setEditing((prev) => {
+      const next = { ...prev };
+      if (next[id]) {
+        const { api_key, ...rest } = next[id];
+        if (Object.keys(rest).length === 0) delete next[id];
+        else next[id] = rest;
+      }
+      return next;
+    });
+    setVisibleKeys((prev) => ({ ...prev, [id]: false }));
   };
 
   if (loading) {
@@ -191,6 +243,8 @@ export const ApiConfigManager = () => {
         {configs.map((config) => {
           const isDirty = !!editing[config.id];
           const isVisible = visibleKeys[config.id];
+          const isEditingThisKey = !!editingKey[config.id];
+          const justSaved = savedId === config.id;
           return (
             <Card key={config.id}>
               <CardHeader className="pb-3">
@@ -219,17 +273,42 @@ export const ApiConfigManager = () => {
               <CardContent className="space-y-3">
                 <div>
                   <Label>Chave de API</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      type={isVisible ? "text" : "password"}
-                      value={(getValue(config, "api_key") as string) || ""}
-                      onChange={(e) => updateField(config.id, "api_key", e.target.value)}
-                      placeholder="Cole a chave aqui"
-                    />
-                    <Button variant="outline" size="icon" onClick={() => toggleVisibility(config.id)} type="button">
-                      {isVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </Button>
-                  </div>
+                  {isEditingThisKey ? (
+                    <div className="flex gap-2">
+                      <Input
+                        type={isVisible ? "text" : "password"}
+                        value={(editing[config.id]?.api_key as string) ?? ""}
+                        onChange={(e) => updateField(config.id, "api_key", e.target.value)}
+                        placeholder="Cole a nova chave aqui"
+                        autoFocus
+                      />
+                      <Button variant="outline" size="icon" onClick={() => toggleVisibility(config.id)} type="button" title={isVisible ? "Ocultar" : "Mostrar"}>
+                        {isVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => cancelEditingKey(config.id)} type="button" title="Cancelar">
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Input
+                        readOnly
+                        value={config.api_key ? maskKey(config.api_key) : ""}
+                        placeholder="Nenhuma chave configurada"
+                        className="font-mono text-muted-foreground"
+                      />
+                      <Button variant="outline" size="sm" onClick={() => startEditingKey(config.id)} type="button">
+                        <Pencil className="w-4 h-4 mr-2" />
+                        {config.api_key ? "Alterar" : "Adicionar"}
+                      </Button>
+                    </div>
+                  )}
+                  {justSaved && (
+                    <p className="text-xs text-green-600 flex items-center gap-1 mt-2">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      Chave salva com segurança.
+                    </p>
+                  )}
                 </div>
                 <div className="flex justify-between">
                   <Button
