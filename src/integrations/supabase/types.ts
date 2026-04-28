@@ -16,7 +16,9 @@ export type Database = {
     Tables: {
       api_configs: {
         Row: {
-          api_key: string | null
+          api_key_encrypted: string | null
+          api_key_last4: string | null
+          api_key_nonce: string | null
           created_at: string
           description: string | null
           display_name: string
@@ -28,7 +30,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          api_key?: string | null
+          api_key_encrypted?: string | null
+          api_key_last4?: string | null
+          api_key_nonce?: string | null
           created_at?: string
           description?: string | null
           display_name: string
@@ -40,7 +44,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          api_key?: string | null
+          api_key_encrypted?: string | null
+          api_key_last4?: string | null
+          api_key_nonce?: string | null
           created_at?: string
           description?: string | null
           display_name?: string
@@ -309,12 +315,27 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_api_key_decrypted: { Args: { _key_name: string }; Returns: string }
+      get_provider_keys_decrypted: {
+        Args: { _provider: string }
+        Returns: {
+          api_key: string
+          id: string
+          key_name: string
+          priority: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      private_get_master_key_id: { Args: never; Returns: string }
+      set_api_key: {
+        Args: { _config_id: string; _plain_key: string }
+        Returns: undefined
       }
     }
     Enums: {
