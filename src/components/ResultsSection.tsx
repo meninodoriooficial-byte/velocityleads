@@ -30,6 +30,16 @@ export const ResultsSection = ({ searchData }: ResultsSectionProps) => {
     
     setLoading(true);
     try {
+      // Garantir sessão válida antes de chamar a edge function
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData?.session) {
+        const exp = sessionData.session.expires_at ?? 0;
+        const now = Math.floor(Date.now() / 1000);
+        if (exp - now < 60) {
+          await supabase.auth.refreshSession();
+        }
+      }
+
       if (isNewSearch) {
         // Para nova busca, buscar resultados existentes primeiro
         const { data: existingData, error: existingError } = await supabase
