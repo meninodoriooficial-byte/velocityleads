@@ -15,6 +15,7 @@ import { ApiErrorLogs } from "@/components/admin/ApiErrorLogs";
 import { SystemSettings } from "@/components/admin/SystemSettings";
 import { SourceHistory } from "@/components/admin/SourceHistory";
 import { AllUserResults } from "@/components/AllUserResults";
+import { UserManager } from "@/components/admin/UserManager";
 
 export default function Dashboard() {
   const { user, profile, isAdmin, signOut } = useAuth();
@@ -270,6 +271,9 @@ export default function Dashboard() {
 
           {isAdmin && (
             <TabsContent value="admin">
+              <div className="mb-4">
+                <UserManager />
+              </div>
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
