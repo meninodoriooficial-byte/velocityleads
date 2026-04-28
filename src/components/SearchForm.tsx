@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Search, MapPin, Building } from "lucide-react";
+import { Search, MapPin, Building, Loader2 } from "lucide-react";
 import { ResultsSection } from "./ResultsSection";
 
 interface SearchFormProps {
@@ -51,6 +51,29 @@ export const SearchForm = ({ onSearch, selectedSearch }: SearchFormProps) => {
   const [selectedState, setSelectedState] = useState("");
   const [city, setCity] = useState("");
   const [neighborhood, setNeighborhood] = useState("");
+  const [cities, setCities] = useState<string[]>([]);
+  const [loadingCities, setLoadingCities] = useState(false);
+
+  useEffect(() => {
+    if (!selectedState) {
+      setCities([]);
+      setCity("");
+      return;
+    }
+    setCity("");
+    setLoadingCities(true);
+    fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${selectedState}/municipios`)
+      .then((r) => r.json())
+      .then((data: any[]) => {
+        const names = (data || []).map((m) => m.nome).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+        setCities(names);
+      })
+      .catch((err) => {
+        console.error('Erro ao carregar cidades do IBGE:', err);
+        setCities([]);
+      })
+      .finally(() => setLoadingCities(false));
+  }, [selectedState]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,12 +132,24 @@ export const SearchForm = ({ onSearch, selectedSearch }: SearchFormProps) => {
                       <MapPin className="w-4 h-4" />
                       Cidade
                     </label>
-                    <Input
-                      value={city}
-                      onChange={(e) => setCity(e.target.value)}
-                      placeholder="Digite a cidade"
-                      disabled={!selectedState}
-                    />
+                    <Select value={city} onValueChange={setCity} disabled={!selectedState || loadingCities}>
+                      <SelectTrigger>
+                        <SelectValue placeholder={
+                          !selectedState
+                            ? "Selecione o estado"
+                            : loadingCities
+                            ? "Carregando cidades..."
+                            : "Selecione a cidade"
+                        } />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-72">
+                        {cities.map((c) => (
+                          <SelectItem key={c} value={c}>
+                            {c}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div className="space-y-2">
