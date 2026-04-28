@@ -175,6 +175,7 @@ export type Database = {
           reviews_count: number | null
           search_id: string
           social_media: Json | null
+          source_api: string | null
           website: string | null
         }
         Insert: {
@@ -193,6 +194,7 @@ export type Database = {
           reviews_count?: number | null
           search_id: string
           social_media?: Json | null
+          source_api?: string | null
           website?: string | null
         }
         Update: {
@@ -211,6 +213,7 @@ export type Database = {
           reviews_count?: number | null
           search_id?: string
           social_media?: Json | null
+          source_api?: string | null
           website?: string | null
         }
         Relationships: [
