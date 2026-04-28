@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Download } from "lucide-react";
+import { RefreshCw, Download, AlertTriangle } from "lucide-react";
 import { ResultsList } from "./ResultsList";
 
 interface ResultsSectionProps {
@@ -197,6 +197,15 @@ export const ResultsSection = ({ searchData }: ResultsSectionProps) => {
               <p className="text-sm text-muted-foreground mt-2">
                 Total de {allResults.length} resultado{allResults.length !== 1 ? 's' : ''} encontrado{allResults.length !== 1 ? 's' : ''}
               </p>
+            )}
+            {searchData.warning && (
+              <div className="mt-4 mx-auto max-w-2xl text-left bg-yellow-500/10 border border-yellow-500/30 text-yellow-700 dark:text-yellow-400 rounded-md p-3 flex items-start gap-2 text-sm">
+                <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+                <div>
+                  <p className="font-medium">Aviso sobre estes resultados</p>
+                  <p className="opacity-90 mt-1">{searchData.warning}</p>
+                </div>
+              </div>
             )}
           </div>
 
