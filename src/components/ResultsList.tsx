@@ -1,7 +1,21 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Star, Instagram, Facebook, MapPin, Sparkles, Loader2, MoreVertical } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import {
+  Star,
+  Instagram,
+  Facebook,
+  MapPin,
+  Sparkles,
+  Loader2,
+  Phone,
+  Mail,
+  Globe,
+  Building2,
+  CheckCircle2,
+} from "lucide-react";
 import {
   Pagination,
   PaginationContent,
@@ -12,27 +26,12 @@ import {
   PaginationEllipsis,
 } from "@/components/ui/pagination";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -46,8 +45,7 @@ interface ResultsListProps {
 const instagramUrl = (handle: string) => {
   if (!handle) return "#";
   if (/^https?:\/\//i.test(handle)) return handle;
-  const username = handle.replace(/^@/, "").trim();
-  return `https://instagram.com/${encodeURIComponent(username)}`;
+  return `https://instagram.com/${encodeURIComponent(handle.replace(/^@/, "").trim())}`;
 };
 
 const facebookUrl = (value: string) => {
@@ -56,59 +54,54 @@ const facebookUrl = (value: string) => {
   return `https://www.facebook.com/${encodeURIComponent(value.trim())}`;
 };
 
-export const ResultsList = ({ results, isLoading, hasMore, onLoadMore }: ResultsListProps) => {
+export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
   const { toast } = useToast();
-  const [enrichingId, setEnrichingId] = useState<string | null>(null);
   const [enrichedMap, setEnrichedMap] = useState<Record<string, any>>({});
+  const [selected, setSelected] = useState<Record<string, boolean>>({});
+  const [bulkEnriching, setBulkEnriching] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [openDialog, setOpenDialog] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const pageSize = 10;
 
-  // Reset para página 1 quando a lista de resultados muda
   useEffect(() => {
     setPage(1);
+    setSelected({});
   }, [results.length]);
 
-  const handleEnrich = async (r: any) => {
-    setEnrichingId(r.id);
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (sessionData?.session) {
-        const exp = sessionData.session.expires_at ?? 0;
-        const now = Math.floor(Date.now() / 1000);
-        if (exp - now < 60) await supabase.auth.refreshSession();
-      }
-
-      const { invokeEdgeFunction } = await import("@/lib/edgeFunction");
-      const data = await invokeEdgeFunction<any>("enrich-lead", {
-        body: { resultId: r.id },
-        showToast: false,
-      });
-
-      const enriched = (data as any).enriched_data;
-      setEnrichedMap((prev) => ({ ...prev, [r.id]: { data: enriched, source: (data as any).source } }));
-      setOpenDialog(r.id);
-      toast({ title: "Dados enriquecidos", description: `Fonte: ${(data as any).source}` });
-    } catch (e: any) {
-      toast({
-        title: e?.title || "Falha ao enriquecer",
-        description: e?.description || e?.message || "Tente novamente",
-        variant: "destructive",
-      });
-    } finally {
-      setEnrichingId(null);
-    }
-  };
-
   const getEnriched = (r: any) =>
-    enrichedMap[r.id] || (r.enriched_data && Object.keys(r.enriched_data || {}).length
+    enrichedMap[r.id] ||
+    (r.enriched_data && Object.keys(r.enriched_data || {}).length
       ? { data: r.enriched_data, source: r.enriched_source }
       : null);
+
+  const enrichOne = async (r: any) => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (sessionData?.session) {
+      const exp = sessionData.session.expires_at ?? 0;
+      const now = Math.floor(Date.now() / 1000);
+      if (exp - now < 60) await supabase.auth.refreshSession();
+    }
+    const { invokeEdgeFunction } = await import("@/lib/edgeFunction");
+    const data = await invokeEdgeFunction<any>("enrich-lead", {
+      body: { resultId: r.id },
+      showToast: false,
+    });
+    const enriched = (data as any).enriched_data;
+    setEnrichedMap((prev) => ({
+      ...prev,
+      [r.id]: { data: enriched, source: (data as any).source },
+    }));
+    // Atualiza o objeto in-memory também para refletir nos próximos renders
+    r.enriched_data = enriched;
+    r.enriched_source = (data as any).source;
+    return data;
+  };
 
   if (isLoading) {
     return (
       <div className="text-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
         <p className="text-muted-foreground">Buscando empresas...</p>
       </div>
     );
@@ -135,7 +128,6 @@ export const ResultsList = ({ results, isLoading, hasMore, onLoadMore }: Results
     }
   };
 
-  // Janela de páginas para exibir (até 5)
   const pageNumbers: number[] = [];
   const windowSize = 5;
   let start = Math.max(1, currentPage - Math.floor(windowSize / 2));
@@ -143,183 +135,257 @@ export const ResultsList = ({ results, isLoading, hasMore, onLoadMore }: Results
   start = Math.max(1, end - windowSize + 1);
   for (let i = start; i <= end; i++) pageNumbers.push(i);
 
+  const allPageSelected =
+    pageResults.length > 0 && pageResults.every((r) => selected[r.id]);
+  const somePageSelected = pageResults.some((r) => selected[r.id]);
+
+  const togglePageAll = (checked: boolean) => {
+    setSelected((prev) => {
+      const next = { ...prev };
+      pageResults.forEach((r) => {
+        if (checked) next[r.id] = true;
+        else delete next[r.id];
+      });
+      return next;
+    });
+  };
+
+  const toggleAllResults = () => {
+    const allSelected = results.every((r) => selected[r.id]);
+    if (allSelected) {
+      setSelected({});
+    } else {
+      const next: Record<string, boolean> = {};
+      results.forEach((r) => (next[r.id] = true));
+      setSelected(next);
+    }
+  };
+
+  const selectedIds = Object.keys(selected).filter((id) => selected[id]);
+  const selectedCount = selectedIds.length;
+
+  const handleBulkEnrich = async () => {
+    const targets = results.filter((r) => selected[r.id] && !getEnriched(r));
+    if (targets.length === 0) {
+      toast({
+        title: "Nada para enriquecer",
+        description: "Os leads selecionados já estão enriquecidos.",
+      });
+      return;
+    }
+    setBulkEnriching(true);
+    setProgress({ done: 0, total: targets.length });
+    let success = 0;
+    let failed = 0;
+    for (let i = 0; i < targets.length; i++) {
+      try {
+        await enrichOne(targets[i]);
+        success++;
+      } catch (e: any) {
+        failed++;
+        console.error("Falha ao enriquecer", targets[i].id, e);
+      }
+      setProgress({ done: i + 1, total: targets.length });
+    }
+    setBulkEnriching(false);
+    setProgress(null);
+    toast({
+      title: "Enriquecimento concluído",
+      description: `${success} sucesso${success !== 1 ? "s" : ""}${
+        failed ? ` • ${failed} falha${failed !== 1 ? "s" : ""}` : ""
+      }`,
+    });
+  };
+
   return (
     <div className="space-y-4">
-      <div className="border rounded-md overflow-x-auto bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="min-w-[200px]">Empresa</TableHead>
-              <TableHead className="min-w-[220px]">Endereço</TableHead>
-              <TableHead>Telefone</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Website</TableHead>
-              <TableHead>Instagram</TableHead>
-              <TableHead>Facebook</TableHead>
-              <TableHead>Mapa</TableHead>
-              <TableHead>Enriquecer</TableHead>
-              <TableHead className="w-10">Mais</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {pageResults.map((r: any) => (
-              <TableRow key={r.id}>
-                <TableCell className="font-medium">{r.business_name}</TableCell>
-                <TableCell className="text-sm">{r.address || <span className="text-muted-foreground">—</span>}</TableCell>
-                <TableCell className="text-sm whitespace-nowrap">
-                  {r.phone ? (
-                    <a href={`tel:${r.phone}`} className="text-primary hover:underline">{r.phone}</a>
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
+      {/* Barra de seleção em lote */}
+      <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-lg border bg-card">
+        <div className="flex items-center gap-3">
+          <Checkbox
+            checked={allPageSelected ? true : somePageSelected ? "indeterminate" : false}
+            onCheckedChange={(v) => togglePageAll(!!v)}
+            id="select-page"
+          />
+          <label htmlFor="select-page" className="text-sm cursor-pointer select-none">
+            Selecionar página ({pageResults.length})
+          </label>
+          <Button variant="ghost" size="sm" onClick={toggleAllResults} className="text-xs">
+            {results.every((r) => selected[r.id]) ? "Limpar seleção" : `Selecionar todos (${results.length})`}
+          </Button>
+          {selectedCount > 0 && (
+            <Badge variant="secondary" className="text-xs">
+              {selectedCount} selecionado{selectedCount !== 1 ? "s" : ""}
+            </Badge>
+          )}
+        </div>
+        <Button
+          onClick={handleBulkEnrich}
+          disabled={selectedCount === 0 || bulkEnriching}
+          size="sm"
+        >
+          {bulkEnriching ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Enriquecendo {progress ? `${progress.done}/${progress.total}` : ""}
+            </>
+          ) : (
+            <>
+              <Sparkles className="w-4 h-4 mr-2" />
+              Enriquecer selecionados {selectedCount > 0 ? `(${selectedCount})` : ""}
+            </>
+          )}
+        </Button>
+      </div>
+
+      {/* Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        {pageResults.map((r: any) => {
+          const enr = getEnriched(r);
+          const isSelected = !!selected[r.id];
+          return (
+            <Card
+              key={r.id}
+              className={`relative transition-all hover:shadow-md ${
+                isSelected ? "ring-2 ring-primary" : ""
+              }`}
+            >
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start gap-2 min-w-0">
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={(v) =>
+                        setSelected((prev) => {
+                          const next = { ...prev };
+                          if (v) next[r.id] = true;
+                          else delete next[r.id];
+                          return next;
+                        })
+                      }
+                      className="mt-1"
+                    />
+                    <div className="min-w-0">
+                      <h3 className="font-semibold text-base leading-tight truncate">
+                        {r.business_name}
+                      </h3>
+                      {r.business_type && (
+                        <Badge variant="secondary" className="mt-1 text-[10px]">
+                          <Building2 className="w-3 h-3 mr-1" />
+                          {r.business_type}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  {enr && (
+                    <Badge variant="default" className="shrink-0 text-[10px] bg-primary/15 text-primary border-primary/30">
+                      <CheckCircle2 className="w-3 h-3 mr-1" />
+                      Enriquecido
+                    </Badge>
                   )}
-                </TableCell>
-                <TableCell className="text-sm">
-                  {r.email ? (
-                    <a href={`mailto:${r.email}`} className="text-primary hover:underline">{r.email}</a>
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
-                  )}
-                </TableCell>
-                <TableCell className="text-sm max-w-[180px] truncate">
-                  {r.website ? (
-                    <a href={r.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                {r.address && (
+                  <div className="flex items-start gap-2 text-muted-foreground">
+                    <MapPin className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                    <span className="text-xs leading-snug">{r.address}</span>
+                  </div>
+                )}
+                {r.phone && (
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                    <a href={`tel:${r.phone}`} className="text-xs text-primary hover:underline truncate">
+                      {r.phone}
+                    </a>
+                  </div>
+                )}
+                {r.email && (
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                    <a href={`mailto:${r.email}`} className="text-xs text-primary hover:underline truncate">
+                      {r.email}
+                    </a>
+                  </div>
+                )}
+                {r.website && (
+                  <div className="flex items-center gap-2">
+                    <Globe className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                    <a
+                      href={r.website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-primary hover:underline truncate"
+                    >
                       {r.website}
                     </a>
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {r.social_media?.instagram ? (
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-3 pt-1">
+                  {r.social_media?.instagram && (
                     <a
                       href={instagramUrl(r.social_media.instagram)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-primary hover:underline inline-flex items-center gap-1 text-sm"
+                      className="text-xs text-primary hover:underline inline-flex items-center gap-1"
                     >
-                      <Instagram className="w-3 h-3" />
-                      {r.social_media.instagram}
+                      <Instagram className="w-3 h-3" /> Instagram
                     </a>
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
                   )}
-                </TableCell>
-                <TableCell>
-                  {r.social_media?.facebook ? (
+                  {r.social_media?.facebook && (
                     <a
                       href={facebookUrl(r.social_media.facebook)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-primary hover:underline inline-flex items-center gap-1 text-sm"
+                      className="text-xs text-primary hover:underline inline-flex items-center gap-1"
                     >
-                      <Facebook className="w-3 h-3" />
-                      {r.social_media.facebook}
+                      <Facebook className="w-3 h-3" /> Facebook
                     </a>
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
                   )}
-                </TableCell>
-                <TableCell>
-                  {r.additional_data?.google_url ? (
+                  {r.additional_data?.google_url && (
                     <a
                       href={r.additional_data.google_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-primary hover:underline inline-flex items-center gap-1 text-sm"
+                      className="text-xs text-primary hover:underline inline-flex items-center gap-1"
                     >
-                      <MapPin className="w-3 h-3" />
-                      Abrir
+                      <MapPin className="w-3 h-3" /> Mapa
                     </a>
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
                   )}
-                </TableCell>
-                <TableCell>
-                  {(() => {
-                    const enr = getEnriched(r);
-                    if (enr) {
-                      return (
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => setOpenDialog(r.id)}
-                          className="text-xs"
-                        >
-                          <Sparkles className="w-3 h-3 mr-1" />
-                          Ver dados
-                        </Button>
-                      );
-                    }
-                    return (
-                      <Button
-                        size="sm"
-                        variant="default"
-                        onClick={() => handleEnrich(r)}
-                        disabled={enrichingId === r.id}
-                        className="text-xs"
-                      >
-                        {enrichingId === r.id ? (
-                          <>
-                            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                            Buscando...
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="w-3 h-3 mr-1" />
-                            Enriquecer
-                          </>
-                        )}
-                      </Button>
-                    );
-                  })()}
-                </TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreVertical className="w-4 h-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56 bg-popover">
-                      <DropdownMenuLabel>Detalhes</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <div className="px-2 py-1.5 text-xs space-y-2">
-                        <div className="flex items-start justify-between gap-2">
-                          <span className="text-muted-foreground">Tipo</span>
-                          {r.business_type ? (
-                            <Badge variant="secondary" className="text-xs">{r.business_type}</Badge>
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
-                          )}
-                        </div>
-                        <div className="flex items-start justify-between gap-2">
-                          <span className="text-muted-foreground">Avaliação</span>
-                          {r.rating ? (
-                            <span className="inline-flex items-center gap-1">
-                              <Star className="w-3 h-3 text-yellow-500 fill-current" />
-                              {r.rating}
-                              {r.reviews_count ? (
-                                <span className="text-muted-foreground">({r.reviews_count})</span>
-                              ) : null}
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
-                          )}
-                        </div>
-                        <div className="flex items-start justify-between gap-2">
-                          <span className="text-muted-foreground">Fonte</span>
-                          <Badge variant="outline" className="text-xs">
-                            {r.source_api ?? "—"}
-                          </Badge>
-                        </div>
-                      </div>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+                </div>
+                <div className="flex items-center justify-between pt-2 border-t">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    {r.rating ? (
+                      <span className="inline-flex items-center gap-1">
+                        <Star className="w-3 h-3 text-yellow-500 fill-current" />
+                        {r.rating}
+                        {r.reviews_count ? <span>({r.reviews_count})</span> : null}
+                      </span>
+                    ) : (
+                      <span>Sem avaliações</span>
+                    )}
+                    {r.source_api && (
+                      <Badge variant="outline" className="text-[10px]">
+                        {r.source_api}
+                      </Badge>
+                    )}
+                  </div>
+                  {enr ? (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => setOpenDialog(r.id)}
+                      className="text-xs h-7"
+                    >
+                      <Sparkles className="w-3 h-3 mr-1" />
+                      Ver dados
+                    </Button>
+                  ) : null}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {/* Paginação */}
@@ -328,7 +394,10 @@ export const ResultsList = ({ results, isLoading, hasMore, onLoadMore }: Results
           <PaginationContent>
             <PaginationItem>
               <PaginationPrevious
-                onClick={(e) => { e.preventDefault(); goToPage(currentPage - 1); }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  goToPage(currentPage - 1);
+                }}
                 className={currentPage === 1 ? "pointer-events-none opacity-50 cursor-not-allowed" : "cursor-pointer"}
               />
             </PaginationItem>
@@ -369,9 +438,8 @@ export const ResultsList = ({ results, isLoading, hasMore, onLoadMore }: Results
         </Pagination>
       )}
 
-      {/* Informações dos resultados */}
       <div className="text-center text-sm text-muted-foreground">
-        Exibindo {startIdx + 1}–{Math.min(startIdx + pageSize, results.length)} de {results.length} resultado{results.length !== 1 ? 's' : ''}
+        Exibindo {startIdx + 1}–{Math.min(startIdx + pageSize, results.length)} de {results.length} resultado{results.length !== 1 ? "s" : ""}
       </div>
 
       <Dialog open={!!openDialog} onOpenChange={(o) => !o && setOpenDialog(null)}>
