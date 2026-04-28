@@ -55,7 +55,12 @@ const MANUALS: Record<string, Manual> = {
           "Clique em 'Editar chave de API'. Em 'Restrições de API', selecione 'Restringir chave' e marque apenas Places API (New) e Geocoding API. Salve.",
       },
       {
-        title: "7. Cadastrar no painel admin",
+        title: "7. Restrições de aplicação — IMPORTANTE para uso server-side",
+        description:
+          "Em 'Restrições de aplicação', selecione 'Nenhuma' (ou 'Endereços IP', mas os IPs do backend são dinâmicos). NÃO use 'Referenciadores HTTP' — chaves com essa restrição são bloqueadas pelo Google em chamadas server-side com o erro: 'API keys with referer restrictions cannot be used with this API'.",
+      },
+      {
+        title: "8. Cadastrar no painel admin",
         description:
           "Volte ao painel admin desta aplicação, clique em 'Nova chave', selecione provider 'google_places' e cole a chave. Ela será criptografada automaticamente.",
       },
@@ -63,11 +68,13 @@ const MANUALS: Record<string, Manual> = {
     tips: [
       "Defina um orçamento de alerta no Google Cloud (Faturamento → Orçamentos) para evitar surpresas.",
       "Crie chaves separadas para dev e produção, com restrições diferentes.",
+      "Recomendado: crie DUAS chaves no mesmo projeto — uma server-side (sem restrição de referrer, restrita por API) e outra client-side (restrita por referrer do seu domínio, caso vá usar mapa no front).",
       "Após cadastrar, use o botão 'Testar API' no painel para validar a chave.",
     ],
     warnings: [
       "Nunca exponha a chave no frontend. O backend desta aplicação já cuida disso.",
       "Sem billing ativo, mesmo com a chave criada, todas as chamadas falham.",
+      "Erro 'REQUEST_DENIED — API keys with referer restrictions cannot be used with this API': sua chave está restrita por Referenciadores HTTP. Mude 'Restrições de aplicação' para 'Nenhuma' e salve.",
     ],
     docsUrl: "https://developers.google.com/maps/documentation/places/web-service/get-api-key",
     docsLabel: "Guia oficial: Get API Key",
