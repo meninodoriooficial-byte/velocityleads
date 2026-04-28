@@ -70,7 +70,12 @@ export const ResultsSection = ({ searchData }: ResultsSectionProps) => {
         }
       });
 
-      if (functionError) throw functionError;
+      if (functionError) {
+        const { explainEdgeError } = await import("@/lib/edgeFunction");
+        const ex = explainEdgeError(functionError, functionData);
+        toast({ title: ex.title, description: ex.description, variant: "destructive" });
+        throw functionError;
+      }
 
       // Buscar os novos resultados
       const { data: newResults, error: fetchError } = await supabase
