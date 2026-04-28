@@ -3,6 +3,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Star, Instagram, Facebook, MapPin, Sparkles, Loader2, MoreVertical } from "lucide-react";
 import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationEllipsis,
+} from "@/components/ui/pagination";
+import {
   Table,
   TableBody,
   TableCell,
@@ -52,6 +61,13 @@ export const ResultsList = ({ results, isLoading, hasMore, onLoadMore }: Results
   const [enrichingId, setEnrichingId] = useState<string | null>(null);
   const [enrichedMap, setEnrichedMap] = useState<Record<string, any>>({});
   const [openDialog, setOpenDialog] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+
+  // Reset para página 1 quando a lista de resultados muda
+  useEffect(() => {
+    setPage(1);
+  }, [results.length]);
 
   const handleEnrich = async (r: any) => {
     setEnrichingId(r.id);
@@ -89,20 +105,6 @@ export const ResultsList = ({ results, isLoading, hasMore, onLoadMore }: Results
       ? { data: r.enriched_data, source: r.enriched_source }
       : null);
 
-  // Infinite scroll
-  useEffect(() => {
-    const handleScroll = () => {
-      if (window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - 1000) {
-        if (!isLoading && hasMore) {
-          onLoadMore();
-        }
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [isLoading, hasMore, onLoadMore]);
-
   if (isLoading) {
     return (
       <div className="text-center py-12">
@@ -119,6 +121,27 @@ export const ResultsList = ({ results, isLoading, hasMore, onLoadMore }: Results
       </div>
     );
   }
+
+  const totalPages = Math.max(1, Math.ceil(results.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const startIdx = (currentPage - 1) * pageSize;
+  const pageResults = results.slice(startIdx, startIdx + pageSize);
+
+  const goToPage = (p: number) => {
+    const next = Math.min(Math.max(1, p), totalPages);
+    setPage(next);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
+  // Janela de páginas para exibir (até 5)
+  const pageNumbers: number[] = [];
+  const windowSize = 5;
+  let start = Math.max(1, currentPage - Math.floor(windowSize / 2));
+  let end = Math.min(totalPages, start + windowSize - 1);
+  start = Math.max(1, end - windowSize + 1);
+  for (let i = start; i <= end; i++) pageNumbers.push(i);
 
   return (
     <div className="space-y-4">
@@ -139,7 +162,7 @@ export const ResultsList = ({ results, isLoading, hasMore, onLoadMore }: Results
             </TableRow>
           </TableHeader>
           <TableBody>
-            {results.map((r: any) => (
+            {pageResults.map((r: any) => (
               <TableRow key={r.id}>
                 <TableCell className="font-medium">{r.business_name}</TableCell>
                 <TableCell className="text-sm">{r.address || <span className="text-muted-foreground">—</span>}</TableCell>
@@ -299,28 +322,56 @@ export const ResultsList = ({ results, isLoading, hasMore, onLoadMore }: Results
         </Table>
       </div>
 
-      {/* Carregamento e botão carregar mais */}
-      {(isLoading || hasMore) && (
-        <div className="text-center py-8">
-          {isLoading ? (
-            <div className="flex items-center justify-center space-x-2">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-              <span className="text-muted-foreground">Carregando mais resultados...</span>
-            </div>
-          ) : hasMore ? (
-            <Button onClick={onLoadMore} variant="outline" size="lg">
-              Carregar mais resultados
-            </Button>
-          ) : null}
-        </div>
+      {/* Paginação */}
+      {totalPages > 1 && (
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                onClick={(e) => { e.preventDefault(); goToPage(currentPage - 1); }}
+                className={currentPage === 1 ? "pointer-events-none opacity-50 cursor-not-allowed" : "cursor-pointer"}
+              />
+            </PaginationItem>
+            {start > 1 && (
+              <>
+                <PaginationItem>
+                  <PaginationLink onClick={(e) => { e.preventDefault(); goToPage(1); }} className="cursor-pointer">1</PaginationLink>
+                </PaginationItem>
+                {start > 2 && <PaginationItem><PaginationEllipsis /></PaginationItem>}
+              </>
+            )}
+            {pageNumbers.map((p) => (
+              <PaginationItem key={p}>
+                <PaginationLink
+                  isActive={p === currentPage}
+                  onClick={(e) => { e.preventDefault(); goToPage(p); }}
+                  className="cursor-pointer"
+                >
+                  {p}
+                </PaginationLink>
+              </PaginationItem>
+            ))}
+            {end < totalPages && (
+              <>
+                {end < totalPages - 1 && <PaginationItem><PaginationEllipsis /></PaginationItem>}
+                <PaginationItem>
+                  <PaginationLink onClick={(e) => { e.preventDefault(); goToPage(totalPages); }} className="cursor-pointer">{totalPages}</PaginationLink>
+                </PaginationItem>
+              </>
+            )}
+            <PaginationItem>
+              <PaginationNext
+                onClick={(e) => { e.preventDefault(); goToPage(currentPage + 1); }}
+                className={currentPage === totalPages ? "pointer-events-none opacity-50 cursor-not-allowed" : "cursor-pointer"}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
       )}
 
       {/* Informações dos resultados */}
       <div className="text-center text-sm text-muted-foreground">
-        {results.length} resultado{results.length !== 1 ? 's' : ''} encontrado{results.length !== 1 ? 's' : ''}
-        {!isLoading && !hasMore && results.length > 0 && (
-          <span className="block mt-1">Todos os resultados foram carregados</span>
-        )}
+        Exibindo {startIdx + 1}–{Math.min(startIdx + pageSize, results.length)} de {results.length} resultado{results.length !== 1 ? 's' : ''}
       </div>
 
       <Dialog open={!!openDialog} onOpenChange={(o) => !o && setOpenDialog(null)}>
