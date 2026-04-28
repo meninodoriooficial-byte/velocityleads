@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
-import { Key, Save, Plus, Trash2, CheckCircle2, Pencil, X, Zap, AlertCircle, Loader2, Lock } from "lucide-react";
+import { Key, Save, Plus, Trash2, CheckCircle2, Pencil, X, Zap, AlertCircle, Loader2, Lock, BookOpen } from "lucide-react";
+import { ApiManualDialog } from "./ApiManualDialog";
 
 interface ApiConfig {
   id: string;
@@ -37,6 +38,7 @@ export const ApiConfigManager = () => {
   const [newProvider, setNewProvider] = useState<string>("google_places");
   const [newPriority, setNewPriority] = useState<number>(100);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [manualFor, setManualFor] = useState<ApiConfig | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -495,6 +497,15 @@ export const ApiConfigManager = () => {
                     <Button
                       variant="outline"
                       size="sm"
+                      onClick={() => setManualFor(config)}
+                      title="Ver manual de integração desta API"
+                    >
+                      <BookOpen className="w-4 h-4 mr-2" />
+                      Manual
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => testApi(config)}
                       disabled={isTesting || !hasKey}
                       title={!hasKey ? "Configure uma chave primeiro" : "Testar conexão com a API"}
@@ -517,6 +528,12 @@ export const ApiConfigManager = () => {
           );
         })}
       </div>
+      <ApiManualDialog
+        open={!!manualFor}
+        onOpenChange={(o) => !o && setManualFor(null)}
+        provider={manualFor?.provider ?? null}
+        displayName={manualFor?.display_name ?? ""}
+      />
     </div>
   );
 };
