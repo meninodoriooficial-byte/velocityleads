@@ -96,37 +96,93 @@ export const SearchForm = ({ onSearch, selectedSearch }: SearchFormProps) => {
     if (!city || !selectedState) return;
 
     setLoadingNeighborhoods(true);
-    const query = `
-[out:json][timeout:25];
-area["name"="${city}"]["admin_level"~"8|9"]->.searchArea;
+    const controller = new AbortController();
+
+    const loadNeighborhoods = async () => {
+      try {
+        // 1) Localizar a área da cidade no OSM via Nominatim (filtra por estado/UF)
+        const stateName = states.find((s) => s.code === selectedState)?.name || "";
+        const nomUrl =
+          `https://nominatim.openstreetmap.org/search?format=json&limit=1&country=Brasil` +
+          `&state=${encodeURIComponent(stateName)}&city=${encodeURIComponent(city)}`;
+
+        const nomRes = await fetch(nomUrl, {
+          signal: controller.signal,
+          headers: { "Accept-Language": "pt-BR" },
+        });
+        const nomData = await nomRes.json();
+        const place = Array.isArray(nomData) ? nomData[0] : null;
+
+        let elements: any[] = [];
+
+        if (place?.osm_id && place?.osm_type) {
+          // Nominatim retorna osm_type "relation"|"way"|"node". Para Overpass area: relation -> 3600000000+id, way -> 2400000000+id
+          const typeMap: Record<string, number> = { relation: 3600000000, way: 2400000000 };
+          const offset = typeMap[place.osm_type];
+          if (offset) {
+            const areaId = offset + Number(place.osm_id);
+            const query = `[out:json][timeout:25];
+area(${areaId})->.a;
 (
-  node["place"~"suburb|neighbourhood|quarter"](area.searchArea);
-  way["place"~"suburb|neighbourhood|quarter"](area.searchArea);
-  relation["place"~"suburb|neighbourhood|quarter"](area.searchArea);
+  node["place"~"suburb|neighbourhood|quarter|city_block"](area.a);
+  way["place"~"suburb|neighbourhood|quarter|city_block"](area.a);
+  relation["place"~"suburb|neighbourhood|quarter|city_block"](area.a);
+  relation["boundary"="administrative"]["admin_level"~"10|11"](area.a);
 );
 out tags;`;
+            const ovRes = await fetch("https://overpass-api.de/api/interpreter", {
+              method: "POST",
+              headers: { "Content-Type": "text/plain" },
+              body: query,
+              signal: controller.signal,
+            });
+            const ovData = await ovRes.json();
+            elements = ovData?.elements || [];
+          }
+        }
 
-    fetch("https://overpass-api.de/api/interpreter", {
-      method: "POST",
-      headers: { "Content-Type": "text/plain" },
-      body: query,
-    })
-      .then((r) => r.json())
-      .then((data: any) => {
+        // Fallback: query por nome se nada veio
+        if (elements.length === 0) {
+          const fallback = `[out:json][timeout:25];
+area["name"="${city}"]["admin_level"~"8|9|10"]->.a;
+(
+  node["place"~"suburb|neighbourhood|quarter"](area.a);
+  way["place"~"suburb|neighbourhood|quarter"](area.a);
+  relation["place"~"suburb|neighbourhood|quarter"](area.a);
+);
+out tags;`;
+          const fbRes = await fetch("https://overpass-api.de/api/interpreter", {
+            method: "POST",
+            headers: { "Content-Type": "text/plain" },
+            body: fallback,
+            signal: controller.signal,
+          });
+          const fbData = await fbRes.json();
+          elements = fbData?.elements || [];
+        }
+
         const names = Array.from(
           new Set(
-            (data?.elements || [])
+            elements
               .map((el: any) => el?.tags?.name)
               .filter((n: any): n is string => typeof n === "string" && n.trim().length > 0)
           )
         ).sort((a, b) => (a as string).localeCompare(b as string, "pt-BR"));
+
+        console.log(`[Bairros] ${city}/${selectedState}: ${names.length} encontrados`);
         setNeighborhoods(names as string[]);
-      })
-      .catch((err) => {
-        console.error("Erro ao carregar bairros (Overpass):", err);
-        setNeighborhoods([]);
-      })
-      .finally(() => setLoadingNeighborhoods(false));
+      } catch (err: any) {
+        if (err?.name !== "AbortError") {
+          console.error("Erro ao carregar bairros:", err);
+          setNeighborhoods([]);
+        }
+      } finally {
+        setLoadingNeighborhoods(false);
+      }
+    };
+
+    loadNeighborhoods();
+    return () => controller.abort();
   }, [city, selectedState]);
 
   const handleSubmit = async (e: React.FormEvent) => {
