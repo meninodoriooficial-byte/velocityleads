@@ -53,6 +53,8 @@ export const SearchForm = ({ onSearch, selectedSearch }: SearchFormProps) => {
   const [neighborhood, setNeighborhood] = useState("");
   const [cities, setCities] = useState<string[]>([]);
   const [loadingCities, setLoadingCities] = useState(false);
+  const [neighborhoods, setNeighborhoods] = useState<string[]>([]);
+  const [loadingNeighborhoods, setLoadingNeighborhoods] = useState(false);
 
   useEffect(() => {
     if (!selectedState) {
@@ -74,6 +76,45 @@ export const SearchForm = ({ onSearch, selectedSearch }: SearchFormProps) => {
       })
       .finally(() => setLoadingCities(false));
   }, [selectedState]);
+
+  useEffect(() => {
+    setNeighborhood("");
+    setNeighborhoods([]);
+    if (!city || !selectedState) return;
+
+    setLoadingNeighborhoods(true);
+    const query = `
+[out:json][timeout:25];
+area["name"="${city}"]["admin_level"~"8|9"]->.searchArea;
+(
+  node["place"~"suburb|neighbourhood|quarter"](area.searchArea);
+  way["place"~"suburb|neighbourhood|quarter"](area.searchArea);
+  relation["place"~"suburb|neighbourhood|quarter"](area.searchArea);
+);
+out tags;`;
+
+    fetch("https://overpass-api.de/api/interpreter", {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: query,
+    })
+      .then((r) => r.json())
+      .then((data: any) => {
+        const names = Array.from(
+          new Set(
+            (data?.elements || [])
+              .map((el: any) => el?.tags?.name)
+              .filter((n: any): n is string => typeof n === "string" && n.trim().length > 0)
+          )
+        ).sort((a, b) => (a as string).localeCompare(b as string, "pt-BR"));
+        setNeighborhoods(names as string[]);
+      })
+      .catch((err) => {
+        console.error("Erro ao carregar bairros (Overpass):", err);
+        setNeighborhoods([]);
+      })
+      .finally(() => setLoadingNeighborhoods(false));
+  }, [city, selectedState]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -157,12 +198,33 @@ export const SearchForm = ({ onSearch, selectedSearch }: SearchFormProps) => {
                       <MapPin className="w-4 h-4" />
                       Bairro (Opcional)
                     </label>
-                    <Input
-                      value={neighborhood}
-                      onChange={(e) => setNeighborhood(e.target.value)}
-                      placeholder="Digite o bairro"
-                      disabled={!city}
-                    />
+                    <Select
+                      value={neighborhood || "__all__"}
+                      onValueChange={(v) => setNeighborhood(v === "__all__" ? "" : v)}
+                      disabled={!city || loadingNeighborhoods}
+                    >
+                      <SelectTrigger>
+                        <SelectValue
+                          placeholder={
+                            !city
+                              ? "Selecione a cidade"
+                              : loadingNeighborhoods
+                              ? "Carregando bairros..."
+                              : neighborhoods.length === 0
+                              ? "Nenhum bairro encontrado"
+                              : "Todos os bairros"
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-72">
+                        <SelectItem value="__all__">Todos os bairros</SelectItem>
+                        {neighborhoods.map((n) => (
+                          <SelectItem key={n} value={n}>
+                            {n}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
