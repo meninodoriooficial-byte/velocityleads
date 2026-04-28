@@ -75,7 +75,7 @@ export const UserManager = () => {
       const data = await callApi("list");
       setUsers(data.users || []);
     } catch (e: any) {
-      toast({ title: "Erro ao carregar usuários", description: e.message, variant: "destructive" });
+      toast({ title: "Erro ao carregar usuários", description: e.description || e.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -96,7 +96,7 @@ export const UserManager = () => {
       setNewUser({ email: "", password: "", full_name: "", plan: "basic", plan_searches_limit: 10, is_admin: false });
       load();
     } catch (e: any) {
-      toast({ title: "Erro ao criar usuário", description: e.message, variant: "destructive" });
+      toast({ title: "Erro ao criar usuário", description: e.description || e.message, variant: "destructive" });
     } finally {
       setActionLoading(false);
     }
@@ -116,7 +116,7 @@ export const UserManager = () => {
       setEditOpen(false);
       load();
     } catch (e: any) {
-      toast({ title: "Erro ao atualizar", description: e.message, variant: "destructive" });
+      toast({ title: "Erro ao atualizar", description: e.description || e.message, variant: "destructive" });
     } finally {
       setActionLoading(false);
     }
@@ -134,7 +134,7 @@ export const UserManager = () => {
       setPwOpen(false);
       setNewPassword("");
     } catch (e: any) {
-      toast({ title: "Erro ao alterar senha", description: e.message, variant: "destructive" });
+      toast({ title: "Erro ao alterar senha", description: e.description || e.message, variant: "destructive" });
     } finally {
       setActionLoading(false);
     }
@@ -146,7 +146,7 @@ export const UserManager = () => {
       toast({ title: u.is_suspended ? "Usuário reativado" : "Usuário suspenso" });
       load();
     } catch (e: any) {
-      toast({ title: "Erro", description: e.message, variant: "destructive" });
+      toast({ title: "Erro", description: e.description || e.message, variant: "destructive" });
     }
   };
 
@@ -156,7 +156,7 @@ export const UserManager = () => {
       toast({ title: "Usuário excluído" });
       load();
     } catch (e: any) {
-      toast({ title: "Erro ao excluir", description: e.message, variant: "destructive" });
+      toast({ title: "Erro ao excluir", description: e.description || e.message, variant: "destructive" });
     }
   };
 
@@ -171,7 +171,7 @@ export const UserManager = () => {
       toast({ title: `Plano alterado para ${plan}` });
       load();
     } catch (e: any) {
-      toast({ title: "Erro", description: e.message, variant: "destructive" });
+      toast({ title: "Erro", description: e.description || e.message, variant: "destructive" });
     }
   };
 
