@@ -242,7 +242,142 @@ async function callGooglePlaces(
   const results = (data.results || []).slice(0, 10).map((place: any, index: number) =>
     processGooglePlaceResult(place, category, index + 1)
   );
-  return { success: true, data: results };
+
+  // Enriquecer cada resultado com Place Details (telefone, site) e raspar o site
+  const enriched = await Promise.all(
+    results.map(async (r) => {
+      try {
+        const placeId = r.additional_data?.place_id;
+        if (placeId) {
+          const details = await fetchPlaceDetails(placeId, apiKey);
+          if (details) {
+            r.phone = details.phone || r.phone;
+            r.website = details.website || r.website;
+            if (details.url) r.additional_data.google_url = details.url;
+            if (details.opening_hours) r.additional_data.hours = details.opening_hours;
+          }
+        }
+        if (r.website) {
+          const scraped = await scrapeWebsite(r.website);
+          if (scraped.email) r.email = scraped.email;
+          if (scraped.instagram) r.social_media.instagram = scraped.instagram;
+          if (scraped.facebook) r.social_media.facebook = scraped.facebook;
+          if (scraped.phone && !r.phone) r.phone = scraped.phone;
+        }
+      } catch (e) {
+        console.log("enrichment error for", r.business_name, e);
+      }
+      return r;
+    })
+  );
+
+  return { success: true, data: enriched };
+}
+
+async function fetchPlaceDetails(placeId: string, apiKey: string) {
+  try {
+    const params = new URLSearchParams({
+      place_id: placeId,
+      key: apiKey,
+      language: "pt-BR",
+      fields:
+        "formatted_phone_number,international_phone_number,website,url,opening_hours,address_components",
+    });
+    const url = `https://maps.googleapis.com/maps/api/place/details/json?${params}`;
+    const resp = await fetch(url);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    if (data.status !== "OK") {
+      console.log("Place details status", placeId, data.status);
+      return null;
+    }
+    const r = data.result || {};
+    const formatPhone = (phone?: string) => {
+      if (!phone) return null;
+      const cleaned = phone.replace(/\D/g, "");
+      if (cleaned.length >= 10) {
+        return `(${cleaned.substring(0, 2)}) ${cleaned.substring(2)}`;
+      }
+      return phone;
+    };
+    return {
+      phone: formatPhone(r.formatted_phone_number || r.international_phone_number),
+      website: r.website || null,
+      url: r.url || null,
+      opening_hours: r.opening_hours?.weekday_text || null,
+    };
+  } catch (e) {
+    console.log("fetchPlaceDetails error", e);
+    return null;
+  }
+}
+
+async function scrapeWebsite(rawUrl: string) {
+  const result: { email?: string; phone?: string; instagram?: string; facebook?: string } = {};
+  try {
+    let url = rawUrl.trim();
+    if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
+
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 8000);
+    const resp = await fetch(url, {
+      signal: ctrl.signal,
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (compatible; LeadFinderBot/1.0; +https://lovable.dev)",
+        Accept: "text/html,application/xhtml+xml",
+      },
+      redirect: "follow",
+    }).finally(() => clearTimeout(timer));
+
+    if (!resp.ok) return result;
+    const ctype = resp.headers.get("content-type") || "";
+    if (!ctype.includes("text/html") && !ctype.includes("text/plain")) return result;
+
+    const html = (await resp.text()).slice(0, 500_000);
+
+    // Email
+    const emailMatch = html.match(
+      /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/
+    );
+    if (emailMatch) {
+      const e = emailMatch[0];
+      // Filtrar lixos comuns (sentry, wixpress, exemplo)
+      if (!/(sentry|wixpress|example|@2x|\.png|\.jpg|\.svg)/i.test(e)) {
+        result.email = e;
+      }
+    }
+
+    // Phone (BR)
+    const phoneMatch = html.match(
+      /(?:\+?55\s*)?\(?\d{2}\)?\s*9?\d{4}[-.\s]?\d{4}/
+    );
+    if (phoneMatch) {
+      const cleaned = phoneMatch[0].replace(/\D/g, "").replace(/^55/, "");
+      if (cleaned.length >= 10 && cleaned.length <= 11) {
+        result.phone = `(${cleaned.substring(0, 2)}) ${cleaned.substring(2)}`;
+      }
+    }
+
+    // Instagram
+    const ig = html.match(
+      /(?:https?:\/\/)?(?:www\.)?instagram\.com\/([A-Za-z0-9._]{1,30})/i
+    );
+    if (ig && !/\/(p|reel|explore|accounts|tv)\b/i.test(ig[0])) {
+      result.instagram = `@${ig[1]}`;
+    }
+
+    // Facebook
+    const fb = html.match(
+      /(?:https?:\/\/)?(?:www\.|m\.)?facebook\.com\/([A-Za-z0-9.\-_]{2,})/i
+    );
+    if (fb && !/\/(sharer|plugins|tr|dialog|login)\b/i.test(fb[0])) {
+      result.facebook = fb[1];
+    }
+  } catch (e) {
+    console.log("scrapeWebsite error", rawUrl, (e as any)?.message);
+  }
+  return result;
 }
 
 async function logApiError(supabaseClient: any, payload: {
