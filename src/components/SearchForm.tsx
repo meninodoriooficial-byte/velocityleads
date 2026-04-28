@@ -46,10 +46,17 @@ const states = [
   { code: "TO", name: "Tocantins" }
 ];
 
+const LAST_SEARCH_KEY = "lastSearchLocation";
+
 export const SearchForm = ({ onSearch, selectedSearch }: SearchFormProps) => {
   const [category, setCategory] = useState("");
-  const [selectedState, setSelectedState] = useState("");
+  const [selectedState, setSelectedState] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(LAST_SEARCH_KEY) || "{}").state || ""; } catch { return ""; }
+  });
   const [city, setCity] = useState("");
+  const [pendingCity, setPendingCity] = useState<string>(() => {
+    try { return JSON.parse(localStorage.getItem(LAST_SEARCH_KEY) || "{}").city || ""; } catch { return ""; }
+  });
   const [neighborhood, setNeighborhood] = useState("");
   const [cities, setCities] = useState<string[]>([]);
   const [loadingCities, setLoadingCities] = useState(false);
@@ -63,13 +70,18 @@ export const SearchForm = ({ onSearch, selectedSearch }: SearchFormProps) => {
       setCity("");
       return;
     }
-    setCity("");
     setLoadingCities(true);
     fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${selectedState}/municipios`)
       .then((r) => r.json())
       .then((data: any[]) => {
         const names = (data || []).map((m) => m.nome).sort((a, b) => a.localeCompare(b, 'pt-BR'));
         setCities(names);
+        if (pendingCity && names.includes(pendingCity)) {
+          setCity(pendingCity);
+        } else {
+          setCity("");
+        }
+        setPendingCity("");
       })
       .catch((err) => {
         console.error('Erro ao carregar cidades do IBGE:', err);
@@ -120,6 +132,9 @@ out tags;`;
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!category || !selectedState || !city) return;
+    try {
+      localStorage.setItem(LAST_SEARCH_KEY, JSON.stringify({ state: selectedState, city }));
+    } catch {}
     setIsSearching(true);
     try {
       await onSearch({ category, state: selectedState, city, neighborhood: neighborhood || undefined });
