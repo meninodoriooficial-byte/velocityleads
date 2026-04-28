@@ -30,8 +30,23 @@ serve(async (req) => {
       .update({ status: 'processing' })
       .eq('id', searchId);
 
+    // Buscar chave do Google Maps na tabela api_configs (prioridade) ou no env
+    let googleApiKey = Deno.env.get('GOOGLE_MAPS_API_KEY') || '';
+    try {
+      const { data: apiConfig } = await supabaseClient
+        .from('api_configs')
+        .select('api_key, is_active')
+        .eq('key_name', 'GOOGLE_MAPS_API_KEY')
+        .maybeSingle();
+      if (apiConfig?.is_active && apiConfig.api_key) {
+        googleApiKey = apiConfig.api_key;
+      }
+    } catch (e) {
+      console.log('Could not load api_configs, using env var', e);
+    }
+
     // Buscar usando web scraping
-    const searchResults = await performWebSearch(category, city, state, neighborhood, page);
+    const searchResults = await performWebSearch(category, city, state, neighborhood, page, googleApiKey);
     
     // Salvar resultados no banco
     const { error: insertError } = await supabaseClient
@@ -94,11 +109,9 @@ serve(async (req) => {
 });
 
 // Função para buscar usando Google Places API
-async function performWebSearch(category: string, city: string, state: string, neighborhood?: string, page: number = 1) {
+async function performWebSearch(category: string, city: string, state: string, neighborhood: string | undefined, page: number, googleApiKey: string) {
   try {
     console.log(`Performing Google Places search for ${category} in ${city}, ${state} - Page ${page}`);
-    
-    const googleApiKey = Deno.env.get('GOOGLE_MAPS_API_KEY');
     
     if (!googleApiKey) {
       console.log('Google API key not found, using simulated results');
