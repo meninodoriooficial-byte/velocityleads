@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Download, AlertTriangle } from "lucide-react";
 import { ResultsList } from "./ResultsList";
+import { toast } from "sonner";
 
 interface ResultsSectionProps {
   searchData: any;
@@ -70,7 +71,12 @@ export const ResultsSection = ({ searchData }: ResultsSectionProps) => {
         }
       });
 
-      if (functionError) throw functionError;
+      if (functionError) {
+        const { explainEdgeError } = await import("@/lib/edgeFunction");
+        const ex = explainEdgeError(functionError, functionData);
+        toast.error(ex.title, { description: ex.description });
+        throw functionError;
+      }
 
       // Buscar os novos resultados
       const { data: newResults, error: fetchError } = await supabase

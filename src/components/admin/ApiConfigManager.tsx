@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import { Key, Save, Plus, Trash2, CheckCircle2, Pencil, X, Zap, AlertCircle, Loader2, Lock, BookOpen } from "lucide-react";
 import { ApiManualDialog } from "./ApiManualDialog";
+import { explainEdgeError } from "@/lib/edgeFunction";
 
 interface ApiConfig {
   id: string;
@@ -229,7 +230,15 @@ export const ApiConfigManager = () => {
       const { data, error } = await supabase.functions.invoke("test-api", {
         body: { key_name: config.key_name },
       });
-      if (error) throw error;
+      if (error) {
+        const ex = explainEdgeError(error, data);
+        setTestResults((prev) => ({
+          ...prev,
+          [config.id]: { ok: false, message: `${ex.title}: ${ex.description}` },
+        }));
+        toast({ title: ex.title, description: ex.description, variant: "destructive" });
+        return;
+      }
       const ok = !!data?.ok;
       const details = [
         data?.elapsed_ms != null ? `${data.elapsed_ms}ms` : null,
@@ -250,11 +259,12 @@ export const ApiConfigManager = () => {
         variant: ok ? "default" : "destructive",
       });
     } catch (e: any) {
+      const ex = explainEdgeError(e);
       setTestResults((prev) => ({
         ...prev,
-        [config.id]: { ok: false, message: e.message || "Erro ao testar a API" },
+        [config.id]: { ok: false, message: `${ex.title}: ${ex.description}` },
       }));
-      toast({ title: "Erro ao testar", description: e.message, variant: "destructive" });
+      toast({ title: ex.title, description: ex.description, variant: "destructive" });
     } finally {
       setTestingId(null);
     }
