@@ -80,6 +80,10 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
     setSelected({});
   }, [results.length]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [sortBy]);
+
   const getEnriched = (r: any) =>
     enrichedMap[r.id] ||
     (r.enriched_data && Object.keys(r.enriched_data || {}).length
@@ -288,6 +292,24 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
             </Badge>
           )}
         </div>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <ArrowUpDown className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Ordenar:</span>
+          </div>
+          <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
+            <SelectTrigger className="h-8 w-[180px] text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-popover">
+              <SelectItem value="relevance">Relevância</SelectItem>
+              <SelectItem value="rating_desc">Melhor avaliação</SelectItem>
+              <SelectItem value="rating_asc">Pior avaliação</SelectItem>
+              <SelectItem value="reviews_desc">Mais avaliações</SelectItem>
+              <SelectItem value="proximity">Proximidade</SelectItem>
+              <SelectItem value="name_asc">Nome (A→Z)</SelectItem>
+            </SelectContent>
+          </Select>
         <Button
           onClick={handleBulkEnrich}
           disabled={selectedCount === 0 || bulkEnriching}
@@ -305,6 +327,7 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
             </>
           )}
         </Button>
+        </div>
       </div>
 
       {/* Cards */}
