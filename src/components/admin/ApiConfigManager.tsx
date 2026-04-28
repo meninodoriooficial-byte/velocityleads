@@ -7,25 +7,28 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
-import { Key, Save, Plus, Trash2, Eye, EyeOff, CheckCircle2, Pencil, X, Zap, AlertCircle, Loader2 } from "lucide-react";
+import { Key, Save, Plus, Trash2, CheckCircle2, Pencil, X, Zap, AlertCircle, Loader2, Lock } from "lucide-react";
 
 interface ApiConfig {
   id: string;
   key_name: string;
   display_name: string;
   description: string | null;
-  api_key: string | null;
+  api_key_last4: string | null;
   is_active: boolean;
   provider: string | null;
   priority: number;
 }
 
+// Campos editáveis em api_configs (não inclui chave criptografada)
+type EditableFields = Pick<ApiConfig, "display_name" | "description" | "is_active" | "provider" | "priority">;
+
 export const ApiConfigManager = () => {
   const [configs, setConfigs] = useState<ApiConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
-  const [visibleKeys, setVisibleKeys] = useState<Record<string, boolean>>({});
-  const [editing, setEditing] = useState<Record<string, Partial<ApiConfig>>>({});
+  const [editing, setEditing] = useState<Record<string, Partial<EditableFields>>>({});
+  const [keyDrafts, setKeyDrafts] = useState<Record<string, string>>({});
   const [editingKey, setEditingKey] = useState<Record<string, boolean>>({});
   const [savedId, setSavedId] = useState<string | null>(null);
   const [testingId, setTestingId] = useState<string | null>(null);
@@ -44,30 +47,27 @@ export const ApiConfigManager = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("api_configs")
-      .select("*")
+      .select("id, key_name, display_name, description, api_key_last4, is_active, provider, priority")
       .order("provider", { ascending: true })
       .order("priority", { ascending: true });
     if (error) {
       toast({ title: "Erro ao carregar APIs", description: error.message, variant: "destructive" });
     } else {
-      setConfigs(data || []);
+      setConfigs((data as ApiConfig[]) || []);
     }
     setLoading(false);
   };
 
-  const updateField = (id: string, field: keyof ApiConfig, value: any) => {
+  const updateField = (id: string, field: keyof EditableFields, value: any) => {
     setEditing((prev) => ({ ...prev, [id]: { ...prev[id], [field]: value } }));
   };
 
-  const getValue = (config: ApiConfig, field: keyof ApiConfig) => {
-    return editing[config.id]?.[field] ?? config[field];
+  const getValue = <K extends keyof EditableFields>(config: ApiConfig, field: K): EditableFields[K] => {
+    return (editing[config.id]?.[field] ?? (config as any)[field]) as EditableFields[K];
   };
 
-  const maskKey = (key: string | null) => {
-    if (!key) return "";
-    if (key.length <= 8) return "••••••••";
-    return `${"•".repeat(Math.max(8, key.length - 4))}${key.slice(-4)}`;
-  };
+  const maskedPreview = (last4: string | null) =>
+    last4 ? `••••••••••••${last4}` : "";
 
   const validateKey = (key: string): string | null => {
     const trimmed = key.trim();
@@ -80,44 +80,65 @@ export const ApiConfigManager = () => {
 
   const saveConfig = async (config: ApiConfig) => {
     const updates = editing[config.id];
-    if (!updates) {
+    const draftKey = keyDrafts[config.id];
+    const isEditingThisKey = !!editingKey[config.id];
+
+    if (!updates && !(isEditingThisKey && typeof draftKey === "string")) {
       return;
     }
 
-    if (typeof updates.api_key === "string") {
-      const err = validateKey(updates.api_key);
-      if (err) {
-        toast({ title: "Chave inválida", description: err, variant: "destructive" });
-        return;
-      }
-      updates.api_key = updates.api_key.trim();
-    }
-
     setSavingId(config.id);
-    const { error } = await supabase
-      .from("api_configs")
-      .update(updates)
-      .eq("id", config.id);
+    try {
+      // 1. Salvar campos comuns (sem a chave) via UPDATE direto
+      if (updates && Object.keys(updates).length > 0) {
+        const { error } = await supabase
+          .from("api_configs")
+          .update(updates)
+          .eq("id", config.id);
+        if (error) throw error;
+      }
 
-    if (error) {
-      toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
-    } else {
+      // 2. Se houver nova chave, validar e gravar via RPC criptografada
+      if (isEditingThisKey && typeof draftKey === "string") {
+        const err = validateKey(draftKey);
+        if (err) {
+          toast({ title: "Chave inválida", description: err, variant: "destructive" });
+          setSavingId(null);
+          return;
+        }
+        const { error: rpcError } = await supabase.rpc("set_api_key", {
+          _config_id: config.id,
+          _plain_key: draftKey.trim(),
+        });
+        if (rpcError) throw rpcError;
+      }
+
       toast({
-        title: "✓ Chave salva com sucesso",
-        description: `${config.display_name} foi atualizada e está pronta para uso.`,
+        title: "✓ Configuração salva com segurança",
+        description: `${config.display_name} foi atualizada${
+          isEditingThisKey ? " e a chave foi criptografada no banco" : ""
+        }.`,
       });
+
       setEditing((prev) => {
         const next = { ...prev };
         delete next[config.id];
         return next;
       });
+      setKeyDrafts((prev) => {
+        const next = { ...prev };
+        delete next[config.id];
+        return next;
+      });
       setEditingKey((prev) => ({ ...prev, [config.id]: false }));
-      setVisibleKeys((prev) => ({ ...prev, [config.id]: false }));
       setSavedId(config.id);
       setTimeout(() => setSavedId((curr) => (curr === config.id ? null : curr)), 3000);
       fetchConfigs();
+    } catch (error: any) {
+      toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
+    } finally {
+      setSavingId(null);
     }
-    setSavingId(null);
   };
 
   const deleteConfig = async (id: string, name: string) => {
@@ -136,47 +157,63 @@ export const ApiConfigManager = () => {
       toast({ title: "Preencha os campos obrigatórios", variant: "destructive" });
       return;
     }
-    const { error } = await supabase.from("api_configs").insert({
-      key_name: newConfig.key_name.toUpperCase().replace(/\s+/g, "_"),
-      display_name: newConfig.display_name,
-      description: newConfig.description || null,
-      api_key: newConfig.api_key || null,
-      provider: newProvider || null,
-      priority: Number.isFinite(newPriority) ? newPriority : 100,
-    });
+    if (newConfig.api_key) {
+      const err = validateKey(newConfig.api_key);
+      if (err) {
+        toast({ title: "Chave inválida", description: err, variant: "destructive" });
+        return;
+      }
+    }
+    // 1. Criar o registro sem chave
+    const { data: inserted, error } = await supabase
+      .from("api_configs")
+      .insert({
+        key_name: newConfig.key_name.toUpperCase().replace(/\s+/g, "_"),
+        display_name: newConfig.display_name,
+        description: newConfig.description || null,
+        provider: newProvider || null,
+        priority: Number.isFinite(newPriority) ? newPriority : 100,
+      })
+      .select("id")
+      .single();
     if (error) {
       toast({ title: "Erro ao adicionar", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "API adicionada" });
-      setNewConfig({ key_name: "", display_name: "", description: "", api_key: "" });
-      setNewProvider("google_places");
-      setNewPriority(100);
-      setShowAddForm(false);
-      fetchConfigs();
+      return;
     }
-  };
-
-  const toggleVisibility = (id: string) => {
-    setVisibleKeys((prev) => ({ ...prev, [id]: !prev[id] }));
+    // 2. Se forneceu chave, criptografar via RPC
+    if (newConfig.api_key && inserted) {
+      const { error: rpcErr } = await supabase.rpc("set_api_key", {
+        _config_id: inserted.id,
+        _plain_key: newConfig.api_key.trim(),
+      });
+      if (rpcErr) {
+        toast({
+          title: "API criada, mas falhou ao salvar a chave",
+          description: rpcErr.message,
+          variant: "destructive",
+        });
+      }
+    }
+    toast({ title: "API adicionada com segurança" });
+    setNewConfig({ key_name: "", display_name: "", description: "", api_key: "" });
+    setNewProvider("google_places");
+    setNewPriority(100);
+    setShowAddForm(false);
+    fetchConfigs();
   };
 
   const startEditingKey = (id: string) => {
     setEditingKey((prev) => ({ ...prev, [id]: true }));
-    updateField(id, "api_key", "");
+    setKeyDrafts((prev) => ({ ...prev, [id]: "" }));
   };
 
   const cancelEditingKey = (id: string) => {
     setEditingKey((prev) => ({ ...prev, [id]: false }));
-    setEditing((prev) => {
+    setKeyDrafts((prev) => {
       const next = { ...prev };
-      if (next[id]) {
-        const { api_key, ...rest } = next[id];
-        if (Object.keys(rest).length === 0) delete next[id];
-        else next[id] = rest;
-      }
+      delete next[id];
       return next;
     });
-    setVisibleKeys((prev) => ({ ...prev, [id]: false }));
   };
 
   const testApi = async (config: ApiConfig) => {
