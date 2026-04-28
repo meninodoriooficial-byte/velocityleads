@@ -28,19 +28,22 @@ Deno.serve(async (req) => {
     const userClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
-    const { data: userData, error: userError } = await userClient.auth.getUser();
-    if (userError || !userData.user) {
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims?.sub) {
+      console.error("getClaims error:", claimsError);
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    const callerId = claimsData.claims.sub as string;
 
     const admin = createClient(supabaseUrl, serviceKey);
     const { data: roleData } = await admin
       .from("user_roles")
       .select("role")
-      .eq("user_id", userData.user.id)
+      .eq("user_id", callerId)
       .eq("role", "admin")
       .maybeSingle();
     if (!roleData) {
@@ -134,7 +137,7 @@ Deno.serve(async (req) => {
 
       case "delete": {
         const { user_id } = payload;
-        if (user_id === userData.user.id) {
+        if (user_id === callerId) {
           return json({ error: "Cannot delete yourself" }, 400);
         }
         const { error } = await admin.auth.admin.deleteUser(user_id);
