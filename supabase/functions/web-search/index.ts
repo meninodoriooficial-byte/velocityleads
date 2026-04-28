@@ -265,171 +265,10 @@ async function logApiError(supabaseClient: any, payload: {
   }
 }
 
-function generateRealisticBusiness(category: string, city: string, state: string, neighborhood?: string, index: number) {
-  const businessTypes: Record<string, string[]> = {
-    'petshop': ['Pet Shop', 'Clínica Veterinária', 'Pet Care', 'Banho e Tosa'],
-    'médico': ['Consultório Médico', 'Clínica Médica', 'Hospital', 'Centro Médico'],
-    'dentista': ['Consultório Odontológico', 'Clínica Dental', 'Ortodontia', 'Implantodontia'],
-    'farmácia': ['Farmácia', 'Drogaria', 'Farmácia de Manipulação'],
-    'restaurante': ['Restaurante', 'Lanchonete', 'Pizzaria', 'Churrascaria', 'Self-Service'],
-    'academia': ['Academia', 'Centro de Treinamento', 'Estúdio de Fitness', 'CrossFit'],
-    'salão de beleza': ['Salão de Beleza', 'Barbearia', 'Estética', 'Spa'],
-    'oficina mecânica': ['Oficina Mecânica', 'Auto Center', 'Mecânica', 'Centro Automotivo'],
-    'loja de roupas': ['Loja de Roupas', 'Boutique', 'Confecção', 'Moda Feminina'],
-    'supermercado': ['Supermercado', 'Mercado', 'Minimercado', 'Atacadista']
-  };
-
-  const prefixes = ['', 'Casa do ', 'Espaço ', 'Centro ', 'Clínica ', 'Instituto ', 'Studio '];
-  const suffixes = ['', ' Express', ' Plus', ' Premium', ' & Cia', ' Center'];
-  
-  const businesses = businessTypes[category.toLowerCase()] || ['Empresa'];
-  const businessType = businesses[Math.floor(Math.random() * businesses.length)];
-  const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
-  const suffix = suffixes[Math.floor(Math.random() * suffixes.length)];
-  
-  const locationText = neighborhood ? neighborhood : city;
-  const businessName = `${prefix}${businessType} ${locationText}${suffix}`;
-  const cleanBusinessName = businessName.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
-
-  // Ruas reais brasileiras comuns
-  const streets = [
-    'Rua das Flores', 'Av. Paulista', 'Rua XV de Novembro', 'Rua do Comércio', 
-    'Av. Brasil', 'Rua da Liberdade', 'Rua Santos Dumont', 'Av. Independência',
-    'Rua Sete de Setembro', 'Rua Barão do Rio Branco', 'Av. Getúlio Vargas',
-    'Rua Marechal Deodoro', 'Rua General Osório', 'Av. Presidente Vargas'
-  ];
-
-  const street = streets[Math.floor(Math.random() * streets.length)];
-  const number = Math.floor(Math.random() * 2000) + 1;
-  const complement = Math.random() > 0.7 ? `, Sala ${Math.floor(Math.random() * 20) + 1}` : '';
-  
-  return {
-    business_name: businessName,
-    address: `${street}, ${number}${complement}, ${locationText}, ${city} - ${state}`,
-    phone: generateBrazilianPhone(),
-    email: `contato@${cleanBusinessName}${index}.com.br`,
-    website: `https://www.${cleanBusinessName}${index}.com.br`,
-    social_media: {
-      instagram: `@${cleanBusinessName}${index}`,
-      facebook: businessName
-    },
-    owner_name: generateOwnerName(),
-    business_type: businessType,
-    rating: Number((Math.random() * 2 + 3).toFixed(1)),
-    reviews_count: Math.floor(Math.random() * 500) + 10,
-    latitude: generateLatitude(state),
-    longitude: generateLongitude(state),
-    additional_data: {
-      hours: generateBusinessHours(),
-      services: generateServices(category),
-      price_range: '$'.repeat(Math.floor(Math.random() * 3) + 1),
-      source: 'web_search',
-      page: Math.ceil(index / 10)
-    }
-  };
-}
-
-function generateOwnerName(): string {
-  const firstNames = ['João', 'Maria', 'Carlos', 'Ana', 'Pedro', 'Lucia', 'Roberto', 'Fernanda', 'José', 'Patricia'];
-  const lastNames = ['Silva', 'Santos', 'Oliveira', 'Souza', 'Lima', 'Costa', 'Pereira', 'Rodrigues', 'Almeida', 'Nascimento'];
-  
-  const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
-  const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
-  
-  return `${firstName} ${lastName}`;
-}
-
-function generateBrazilianPhone(): string {
-  const areaCodes = ['11', '21', '31', '41', '51', '61', '71', '81', '85', '87'];
-  const areaCode = areaCodes[Math.floor(Math.random() * areaCodes.length)];
-  const number = Math.floor(Math.random() * 90000000) + 10000000;
-  return `(${areaCode}) 9${number}`;
-}
-
-function generateBusinessHours(): string {
-  const options = [
-    'Segunda a Sexta: 08:00 - 18:00',
-    'Segunda a Sexta: 09:00 - 17:00, Sábado: 09:00 - 12:00',
-    'Segunda a Sábado: 08:00 - 18:00',
-    'Todos os dias: 06:00 - 22:00',
-    'Segunda a Sexta: 07:00 - 19:00, Sábado: 08:00 - 16:00'
-  ];
-  return options[Math.floor(Math.random() * options.length)];
-}
-
-function generateServices(category: string): string[] {
-  const serviceMap: Record<string, string[]> = {
-    'petshop': ['Banho e Tosa', 'Consulta Veterinária', 'Vacinação', 'Cirurgia', 'Pet Hotel'],
-    'médico': ['Consulta Geral', 'Exames', 'Check-up', 'Atestados', 'Prescrição'],
-    'dentista': ['Limpeza', 'Obturação', 'Clareamento', 'Implantes', 'Ortodontia'],
-    'farmácia': ['Medicamentos', 'Manipulação', 'Perfumaria', 'Conveniência', 'Delivery'],
-    'restaurante': ['Almoço Executivo', 'Jantar', 'Delivery', 'Eventos', 'Buffet'],
-    'academia': ['Musculação', 'Funcional', 'Dança', 'Natação', 'Personal Trainer'],
-    'salão de beleza': ['Corte', 'Coloração', 'Manicure', 'Pedicure', 'Tratamentos'],
-    'oficina mecânica': ['Revisão', 'Troca de Óleo', 'Freios', 'Suspensão', 'Ar Condicionado'],
-    'loja de roupas': ['Roupas Femininas', 'Roupas Masculinas', 'Acessórios', 'Calçados', 'Promoções'],
-    'supermercado': ['Açougue', 'Padaria', 'Hortifruti', 'Frios', 'Delivery']
-  };
-
-  const services = serviceMap[category.toLowerCase()] || ['Serviço 1', 'Serviço 2', 'Serviço 3'];
-  const numServices = Math.floor(Math.random() * 3) + 2;
-  return services.slice(0, numServices);
-}
-
-function generateLatitude(state: string): number {
-  const stateCoords: Record<string, [number, number]> = {
-    'SP': [-23.5505, 0.5],
-    'RJ': [-22.9068, 0.3],
-    'MG': [-19.9167, 0.8],
-    'RS': [-30.0346, 0.6],
-    'PR': [-25.2521, 0.4],
-    'SC': [-27.2423, 0.4],
-    'BA': [-12.9714, 0.8],
-    'GO': [-16.6869, 0.5],
-    'PE': [-8.0476, 0.3],
-    'CE': [-3.7172, 0.3]
-  };
-  
-  const [baseLat, range] = stateCoords[state] || [-23.5505, 0.5];
-  return baseLat + (Math.random() - 0.5) * range;
-}
-
-function generateLongitude(state: string): number {
-  const stateCoords: Record<string, [number, number]> = {
-    'SP': [-46.6333, 0.5],
-    'RJ': [-43.1729, 0.3],
-    'MG': [-43.9378, 0.8],
-    'RS': [-51.2177, 0.6],
-    'PR': [-49.2731, 0.4],
-    'SC': [-48.2619, 0.4],
-    'BA': [-38.5014, 0.8],
-    'GO': [-49.2648, 0.5],
-    'PE': [-34.8770, 0.3],
-    'CE': [-38.5434, 0.3]
-  };
-  
-  const [baseLng, range] = stateCoords[state] || [-46.6333, 0.5];
-  return baseLng + (Math.random() - 0.5) * range;
-}
-
-function generateFallbackResults(category: string, city: string, state: string, neighborhood?: string, page: number = 1) {
-  const results = [];
-  const resultsPerPage = 10;
-  const startIndex = (page - 1) * resultsPerPage;
-
-  for (let i = 0; i < resultsPerPage; i++) {
-    const resultIndex = startIndex + i + 1;
-    results.push(generateRealisticBusiness(category, city, state, neighborhood, resultIndex));
-  }
-
-  return results;
-}
-
-// Função para processar resultado do Google Places
-function processGooglePlaceResult(place: any, category: string, index: number) {
-  const formatPhone = (phone: string) => {
-    if (!phone) return generateBrazilianPhone();
-    // Formato brasileiro para telefones
+// Função para processar resultado do Google Places — somente dados reais
+function processGooglePlaceResult(place: any, category: string, _index: number) {
+  const formatPhone = (phone?: string) => {
+    if (!phone) return null;
     const cleaned = phone.replace(/\D/g, '');
     if (cleaned.length >= 10) {
       return `(${cleaned.substring(0, 2)}) ${cleaned.substring(2)}`;
@@ -437,44 +276,26 @@ function processGooglePlaceResult(place: any, category: string, index: number) {
     return phone;
   };
 
-  const generateEmail = (name: string) => {
-    const cleanName = name.toLowerCase()
-      .replace(/\s+/g, '')
-      .replace(/[^a-z0-9]/g, '')
-      .substring(0, 20);
-    return `contato@${cleanName}.com.br`;
-  };
-
-  const generateWebsite = (name: string) => {
-    const cleanName = name.toLowerCase()
-      .replace(/\s+/g, '')
-      .replace(/[^a-z0-9]/g, '')
-      .substring(0, 20);
-    return `https://www.${cleanName}.com.br`;
-  };
-
   return {
-    business_name: place.name || `${category} ${index}`,
-    address: place.formatted_address || 'Endereço não disponível',
-    phone: formatPhone(place.formatted_phone_number),
-    email: generateEmail(place.name || `business${index}`),
-    website: generateWebsite(place.name || `business${index}`),
-    social_media: {
-      instagram: `@${place.name?.toLowerCase().replace(/\s+/g, '') || `business${index}`}`,
-      facebook: place.name || `Business ${index}`
-    },
-    owner_name: generateOwnerName(),
+    business_name: place.name || 'Sem nome',
+    address: place.formatted_address || place.vicinity || null,
+    phone: formatPhone(place.formatted_phone_number) || null,
+    email: null,
+    website: place.website || null,
+    social_media: {},
+    owner_name: null,
     business_type: place.types?.[0]?.replace(/_/g, ' ') || category,
-    rating: place.rating || Number((Math.random() * 2 + 3).toFixed(1)),
-    reviews_count: place.user_ratings_total || Math.floor(Math.random() * 500) + 10,
-    latitude: place.geometry?.location?.lat || null,
-    longitude: place.geometry?.location?.lng || null,
+    rating: place.rating ?? null,
+    reviews_count: place.user_ratings_total ?? null,
+    latitude: place.geometry?.location?.lat ?? null,
+    longitude: place.geometry?.location?.lng ?? null,
+    source_api: 'google_places',
     additional_data: {
       place_id: place.place_id,
-      price_level: place.price_level ? '$'.repeat(place.price_level) : '$'.repeat(Math.floor(Math.random() * 3) + 1),
+      price_level: place.price_level ? '$'.repeat(place.price_level) : null,
       types: place.types || [],
       source: 'google_places_api',
-      google_url: place.url,
+      google_url: place.url || (place.place_id ? `https://www.google.com/maps/place/?q=place_id:${place.place_id}` : null),
       photos: place.photos?.slice(0, 3).map((photo: any) => ({
         reference: photo.photo_reference,
         width: photo.width,
