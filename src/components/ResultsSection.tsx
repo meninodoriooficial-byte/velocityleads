@@ -166,8 +166,8 @@ export const ResultsSection = ({ searchData }: ResultsSectionProps) => {
 
   if (!searchData) return null;
 
-  const searchStatus = searchData.status || 'pending';
-  const isLoading = loading || searchStatus === 'pending' || searchStatus === 'processing';
+  const searchStatus = allResults.length > 0 ? 'completed' : (searchData.status || 'pending');
+  const isLoading = loading && allResults.length === 0;
 
   return (
     <section id="results-section" className="py-16 bg-secondary/10">
