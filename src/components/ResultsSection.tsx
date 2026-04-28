@@ -96,8 +96,8 @@ export const ResultsSection = ({ searchData }: ResultsSectionProps) => {
         setAllResults(prev => [...prev, ...uniqueNewResults]);
       }
 
-      // Verificar se há mais resultados
-      setHasMore(functionData?.hasMore || false);
+      // Paginação é feita no cliente (10 por página) sobre os resultados desta busca
+      setHasMore(false);
       
     } catch (error) {
       console.error('Error fetching results:', error);
