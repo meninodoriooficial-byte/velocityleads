@@ -91,6 +91,25 @@ serve(async (req) => {
       return jsonResponse(result);
     }
 
+    if (keyName === 'CASADOSDADOS_API_KEY') {
+      const result = await testCasaDosDados(apiKey);
+      if (!result.ok) {
+        try {
+          await supabase.from('api_error_logs').insert({
+            key_name: keyName,
+            source: 'test-api',
+            error_status: (result as any).status || 'ERROR',
+            error_message: result.message,
+            http_status: (result as any).http ?? null,
+            context: { triggered_by: 'admin_test', user_id: userData.user.id },
+          });
+        } catch (e) {
+          console.error('Failed to persist test error', e);
+        }
+      }
+      return jsonResponse(result);
+    }
+
     return jsonResponse({
       ok: false,
       status: 'unsupported',
