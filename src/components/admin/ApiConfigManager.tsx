@@ -16,6 +16,8 @@ interface ApiConfig {
   description: string | null;
   api_key: string | null;
   is_active: boolean;
+  provider: string | null;
+  priority: number;
 }
 
 export const ApiConfigManager = () => {
@@ -29,6 +31,8 @@ export const ApiConfigManager = () => {
   const [testingId, setTestingId] = useState<string | null>(null);
   const [testResults, setTestResults] = useState<Record<string, { ok: boolean; message: string; details?: string }>>({});
   const [newConfig, setNewConfig] = useState({ key_name: "", display_name: "", description: "", api_key: "" });
+  const [newProvider, setNewProvider] = useState<string>("google_places");
+  const [newPriority, setNewPriority] = useState<number>(100);
   const [showAddForm, setShowAddForm] = useState(false);
   const { toast } = useToast();
 
@@ -41,7 +45,8 @@ export const ApiConfigManager = () => {
     const { data, error } = await supabase
       .from("api_configs")
       .select("*")
-      .order("display_name");
+      .order("provider", { ascending: true })
+      .order("priority", { ascending: true });
     if (error) {
       toast({ title: "Erro ao carregar APIs", description: error.message, variant: "destructive" });
     } else {
@@ -136,12 +141,16 @@ export const ApiConfigManager = () => {
       display_name: newConfig.display_name,
       description: newConfig.description || null,
       api_key: newConfig.api_key || null,
+      provider: newProvider || null,
+      priority: Number.isFinite(newPriority) ? newPriority : 100,
     });
     if (error) {
       toast({ title: "Erro ao adicionar", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "API adicionada" });
       setNewConfig({ key_name: "", display_name: "", description: "", api_key: "" });
+      setNewProvider("google_places");
+      setNewPriority(100);
       setShowAddForm(false);
       fetchConfigs();
     }
@@ -275,6 +284,31 @@ export const ApiConfigManager = () => {
                 placeholder="Cole a chave aqui"
               />
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Provider (grupo de fallback)</Label>
+                <Input
+                  value={newProvider}
+                  onChange={(e) => setNewProvider(e.target.value)}
+                  placeholder="ex: google_places"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Chaves com o mesmo provider são tentadas em sequência.
+                </p>
+              </div>
+              <div>
+                <Label>Prioridade</Label>
+                <Input
+                  type="number"
+                  value={newPriority}
+                  onChange={(e) => setNewPriority(parseInt(e.target.value) || 100)}
+                  placeholder="100"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Menor número = tentada primeiro.
+                </p>
+              </div>
+            </div>
             <div className="flex gap-2">
               <Button onClick={addConfig} size="sm">Adicionar</Button>
               <Button onClick={() => setShowAddForm(false)} variant="outline" size="sm">Cancelar</Button>
@@ -302,6 +336,11 @@ export const ApiConfigManager = () => {
                         {config.is_active ? "Ativa" : "Inativa"}
                       </Badge>
                       {config.api_key && <Badge variant="outline">Configurada</Badge>}
+                      {config.provider && (
+                        <Badge variant="outline" className="font-mono text-xs">
+                          {config.provider} #{config.priority}
+                        </Badge>
+                      )}
                     </CardTitle>
                     <CardDescription className="mt-1">
                       <code className="text-xs">{config.key_name}</code>
@@ -355,6 +394,26 @@ export const ApiConfigManager = () => {
                       Chave salva com segurança.
                     </p>
                   )}
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Provider</Label>
+                    <Input
+                      value={(getValue(config, "provider") as string) ?? ""}
+                      onChange={(e) => updateField(config.id, "provider", e.target.value || null)}
+                      placeholder="ex: google_places"
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Prioridade (fallback)</Label>
+                    <Input
+                      type="number"
+                      value={(getValue(config, "priority") as number) ?? 100}
+                      onChange={(e) => updateField(config.id, "priority", parseInt(e.target.value) || 100)}
+                      className="h-8 text-sm"
+                    />
+                  </div>
                 </div>
                 {testResult && (
                   <div

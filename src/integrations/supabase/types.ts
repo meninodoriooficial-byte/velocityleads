@@ -23,6 +23,8 @@ export type Database = {
           id: string
           is_active: boolean
           key_name: string
+          priority: number
+          provider: string | null
           updated_at: string
         }
         Insert: {
@@ -33,6 +35,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           key_name: string
+          priority?: number
+          provider?: string | null
           updated_at?: string
         }
         Update: {
@@ -43,6 +47,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           key_name?: string
+          priority?: number
+          provider?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -224,6 +230,7 @@ export type Database = {
           status: string
           updated_at: string
           user_id: string
+          warning: string | null
         }
         Insert: {
           category: string
@@ -237,6 +244,7 @@ export type Database = {
           status?: string
           updated_at?: string
           user_id: string
+          warning?: string | null
         }
         Update: {
           category?: string
@@ -250,6 +258,31 @@ export type Database = {
           status?: string
           updated_at?: string
           user_id?: string
+          warning?: string | null
+        }
+        Relationships: []
+      }
+      system_settings: {
+        Row: {
+          description: string | null
+          id: string
+          setting_key: string
+          setting_value: Json
+          updated_at: string
+        }
+        Insert: {
+          description?: string | null
+          id?: string
+          setting_key: string
+          setting_value?: Json
+          updated_at?: string
+        }
+        Update: {
+          description?: string | null
+          id?: string
+          setting_key?: string
+          setting_value?: Json
+          updated_at?: string
         }
         Relationships: []
       }
