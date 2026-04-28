@@ -395,6 +395,26 @@ export const ApiConfigManager = () => {
                     </p>
                   )}
                 </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Provider</Label>
+                    <Input
+                      value={(getValue(config, "provider") as string) ?? ""}
+                      onChange={(e) => updateField(config.id, "provider", e.target.value || null)}
+                      placeholder="ex: google_places"
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Prioridade (fallback)</Label>
+                    <Input
+                      type="number"
+                      value={(getValue(config, "priority") as number) ?? 100}
+                      onChange={(e) => updateField(config.id, "priority", parseInt(e.target.value) || 100)}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                </div>
                 {testResult && (
                   <div
                     className={`text-xs rounded-md p-2 flex items-start gap-2 ${
