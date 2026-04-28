@@ -176,3 +176,64 @@ function jsonResponse(body: any, status = 200) {
     status,
   });
 }
+
+async function testCasaDosDados(apiKey: string) {
+  const start = Date.now();
+  try {
+    const url = 'https://api.casadosdados.com.br/v2/public/cnpj/search';
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        query: { termo: [], atividade_principal: [], natureza_juridica: [], uf: ['SP'], municipio: [] },
+        page: 1,
+      }),
+    });
+    const elapsed = Date.now() - start;
+    const text = await res.text();
+    let data: any = null;
+    try { data = JSON.parse(text); } catch { /* ignore */ }
+
+    if (res.status === 401 || res.status === 403) {
+      return {
+        ok: false,
+        status: 'unauthorized',
+        http: res.status,
+        message: 'Chave recusada pelo casadosdados (401/403). Verifique se o token é válido e está ativo.',
+        elapsed_ms: elapsed,
+      };
+    }
+    if (res.status === 429) {
+      return {
+        ok: false,
+        status: 'rate_limited',
+        http: 429,
+        message: 'Limite de requisições excedido na casadosdados.',
+        elapsed_ms: elapsed,
+      };
+    }
+    if (!res.ok) {
+      return {
+        ok: false,
+        status: 'http_error',
+        http: res.status,
+        message: `HTTP ${res.status} ao chamar casadosdados. ${data?.message || text.slice(0, 200)}`,
+        elapsed_ms: elapsed,
+      };
+    }
+
+    const count = data?.data?.length ?? data?.results?.length ?? 0;
+    return {
+      ok: true,
+      status: 'success',
+      message: `Conexão OK — casadosdados respondeu em ${elapsed}ms (${count} registros na amostra).`,
+      elapsed_ms: elapsed,
+      results_count: count,
+    };
+  } catch (e: any) {
+    return { ok: false, status: 'network_error', message: `Erro de rede: ${e.message}` };
+  }
+}
