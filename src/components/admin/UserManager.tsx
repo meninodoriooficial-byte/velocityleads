@@ -23,6 +23,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Loader2, MoreVertical, Plus, Pencil, KeyRound, Ban, Trash2, ShieldCheck, Users } from "lucide-react";
+import { invokeEdgeFunction } from "@/lib/edgeFunction";
 
 interface UserRow {
   id: string;
@@ -61,12 +62,11 @@ export const UserManager = () => {
   const [newPassword, setNewPassword] = useState("");
 
   const callApi = async (action: string, payload: any = {}) => {
-    const { data, error } = await supabase.functions.invoke("admin-users", {
+    // showToast=false: tratamos os toasts em cada handler
+    return await invokeEdgeFunction<any>("admin-users", {
       body: { action, payload },
+      showToast: false,
     });
-    if (error) throw error;
-    if (data?.error) throw new Error(data.error);
-    return data;
   };
 
   const load = async () => {
