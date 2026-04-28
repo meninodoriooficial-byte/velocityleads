@@ -131,24 +131,8 @@ async function loadProviderKeys(supabaseClient: any, provider: string, envName: 
   return keys;
 }
 
-async function getSetting(supabaseClient: any, key: string, fallback: any): Promise<any> {
-  try {
-    const { data } = await supabaseClient
-      .from('system_settings')
-      .select('setting_value')
-      .eq('setting_key', key)
-      .maybeSingle();
-    if (data && data.setting_value !== undefined && data.setting_value !== null) {
-      return data.setting_value;
-    }
-  } catch (e) {
-    console.log(`Could not load system setting "${key}"`, e);
-  }
-  return fallback;
-}
-
 // Tenta cada chave em sequência. Em falha, registra erro e tenta a próxima.
-// Se todas falharem: retorna simulado com aviso (se permitido) ou simulado sem aviso.
+// Se todas falharem: retorna lista vazia com aviso (sem dados simulados).
 async function performWebSearch(
   category: string,
   city: string,
@@ -156,8 +140,7 @@ async function performWebSearch(
   neighborhood: string | undefined,
   page: number,
   apiKeys: Array<{ id: string | null; key: string; label: string }>,
-  supabaseClient: any,
-  allowSimulated: boolean
+  supabaseClient: any
 ): Promise<{ results: any[]; warning: string | null }> {
   console.log(`Performing search for ${category} in ${city}, ${state} - Page ${page} — ${apiKeys.length} chave(s) disponível(is)`);
 
@@ -168,10 +151,8 @@ async function performWebSearch(
       context: { category, city, state, neighborhood, page },
     });
     return {
-      results: generateFallbackResults(category, city, state, neighborhood, page),
-      warning: allowSimulated
-        ? 'Resultados simulados — nenhuma chave de API ativa configurada.'
-        : null,
+      results: [],
+      warning: 'Nenhuma chave de API ativa configurada. Configure no painel admin para receber resultados reais.',
     };
   }
 
@@ -214,18 +195,11 @@ async function performWebSearch(
     }
   }
 
-  // Todas as chaves falharam
-  console.log('Todas as chaves falharam — caindo em modo simulado');
-  if (!allowSimulated) {
-    return {
-      results: [],
-      warning: `Todas as ${apiKeys.length} chave(s) de API falharam e o modo simulado está desativado.`,
-    };
-  }
-
+  // Todas as chaves falharam — sem fallback simulado
+  console.log('Todas as chaves falharam — retornando vazio');
   return {
-    results: generateFallbackResults(category, city, state, neighborhood, page),
-    warning: `⚠️ Resultados simulados — todas as ${apiKeys.length} chave(s) de API falharam (${failedLabels.join(', ')}).`,
+    results: [],
+    warning: `Todas as ${apiKeys.length} chave(s) de API falharam (${failedLabels.join(', ')}). Verifique a configuração no painel admin.`,
   };
 }
 
