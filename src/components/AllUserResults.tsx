@@ -5,7 +5,22 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Download, Search as SearchIcon, RefreshCw, Sparkles } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Download,
+  Search as SearchIcon,
+  RefreshCw,
+  Sparkles,
+  Filter,
+  X,
+} from "lucide-react";
 import {
   Table,
   TableBody,
@@ -40,11 +55,26 @@ interface LeadRow {
   };
 }
 
+const ALL = "__all__";
+
 export const AllUserResults = () => {
   const { user } = useAuth();
   const [rows, setRows] = useState<LeadRow[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // Filtros
   const [filter, setFilter] = useState("");
+  const [stateFilter, setStateFilter] = useState<string>(ALL);
+  const [cityFilter, setCityFilter] = useState<string>(ALL);
+  const [categoryFilter, setCategoryFilter] = useState<string>(ALL);
+  const [sourceFilter, setSourceFilter] = useState<string>(ALL);
+  const [hasEmail, setHasEmail] = useState(false);
+  const [hasPhone, setHasPhone] = useState(false);
+  const [hasWebsite, setHasWebsite] = useState(false);
+  const [enrichedOnly, setEnrichedOnly] = useState(false);
+  const [minRating, setMinRating] = useState<string>("");
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
 
   const fetchAll = async () => {
     if (!user) return;
@@ -71,26 +101,108 @@ export const AllUserResults = () => {
     fetchAll();
   }, [user?.id]);
 
+  // Opções dinâmicas
+  const uniqStates = useMemo(
+    () =>
+      Array.from(new Set(rows.map((r) => r.searches?.state).filter(Boolean))).sort() as string[],
+    [rows]
+  );
+  const uniqCities = useMemo(() => {
+    const filtered = stateFilter === ALL ? rows : rows.filter((r) => r.searches?.state === stateFilter);
+    return Array.from(new Set(filtered.map((r) => r.searches?.city).filter(Boolean))).sort() as string[];
+  }, [rows, stateFilter]);
+  const uniqCategories = useMemo(
+    () =>
+      Array.from(new Set(rows.map((r) => r.searches?.category).filter(Boolean))).sort() as string[],
+    [rows]
+  );
+  const uniqSources = useMemo(
+    () =>
+      Array.from(new Set(rows.map((r) => r.source_api).filter(Boolean))).sort() as string[],
+    [rows]
+  );
+
   const filtered = useMemo(() => {
     const q = filter.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((r) =>
-      [
-        r.business_name,
-        r.business_type,
-        r.address,
-        r.phone,
-        r.email,
-        r.website,
-        r.searches?.category,
-        r.searches?.city,
-        r.searches?.state,
-        r.searches?.neighborhood,
-      ]
-        .filter(Boolean)
-        .some((v) => String(v).toLowerCase().includes(q))
-    );
-  }, [rows, filter]);
+    const minR = minRating ? Number(minRating) : null;
+    const fromTs = dateFrom ? new Date(dateFrom).getTime() : null;
+    const toTs = dateTo ? new Date(dateTo).getTime() + 86400000 : null;
+
+    return rows.filter((r) => {
+      if (q) {
+        const hay = [
+          r.business_name,
+          r.business_type,
+          r.address,
+          r.phone,
+          r.email,
+          r.website,
+          r.searches?.category,
+          r.searches?.city,
+          r.searches?.state,
+          r.searches?.neighborhood,
+        ]
+          .filter(Boolean)
+          .some((v) => String(v).toLowerCase().includes(q));
+        if (!hay) return false;
+      }
+      if (stateFilter !== ALL && r.searches?.state !== stateFilter) return false;
+      if (cityFilter !== ALL && r.searches?.city !== cityFilter) return false;
+      if (categoryFilter !== ALL && r.searches?.category !== categoryFilter) return false;
+      if (sourceFilter !== ALL && r.source_api !== sourceFilter) return false;
+      if (hasEmail && !r.email) return false;
+      if (hasPhone && !r.phone) return false;
+      if (hasWebsite && !r.website) return false;
+      if (enrichedOnly && !r.enriched_source) return false;
+      if (minR !== null && (r.rating == null || Number(r.rating) < minR)) return false;
+      if (fromTs && new Date(r.created_at).getTime() < fromTs) return false;
+      if (toTs && new Date(r.created_at).getTime() >= toTs) return false;
+      return true;
+    });
+  }, [
+    rows,
+    filter,
+    stateFilter,
+    cityFilter,
+    categoryFilter,
+    sourceFilter,
+    hasEmail,
+    hasPhone,
+    hasWebsite,
+    enrichedOnly,
+    minRating,
+    dateFrom,
+    dateTo,
+  ]);
+
+  const clearFilters = () => {
+    setFilter("");
+    setStateFilter(ALL);
+    setCityFilter(ALL);
+    setCategoryFilter(ALL);
+    setSourceFilter(ALL);
+    setHasEmail(false);
+    setHasPhone(false);
+    setHasWebsite(false);
+    setEnrichedOnly(false);
+    setMinRating("");
+    setDateFrom("");
+    setDateTo("");
+  };
+
+  const activeFiltersCount =
+    (filter ? 1 : 0) +
+    (stateFilter !== ALL ? 1 : 0) +
+    (cityFilter !== ALL ? 1 : 0) +
+    (categoryFilter !== ALL ? 1 : 0) +
+    (sourceFilter !== ALL ? 1 : 0) +
+    (hasEmail ? 1 : 0) +
+    (hasPhone ? 1 : 0) +
+    (hasWebsite ? 1 : 0) +
+    (enrichedOnly ? 1 : 0) +
+    (minRating ? 1 : 0) +
+    (dateFrom ? 1 : 0) +
+    (dateTo ? 1 : 0);
 
   const exportCSV = () => {
     if (filtered.length === 0) return;
@@ -129,7 +241,7 @@ export const AllUserResults = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `meus_leads_${new Date().toISOString().split("T")[0]}.csv`;
+    a.download = `historico_leads_${new Date().toISOString().split("T")[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -139,9 +251,9 @@ export const AllUserResults = () => {
       <CardHeader>
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div>
-            <CardTitle>Meus Resultados</CardTitle>
+            <CardTitle>Histórico de Leads</CardTitle>
             <CardDescription>
-              Todos os leads capturados em suas buscas — gravados no seu banco de dados.
+              Todos os leads capturados em suas buscas — filtre e exporte conforme precisar.
             </CardDescription>
           </div>
           <div className="flex gap-2">
@@ -155,15 +267,119 @@ export const AllUserResults = () => {
             </Button>
           </div>
         </div>
+
+        {/* Busca livre */}
         <div className="relative mt-4">
           <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            placeholder="Filtrar por nome, cidade, telefone, email..."
+            placeholder="Buscar por nome, cidade, telefone, email..."
             className="pl-9"
           />
         </div>
+
+        {/* Filtros */}
+        <div className="mt-4 p-3 rounded-lg border bg-muted/30 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Filter className="w-4 h-4" />
+              Filtros
+              {activeFiltersCount > 0 && (
+                <Badge variant="secondary" className="text-xs">{activeFiltersCount} ativo{activeFiltersCount !== 1 ? "s" : ""}</Badge>
+              )}
+            </div>
+            {activeFiltersCount > 0 && (
+              <Button variant="ghost" size="sm" onClick={clearFilters} className="h-7 text-xs">
+                <X className="w-3 h-3 mr-1" />
+                Limpar
+              </Button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Estado</label>
+              <Select value={stateFilter} onValueChange={(v) => { setStateFilter(v); setCityFilter(ALL); }}>
+                <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent className="bg-popover">
+                  <SelectItem value={ALL}>Todos</SelectItem>
+                  {uniqStates.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Cidade</label>
+              <Select value={cityFilter} onValueChange={setCityFilter}>
+                <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent className="bg-popover">
+                  <SelectItem value={ALL}>Todas</SelectItem>
+                  {uniqCities.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Categoria</label>
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent className="bg-popover">
+                  <SelectItem value={ALL}>Todas</SelectItem>
+                  {uniqCategories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Fonte</label>
+              <Select value={sourceFilter} onValueChange={setSourceFilter}>
+                <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent className="bg-popover">
+                  <SelectItem value={ALL}>Todas</SelectItem>
+                  {uniqSources.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Avaliação mínima</label>
+              <Select value={minRating || ALL} onValueChange={(v) => setMinRating(v === ALL ? "" : v)}>
+                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Qualquer" /></SelectTrigger>
+                <SelectContent className="bg-popover">
+                  <SelectItem value={ALL}>Qualquer</SelectItem>
+                  <SelectItem value="3">3★ ou mais</SelectItem>
+                  <SelectItem value="4">4★ ou mais</SelectItem>
+                  <SelectItem value="4.5">4.5★ ou mais</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">De</label>
+              <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-9 text-xs" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Até</label>
+              <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-9 text-xs" />
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-4 pt-2 border-t">
+            <label className="flex items-center gap-2 text-xs cursor-pointer">
+              <Checkbox checked={hasEmail} onCheckedChange={(v) => setHasEmail(!!v)} />
+              Com e-mail
+            </label>
+            <label className="flex items-center gap-2 text-xs cursor-pointer">
+              <Checkbox checked={hasPhone} onCheckedChange={(v) => setHasPhone(!!v)} />
+              Com telefone
+            </label>
+            <label className="flex items-center gap-2 text-xs cursor-pointer">
+              <Checkbox checked={hasWebsite} onCheckedChange={(v) => setHasWebsite(!!v)} />
+              Com website
+            </label>
+            <label className="flex items-center gap-2 text-xs cursor-pointer">
+              <Checkbox checked={enrichedOnly} onCheckedChange={(v) => setEnrichedOnly(!!v)} />
+              Apenas enriquecidos
+            </label>
+          </div>
+        </div>
+
         <div className="text-sm text-muted-foreground mt-2">
           {filtered.length} de {rows.length} lead{rows.length !== 1 ? "s" : ""}
         </div>
@@ -177,6 +393,10 @@ export const AllUserResults = () => {
         ) : rows.length === 0 ? (
           <p className="text-center text-muted-foreground py-12">
             Você ainda não capturou nenhum lead. Faça uma busca em "Nova Busca".
+          </p>
+        ) : filtered.length === 0 ? (
+          <p className="text-center text-muted-foreground py-12">
+            Nenhum lead corresponde aos filtros aplicados.
           </p>
         ) : (
           <div className="border rounded-md overflow-x-auto bg-card">

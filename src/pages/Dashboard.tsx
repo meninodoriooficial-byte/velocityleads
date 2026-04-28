@@ -151,7 +151,7 @@ export default function Dashboard() {
       title: "Preparado para o próximo sprint?",
       subtitle: `Você tem ${remaining} buscas restantes para acelerar suas metas.`,
     },
-    results: { title: "Suas leads minerados", subtitle: "Explore, filtre e enriqueça os contatos extraídos." },
+    results: { title: "Histórico de Leads", subtitle: "Explore, filtre e enriqueça todos os contatos já extraídos." },
     history: { title: "Histórico de prospecções", subtitle: "Revise tudo o que você já buscou." },
     plans: { title: "Escolha sua velocidade", subtitle: "Faça upgrade para ampliar seus limites mensais." },
     admin: { title: "Painel administrativo", subtitle: "Gerencie usuários, APIs e configurações." },
