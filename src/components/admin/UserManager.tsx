@@ -309,7 +309,7 @@ export const UserManager = () => {
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Excluir usuário?</AlertTitle>
+                              <AlertDialogTitle>Excluir usuário?</AlertDialogTitle>
                               <AlertDialogDescription>
                                 Esta ação é permanente. Todos os dados de {u.email} serão removidos.
                               </AlertDialogDescription>
