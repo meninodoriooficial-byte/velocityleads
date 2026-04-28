@@ -356,12 +356,13 @@ export const ApiConfigManager = () => {
 
       <div className="space-y-3">
         {configs.map((config) => {
-          const isDirty = !!editing[config.id];
-          const isVisible = visibleKeys[config.id];
+          const hasFieldEdits = !!editing[config.id] && Object.keys(editing[config.id]).length > 0;
           const isEditingThisKey = !!editingKey[config.id];
+          const isDirty = hasFieldEdits || isEditingThisKey;
           const justSaved = savedId === config.id;
           const testResult = testResults[config.id];
           const isTesting = testingId === config.id;
+          const hasKey = !!config.api_key_last4;
           return (
             <Card key={config.id}>
               <CardHeader className="pb-3">
@@ -372,7 +373,12 @@ export const ApiConfigManager = () => {
                       <Badge variant={config.is_active ? "default" : "secondary"}>
                         {config.is_active ? "Ativa" : "Inativa"}
                       </Badge>
-                      {config.api_key && <Badge variant="outline">Configurada</Badge>}
+                      {hasKey && (
+                        <Badge variant="outline" className="gap-1">
+                          <Lock className="w-3 h-3" />
+                          Criptografada
+                        </Badge>
+                      )}
                       {config.provider && (
                         <Badge variant="outline" className="font-mono text-xs">
                           {config.provider} #{config.priority}
@@ -394,19 +400,21 @@ export const ApiConfigManager = () => {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div>
-                  <Label>Chave de API</Label>
+                  <Label className="flex items-center gap-2">
+                    Chave de API
+                    <span className="text-xs text-muted-foreground font-normal flex items-center gap-1">
+                      <Lock className="w-3 h-3" /> criptografada — não pode ser visualizada
+                    </span>
+                  </Label>
                   {isEditingThisKey ? (
                     <div className="flex gap-2">
                       <Input
-                        type={isVisible ? "text" : "password"}
-                        value={(editing[config.id]?.api_key as string) ?? ""}
-                        onChange={(e) => updateField(config.id, "api_key", e.target.value)}
+                        type="password"
+                        value={keyDrafts[config.id] ?? ""}
+                        onChange={(e) => setKeyDrafts((prev) => ({ ...prev, [config.id]: e.target.value }))}
                         placeholder="Cole a nova chave aqui"
                         autoFocus
                       />
-                      <Button variant="outline" size="icon" onClick={() => toggleVisibility(config.id)} type="button" title={isVisible ? "Ocultar" : "Mostrar"}>
-                        {isVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </Button>
                       <Button variant="ghost" size="icon" onClick={() => cancelEditingKey(config.id)} type="button" title="Cancelar">
                         <X className="w-4 h-4" />
                       </Button>
@@ -415,20 +423,20 @@ export const ApiConfigManager = () => {
                     <div className="flex gap-2">
                       <Input
                         readOnly
-                        value={config.api_key ? maskKey(config.api_key) : ""}
+                        value={maskedPreview(config.api_key_last4)}
                         placeholder="Nenhuma chave configurada"
                         className="font-mono text-muted-foreground"
                       />
                       <Button variant="outline" size="sm" onClick={() => startEditingKey(config.id)} type="button">
                         <Pencil className="w-4 h-4 mr-2" />
-                        {config.api_key ? "Alterar" : "Adicionar"}
+                        {hasKey ? "Substituir" : "Adicionar"}
                       </Button>
                     </div>
                   )}
                   {justSaved && (
                     <p className="text-xs text-green-600 flex items-center gap-1 mt-2">
                       <CheckCircle2 className="w-3.5 h-3.5" />
-                      Chave salva com segurança.
+                      Chave criptografada e salva com segurança.
                     </p>
                   )}
                 </div>
@@ -488,8 +496,8 @@ export const ApiConfigManager = () => {
                       variant="outline"
                       size="sm"
                       onClick={() => testApi(config)}
-                      disabled={isTesting || !config.api_key}
-                      title={!config.api_key ? "Configure uma chave primeiro" : "Testar conexão com a API"}
+                      disabled={isTesting || !hasKey}
+                      title={!hasKey ? "Configure uma chave primeiro" : "Testar conexão com a API"}
                     >
                       {isTesting ? (
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
