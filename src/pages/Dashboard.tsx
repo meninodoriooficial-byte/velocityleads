@@ -13,6 +13,7 @@ import { ResultsSection } from "@/components/ResultsSection";
 import { ApiConfigManager } from "@/components/admin/ApiConfigManager";
 import { ApiErrorLogs } from "@/components/admin/ApiErrorLogs";
 import { SystemSettings } from "@/components/admin/SystemSettings";
+import { SourceHistory } from "@/components/admin/SourceHistory";
 
 export default function Dashboard() {
   const { user, profile, isAdmin, signOut } = useAuth();
@@ -289,6 +290,9 @@ export default function Dashboard() {
               </Card>
               <div className="mt-4">
                 <SystemSettings />
+              </div>
+              <div className="mt-4">
+                <SourceHistory />
               </div>
               <div className="mt-4">
                 <ApiErrorLogs keyName="GOOGLE_MAPS_API_KEY" />
