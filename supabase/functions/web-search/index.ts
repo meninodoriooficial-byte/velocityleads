@@ -46,7 +46,7 @@ serve(async (req) => {
     }
 
     // Buscar usando web scraping
-    const searchResults = await performWebSearch(category, city, state, neighborhood, page, googleApiKey);
+    const searchResults = await performWebSearch(category, city, state, neighborhood, page, googleApiKey, supabaseClient);
     
     // Salvar resultados no banco
     const { error: insertError } = await supabaseClient
@@ -109,12 +109,17 @@ serve(async (req) => {
 });
 
 // Função para buscar usando Google Places API
-async function performWebSearch(category: string, city: string, state: string, neighborhood: string | undefined, page: number, googleApiKey: string) {
+async function performWebSearch(category: string, city: string, state: string, neighborhood: string | undefined, page: number, googleApiKey: string, supabaseClient: any) {
   try {
     console.log(`Performing Google Places search for ${category} in ${city}, ${state} - Page ${page}`);
     
     if (!googleApiKey) {
       console.log('Google API key not found, using simulated results');
+      await logApiError(supabaseClient, {
+        error_status: 'NO_KEY',
+        error_message: 'Nenhuma chave do Google Maps configurada — usando dados simulados.',
+        context: { category, city, state, neighborhood, page },
+      });
       return generateFallbackResults(category, city, state, neighborhood, page);
     }
 
@@ -147,6 +152,12 @@ async function performWebSearch(category: string, city: string, state: string, n
     const response = await fetch(placesUrl);
     
     if (!response.ok) {
+      await logApiError(supabaseClient, {
+        error_status: 'HTTP_ERROR',
+        http_status: response.status,
+        error_message: `Google Places retornou HTTP ${response.status}.`,
+        context: { category, city, state, neighborhood, page },
+      });
       throw new Error(`Google Places API error: ${response.status}`);
     }
 
@@ -155,6 +166,11 @@ async function performWebSearch(category: string, city: string, state: string, n
 
     if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
       console.error('Google Places API error:', data.status, data.error_message);
+      await logApiError(supabaseClient, {
+        error_status: data.status,
+        error_message: data.error_message || `Google Places retornou status ${data.status}`,
+        context: { category, city, state, neighborhood, page },
+      });
       return generateFallbackResults(category, city, state, neighborhood, page);
     }
 
@@ -168,7 +184,32 @@ async function performWebSearch(category: string, city: string, state: string, n
 
   } catch (error) {
     console.error('Error in Google Places search:', error);
+    await logApiError(supabaseClient, {
+      error_status: 'EXCEPTION',
+      error_message: error?.message || String(error),
+      context: { category, city, state, neighborhood, page },
+    });
     return generateFallbackResults(category, city, state, neighborhood, page);
+  }
+}
+
+async function logApiError(supabaseClient: any, payload: {
+  error_status: string;
+  error_message: string;
+  http_status?: number;
+  context?: Record<string, unknown>;
+}) {
+  try {
+    await supabaseClient.from('api_error_logs').insert({
+      key_name: 'GOOGLE_MAPS_API_KEY',
+      source: 'web-search',
+      error_status: payload.error_status,
+      error_message: payload.error_message,
+      http_status: payload.http_status ?? null,
+      context: payload.context ?? {},
+    });
+  } catch (e) {
+    console.error('Failed to log api error', e);
   }
 }
 
