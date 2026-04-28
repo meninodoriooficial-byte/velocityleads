@@ -161,13 +161,46 @@ export const ResultsList = ({ results, isLoading, hasMore, onLoadMore }: Results
                           {result.social_media?.instagram && (
                             <div className="flex items-center space-x-2">
                               <Instagram className="w-4 h-4 text-muted-foreground" />
-                              <span className="text-sm">{result.social_media.instagram}</span>
+                              <a
+                                href={instagramUrl(result.social_media.instagram)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm text-primary hover:underline"
+                              >
+                                {result.social_media.instagram}
+                              </a>
                             </div>
                           )}
                           {result.social_media?.facebook && (
                             <div className="flex items-center space-x-2">
                               <Facebook className="w-4 h-4 text-muted-foreground" />
-                              <span className="text-sm">{result.social_media.facebook}</span>
+                              <a
+                                href={facebookUrl(result.social_media.facebook)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm text-primary hover:underline"
+                              >
+                                {result.social_media.facebook}
+                              </a>
+                            </div>
+                          )}
+                          {result.additional_data?.google_url && (
+                            <div className="flex items-center space-x-2">
+                              <MapPin className="w-4 h-4 text-muted-foreground" />
+                              <a
+                                href={result.additional_data.google_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm text-primary hover:underline"
+                              >
+                                Ver no Google Maps
+                              </a>
+                            </div>
+                          )}
+                          {result.source_api && (
+                            <div className="flex items-center space-x-2">
+                              <span className="text-xs text-muted-foreground">Fonte:</span>
+                              <Badge variant="outline" className="text-xs">{result.source_api}</Badge>
                             </div>
                           )}
                           {result.additional_data?.price_range && (
