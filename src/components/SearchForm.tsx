@@ -128,7 +128,6 @@ out tags;`;
       setTimeout(() => setIsSearching(false), 600);
     }
   };
-  };
 
   return (
     <div className="space-y-6">
