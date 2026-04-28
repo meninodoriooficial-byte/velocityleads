@@ -63,18 +63,22 @@ export const ResultsList = ({ results, isLoading, hasMore, onLoadMore }: Results
         if (exp - now < 60) await supabase.auth.refreshSession();
       }
 
-      const { data, error } = await supabase.functions.invoke("enrich-lead", {
+      const { invokeEdgeFunction } = await import("@/lib/edgeFunction");
+      const data = await invokeEdgeFunction<any>("enrich-lead", {
         body: { resultId: r.id },
+        showToast: false,
       });
-      if (error) throw error;
-      if ((data as any)?.error) throw new Error((data as any).error);
 
       const enriched = (data as any).enriched_data;
       setEnrichedMap((prev) => ({ ...prev, [r.id]: { data: enriched, source: (data as any).source } }));
       setOpenDialog(r.id);
       toast({ title: "Dados enriquecidos", description: `Fonte: ${(data as any).source}` });
     } catch (e: any) {
-      toast({ title: "Falha ao enriquecer", description: e?.message || "Tente novamente", variant: "destructive" });
+      toast({
+        title: e?.title || "Falha ao enriquecer",
+        description: e?.description || e?.message || "Tente novamente",
+        variant: "destructive",
+      });
     } finally {
       setEnrichingId(null);
     }
