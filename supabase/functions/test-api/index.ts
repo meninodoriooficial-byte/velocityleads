@@ -43,17 +43,25 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const keyName: string = body.key_name || 'GOOGLE_MAPS_API_KEY';
 
-    // Buscar chave da tabela api_configs (prioridade) e fallback para env
+    // Verificar status da configuração e descriptografar via RPC
     let apiKey = '';
     let isActive = true;
     const { data: cfg } = await supabase
       .from('api_configs')
-      .select('api_key, is_active')
+      .select('is_active, api_key_last4')
       .eq('key_name', keyName)
       .maybeSingle();
     if (cfg) {
-      apiKey = cfg.api_key || '';
       isActive = !!cfg.is_active;
+      if (isActive && cfg.api_key_last4) {
+        const { data: decrypted, error: rpcErr } = await supabase.rpc('get_api_key_decrypted', {
+          _key_name: keyName,
+        });
+        if (rpcErr) {
+          console.error('Erro ao descriptografar chave', rpcErr);
+        }
+        if (typeof decrypted === 'string') apiKey = decrypted;
+      }
     }
     if (!apiKey) apiKey = Deno.env.get(keyName) || '';
 

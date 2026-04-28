@@ -107,12 +107,14 @@ serve(async (req) => {
 async function loadProviderKeys(supabaseClient: any, provider: string, envName: string): Promise<Array<{ id: string | null; key: string; label: string }>> {
   const keys: Array<{ id: string | null; key: string; label: string }> = [];
   try {
-    const { data } = await supabaseClient
-      .from('api_configs')
-      .select('id, key_name, api_key, is_active, priority')
-      .eq('provider', provider)
-      .eq('is_active', true)
-      .order('priority', { ascending: true });
+    // Usa RPC SECURITY DEFINER que descriptografa as chaves no banco.
+    // Apenas service_role pode chamar.
+    const { data, error } = await supabaseClient.rpc('get_provider_keys_decrypted', {
+      _provider: provider,
+    });
+    if (error) {
+      console.error('Erro ao carregar chaves do provider:', error);
+    }
     if (Array.isArray(data)) {
       for (const row of data) {
         if (row.api_key && typeof row.api_key === 'string' && row.api_key.trim()) {
