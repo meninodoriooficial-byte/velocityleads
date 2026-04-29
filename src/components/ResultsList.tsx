@@ -16,6 +16,7 @@ import {
   Building2,
   CheckCircle2,
 } from "lucide-react";
+import { ChevronDown, LayoutList, Rows3 } from "lucide-react";
 import {
   Pagination,
   PaginationContent,
@@ -73,6 +74,22 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
   const [sortBy, setSortBy] = useState<
     "relevance" | "rating_desc" | "rating_asc" | "reviews_desc" | "name_asc" | "proximity"
   >("relevance");
+  const [compact, setCompact] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    const saved = localStorage.getItem("results_compact_mode");
+    return saved === null ? true : saved === "true";
+  });
+  const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("results_compact_mode", String(compact));
+    }
+  }, [compact]);
+
+  const toggleExpand = (id: string) => {
+    setExpandedCards((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
   const pageSize = 10;
 
   useEffect(() => {
