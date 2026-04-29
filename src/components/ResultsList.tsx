@@ -113,7 +113,6 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
     return data;
   };
 
-  if (isLoading) {
   // (early returns moved below hooks to keep hook order stable)
 
   // Ordenação aplicada antes da paginação
