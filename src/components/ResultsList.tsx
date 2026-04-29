@@ -114,21 +114,7 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
   };
 
   if (isLoading) {
-    return (
-      <div className="text-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
-        <p className="text-muted-foreground">Buscando empresas...</p>
-      </div>
-    );
-  }
-
-  if (results.length === 0) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-muted-foreground">Nenhum resultado encontrado.</p>
-      </div>
-    );
-  }
+  // (early returns moved below hooks to keep hook order stable)
 
   // Ordenação aplicada antes da paginação
   const sortedResults = useMemo(() => {
@@ -187,6 +173,23 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
         return arr;
     }
   }, [results, sortBy]);
+
+  if (isLoading) {
+    return (
+      <div className="text-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
+        <p className="text-muted-foreground">Buscando empresas...</p>
+      </div>
+    );
+  }
+
+  if (results.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-muted-foreground">Nenhum resultado encontrado.</p>
+      </div>
+    );
+  }
 
   const totalPages = Math.max(1, Math.ceil(sortedResults.length / pageSize));
   const currentPage = Math.min(page, totalPages);
