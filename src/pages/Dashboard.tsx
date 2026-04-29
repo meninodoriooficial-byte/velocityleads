@@ -11,7 +11,6 @@ import { TrendingUp, Users, Sparkles, CheckCircle2 } from "lucide-react";
 import { ResultsSection } from "@/components/ResultsSection";
 import { ApiConfigManager } from "@/components/admin/ApiConfigManager";
 import { ApiErrorLogs } from "@/components/admin/ApiErrorLogs";
-import { SystemSettings } from "@/components/admin/SystemSettings";
 import { SourceHistory } from "@/components/admin/SourceHistory";
 import { AllUserResults } from "@/components/AllUserResults";
 import { UserManager } from "@/components/admin/UserManager";
@@ -364,7 +363,6 @@ export default function Dashboard() {
                     <ApiConfigManager />
                   </CardContent>
                 </Card>
-                <SystemSettings />
                 <SourceHistory />
                 <ApiErrorLogs keyName="GOOGLE_MAPS_API_KEY" />
               </div>
