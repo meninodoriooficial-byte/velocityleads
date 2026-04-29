@@ -8,6 +8,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const MAINTENANCE_MESSAGE =
+  'O sistema está passando por uma atualização. Por favor, tente novamente mais tarde.';
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -90,8 +93,9 @@ serve(async (req) => {
     console.error('Error in web-search function:', error);
     
     return new Response(
-      JSON.stringify({ 
-        error: error.message || 'Internal server error' 
+      JSON.stringify({
+        error: MAINTENANCE_MESSAGE,
+        detail: error?.message || 'Internal server error',
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -152,7 +156,7 @@ async function performWebSearch(
     });
     return {
       results: [],
-      warning: 'Nenhuma chave de API ativa configurada. Configure no painel admin para receber resultados reais.',
+      warning: MAINTENANCE_MESSAGE,
     };
   }
 
@@ -199,7 +203,7 @@ async function performWebSearch(
   console.log('Todas as chaves falharam — retornando vazio');
   return {
     results: [],
-    warning: `Todas as ${apiKeys.length} chave(s) de API falharam (${failedLabels.join(', ')}). Verifique a configuração no painel admin.`,
+    warning: MAINTENANCE_MESSAGE,
   };
 }
 
