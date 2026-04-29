@@ -186,53 +186,59 @@ export const ResultsSection = ({ searchData }: ResultsSectionProps) => {
   const isLoading = loading && allResults.length === 0;
 
   return (
-    <section id="results-section" className="py-16 bg-secondary/10">
-      <div className="container mx-auto px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">Resultados da Busca</h2>
-            <p className="text-lg text-muted-foreground mb-4">
-              {searchData.search_query || `${searchData.category} em ${searchData.city}, ${searchData.state}`}
-            </p>
-            <div className="flex items-center justify-center space-x-4">
-              <Badge variant={searchStatus === 'completed' ? 'default' : 'secondary'}>
+    <section id="results-section" className="space-y-5">
+      <div className="surface-raised p-5 md:p-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 mb-1.5">
+              <Badge
+                variant={searchStatus === 'completed' ? 'default' : 'secondary'}
+                className={searchStatus === 'completed' ? 'bg-success/15 text-success border-success/30' : ''}
+              >
+                <span className={`size-1.5 rounded-full mr-1.5 ${searchStatus === 'completed' ? 'bg-success' : 'bg-muted-foreground animate-pulse'}`} />
                 {searchStatus === 'completed' ? 'Concluída' : 'Processando...'}
               </Badge>
-              <Button onClick={refreshResults} size="sm" variant="outline">
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Atualizar
-              </Button>
               {allResults.length > 0 && (
-                <Button onClick={exportToCSV} size="sm" variant="outline">
-                  <Download className="w-4 h-4 mr-2" />
-                  Exportar CSV
-                </Button>
+                <span className="text-xs font-semibold text-muted-foreground">
+                  {allResults.length} resultado{allResults.length !== 1 ? 's' : ''}
+                </span>
               )}
             </div>
+            <h2 className="text-xl md:text-2xl font-bold tracking-tight truncate">Resultados da Busca</h2>
+            <p className="text-sm text-muted-foreground truncate">
+              {searchData.search_query || `${searchData.category} em ${searchData.city}, ${searchData.state}`}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button onClick={refreshResults} size="sm" variant="outline">
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Atualizar
+            </Button>
             {allResults.length > 0 && (
-              <p className="text-sm text-muted-foreground mt-2">
-                Total de {allResults.length} resultado{allResults.length !== 1 ? 's' : ''} encontrado{allResults.length !== 1 ? 's' : ''}
-              </p>
-            )}
-            {searchData.warning && (
-              <div className="mt-4 mx-auto max-w-2xl text-left bg-yellow-500/10 border border-yellow-500/30 text-yellow-700 dark:text-yellow-400 rounded-md p-3 flex items-start gap-2 text-sm">
-                <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
-                <div>
-                  <p className="font-medium">Aviso sobre estes resultados</p>
-                  <p className="opacity-90 mt-1">{searchData.warning}</p>
-                </div>
-              </div>
+              <Button onClick={exportToCSV} size="sm" className="btn-volt">
+                <Download className="w-4 h-4 mr-2" />
+                Exportar CSV
+              </Button>
             )}
           </div>
-
-          <ResultsList
-            results={allResults}
-            isLoading={isLoading}
-            hasMore={hasMore}
-            onLoadMore={loadMoreResults}
-          />
         </div>
+        {searchData.warning && (
+          <div className="mt-4 bg-warning/10 border border-warning/30 text-warning-foreground rounded-xl p-3 flex items-start gap-2 text-sm">
+            <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-warning" />
+            <div>
+              <p className="font-semibold">Aviso sobre estes resultados</p>
+              <p className="opacity-90 mt-1">{searchData.warning}</p>
+            </div>
+          </div>
+        )}
       </div>
+
+      <ResultsList
+        results={allResults}
+        isLoading={isLoading}
+        hasMore={hasMore}
+        onLoadMore={loadMoreResults}
+      />
     </section>
   );
 };
