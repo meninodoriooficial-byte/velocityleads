@@ -401,6 +401,8 @@ export default function Dashboard() {
               </div>
             )}
 
+            {activeTab === "purchases" && <PurchasesHistory />}
+
             {activeTab === "admin" && isAdmin && (
               <Tabs defaultValue="users" className="w-full">
                 <TabsList className="grid w-full grid-cols-2 md:grid-cols-6 h-auto p-1 bg-muted/50 mb-6">
