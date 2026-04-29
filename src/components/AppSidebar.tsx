@@ -11,11 +11,11 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Search, ListChecks, History, Package, ShieldCheck, Zap, LogOut } from "lucide-react";
+import { Search, ListChecks, History, Package, ShieldCheck, Zap, LogOut, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 
-export type DashboardTab = "search" | "results" | "history" | "plans" | "admin";
+export type DashboardTab = "search" | "results" | "history" | "plans" | "purchases" | "admin";
 
 interface AppSidebarProps {
   active: DashboardTab;
@@ -28,6 +28,7 @@ const navItems: { key: DashboardTab; label: string; icon: any; group: "main" | "
   { key: "results", label: "Histórico de Leads", icon: ListChecks, group: "main" },
   { key: "history", label: "Histórico de Buscas", icon: History, group: "main" },
   { key: "plans", label: "Planos", icon: Package, group: "manage" },
+  { key: "purchases", label: "Minhas Compras", icon: Receipt, group: "manage" },
 ];
 
 export function AppSidebar({ active, onChange, isAdmin }: AppSidebarProps) {
