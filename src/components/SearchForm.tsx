@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Search, MapPin, Building, Loader2 } from "lucide-react";
 import { ResultsSection } from "./ResultsSection";
+import { MapSearchLoader } from "./MapSearchLoader";
 
 interface SearchFormProps {
   onSearch: (data: {
@@ -336,31 +337,12 @@ out tags;`;
       </Card>
 
       {isSearching && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm animate-fade-in"
-          role="status"
-          aria-live="polite"
-        >
-          <div className="bg-card border rounded-2xl shadow-2xl p-8 max-w-sm w-[90%] text-center animate-scale-in">
-            <div className="relative w-24 h-24 mx-auto mb-4">
-              <div className="absolute inset-0 rounded-full bg-primary/10 animate-ping" />
-              <div className="absolute inset-2 rounded-full bg-primary/20 animate-pulse" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <Search className="w-10 h-10 text-primary animate-pulse" />
-              </div>
-            </div>
-            <h3 className="text-lg font-semibold mb-1">Buscando empresas...</h3>
-            <p className="text-sm text-muted-foreground">
-              {category} em {city}
-              {neighborhood ? ` • ${neighborhood}` : ""}
-            </p>
-            <div className="mt-4 flex justify-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0ms" }} />
-              <span className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "150ms" }} />
-              <span className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "300ms" }} />
-            </div>
-          </div>
-        </div>
+        <MapSearchLoader
+          category={category}
+          city={city}
+          state={selectedState}
+          neighborhood={neighborhood}
+        />
       )}
 
       {selectedSearch && (
