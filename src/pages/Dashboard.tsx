@@ -16,6 +16,7 @@ import { AllUserResults } from "@/components/AllUserResults";
 import { UserManager } from "@/components/admin/UserManager";
 import { PackagesManager } from "@/components/admin/PackagesManager";
 import { PaymentsConfig } from "@/components/admin/PaymentsConfig";
+import { PurchasesHistory } from "@/components/PurchasesHistory";
 import { explainEdgeError } from "@/lib/edgeFunction";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar, type DashboardTab } from "@/components/AppSidebar";
@@ -184,6 +185,7 @@ export default function Dashboard() {
     results: { title: "Histórico de Leads", subtitle: "Explore, filtre e enriqueça todos os contatos já extraídos." },
     history: { title: "Histórico de prospecções", subtitle: "Revise tudo o que você já buscou." },
     plans: { title: "Escolha sua velocidade", subtitle: "Faça upgrade para ampliar seus limites mensais." },
+    purchases: { title: "Minhas compras", subtitle: "Acompanhe o status dos seus pacotes adquiridos." },
     admin: { title: "Painel administrativo", subtitle: "Gerencie usuários, APIs e configurações." },
   };
   const head = headlines[activeTab];
@@ -398,6 +400,8 @@ export default function Dashboard() {
                 </div>
               </div>
             )}
+
+            {activeTab === "purchases" && <PurchasesHistory />}
 
             {activeTab === "admin" && isAdmin && (
               <Tabs defaultValue="users" className="w-full">
