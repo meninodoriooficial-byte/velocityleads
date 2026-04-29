@@ -43,6 +43,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ArrowUpDown } from "lucide-react";
+import { LeadCardSkeleton } from "./LeadCardSkeleton";
 
 interface ResultsListProps {
   results: any[];
@@ -192,9 +193,36 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
 
   if (isLoading) {
     return (
-      <div className="text-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
-        <p className="text-muted-foreground">Buscando empresas...</p>
+      <div className="space-y-4">
+        {/* Toolbar skeleton */}
+        <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl border border-border/60 bg-card/80">
+          <div className="flex items-center gap-3">
+            <div className="size-4 rounded skeleton-shimmer" />
+            <div className="h-4 w-40 skeleton-shimmer" />
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-24 skeleton-shimmer rounded-md" />
+            <div className="h-8 w-44 skeleton-shimmer rounded-md" />
+            <div className="h-8 w-40 skeleton-shimmer rounded-md" />
+          </div>
+        </div>
+        {/* Inline radar mini-loader */}
+        <div className="surface-raised p-4 flex items-center gap-4">
+          <div className="relative w-12 h-12 shrink-0">
+            <div className="radar absolute inset-0 rounded-full" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="size-6 rounded-full bg-primary text-accent flex items-center justify-center">
+                <MapPin className="w-3.5 h-3.5" fill="currentColor" />
+              </div>
+            </div>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold text-sm">Buscando empresas no Google Maps…</div>
+            <div className="text-xs text-muted-foreground">Coletando dados de contato e localização</div>
+            <div className="sweep-bar mt-2" />
+          </div>
+        </div>
+        <LeadCardSkeleton count={6} compact={compact} />
       </div>
     );
   }
