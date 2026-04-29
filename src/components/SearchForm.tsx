@@ -51,11 +51,11 @@ const LAST_SEARCH_KEY = "lastSearchLocation";
 export const SearchForm = ({ onSearch, selectedSearch }: SearchFormProps) => {
   const [category, setCategory] = useState("");
   const [selectedState, setSelectedState] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(LAST_SEARCH_KEY) || "{}").state || ""; } catch { return ""; }
+    try { return JSON.parse(localStorage.getItem(LAST_SEARCH_KEY) || "{}").state || "SP"; } catch { return "SP"; }
   });
   const [city, setCity] = useState("");
   const [pendingCity, setPendingCity] = useState<string>(() => {
-    try { return JSON.parse(localStorage.getItem(LAST_SEARCH_KEY) || "{}").city || ""; } catch { return ""; }
+    try { return JSON.parse(localStorage.getItem(LAST_SEARCH_KEY) || "{}").city || "São Paulo"; } catch { return "São Paulo"; }
   });
   const [neighborhood, setNeighborhood] = useState("");
   const [cities, setCities] = useState<string[]>([]);
