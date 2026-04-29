@@ -16,6 +16,7 @@ import {
   Building2,
   CheckCircle2,
 } from "lucide-react";
+import { ChevronDown, LayoutList, Rows3 } from "lucide-react";
 import {
   Pagination,
   PaginationContent,
@@ -73,6 +74,22 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
   const [sortBy, setSortBy] = useState<
     "relevance" | "rating_desc" | "rating_asc" | "reviews_desc" | "name_asc" | "proximity"
   >("relevance");
+  const [compact, setCompact] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    const saved = localStorage.getItem("results_compact_mode");
+    return saved === null ? true : saved === "true";
+  });
+  const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("results_compact_mode", String(compact));
+    }
+  }, [compact]);
+
+  const toggleExpand = (id: string) => {
+    setExpandedCards((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
   const pageSize = 10;
 
   useEffect(() => {
@@ -295,6 +312,26 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
           )}
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setCompact((c) => !c)}
+            className="h-8 text-xs"
+            title={compact ? "Visualização expandida" : "Visualização compacta"}
+          >
+            {compact ? (
+              <>
+                <LayoutList className="w-3.5 h-3.5 mr-1" />
+                Expandir
+              </>
+            ) : (
+              <>
+                <Rows3 className="w-3.5 h-3.5 mr-1" />
+                Compacto
+              </>
+            )}
+          </Button>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <ArrowUpDown className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Ordenar:</span>
@@ -337,6 +374,174 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
         {pageResults.map((r: any) => {
           const enr = getEnriched(r);
           const isSelected = !!selected[r.id];
+          const isExpanded = !compact || !!expandedCards[r.id];
+          if (compact) {
+            return (
+              <Card
+                key={r.id}
+                className={`relative transition-all hover:shadow-md ${
+                  isSelected ? "ring-2 ring-primary" : ""
+                }`}
+              >
+                <div className="flex items-center gap-3 px-3 py-2">
+                  <Checkbox
+                    checked={isSelected}
+                    onCheckedChange={(v) =>
+                      setSelected((prev) => {
+                        const next = { ...prev };
+                        if (v) next[r.id] = true;
+                        else delete next[r.id];
+                        return next;
+                      })
+                    }
+                  />
+                  <div className="flex-1 min-w-0 flex items-center gap-3 flex-wrap sm:flex-nowrap">
+                    <h3 className="font-semibold text-sm truncate min-w-0 flex-1">
+                      {r.business_name}
+                    </h3>
+                    {r.rating ? (
+                      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+                        <Star className="w-3 h-3 text-yellow-500 fill-current" />
+                        {r.rating}
+                        {r.reviews_count ? <span>({r.reviews_count})</span> : null}
+                      </span>
+                    ) : null}
+                    {r.phone && (
+                      <a
+                        href={`tel:${r.phone}`}
+                        className="hidden md:inline-flex items-center gap-1 text-xs text-primary hover:underline truncate max-w-[140px]"
+                      >
+                        <Phone className="w-3 h-3" /> {r.phone}
+                      </a>
+                    )}
+                    {r.address && (
+                      <span className="hidden lg:inline-flex items-center gap-1 text-xs text-muted-foreground truncate max-w-[260px]">
+                        <MapPin className="w-3 h-3" /> {r.address}
+                      </span>
+                    )}
+                    {enr && (
+                      <Badge variant="default" className="shrink-0 text-[10px] bg-primary/15 text-primary border-primary/30">
+                        <CheckCircle2 className="w-3 h-3 mr-1" />
+                        Enriquecido
+                      </Badge>
+                    )}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => toggleExpand(r.id)}
+                    className="h-7 w-7 shrink-0"
+                    aria-label={isExpanded ? "Recolher" : "Expandir"}
+                  >
+                    <ChevronDown
+                      className={`w-4 h-4 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                    />
+                  </Button>
+                </div>
+                {isExpanded && (
+                  <CardContent className="space-y-2 text-sm pt-0 border-t">
+                    <div className="pt-3" />
+                    {r.business_type && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        <Building2 className="w-3 h-3 mr-1" />
+                        {r.business_type}
+                      </Badge>
+                    )}
+                    {r.address && (
+                      <div className="flex items-start gap-2 text-muted-foreground">
+                        <MapPin className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                        <span className="text-xs leading-snug">{r.address}</span>
+                      </div>
+                    )}
+                    {r.phone && (
+                      <div className="flex items-center gap-2">
+                        <Phone className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                        <a href={`tel:${r.phone}`} className="text-xs text-primary hover:underline truncate">
+                          {r.phone}
+                        </a>
+                      </div>
+                    )}
+                    {r.email && (
+                      <div className="flex items-center gap-2">
+                        <Mail className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                        <a href={`mailto:${r.email}`} className="text-xs text-primary hover:underline truncate">
+                          {r.email}
+                        </a>
+                      </div>
+                    )}
+                    {r.website && (
+                      <div className="flex items-center gap-2">
+                        <Globe className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                        <a
+                          href={r.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-primary hover:underline truncate"
+                        >
+                          {r.website}
+                        </a>
+                      </div>
+                    )}
+                    <div className="flex flex-wrap gap-3 pt-1">
+                      {r.social_media?.instagram && (
+                        <a
+                          href={instagramUrl(r.social_media.instagram)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+                        >
+                          <Instagram className="w-3 h-3" /> Instagram
+                        </a>
+                      )}
+                      {r.social_media?.facebook && (
+                        <a
+                          href={facebookUrl(r.social_media.facebook)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+                        >
+                          <Facebook className="w-3 h-3" /> Facebook
+                        </a>
+                      )}
+                      {r.additional_data?.google_url && (
+                        <a
+                          href={r.additional_data.google_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+                        >
+                          <MapPin className="w-3 h-3" /> Mapa
+                        </a>
+                      )}
+                    </div>
+                    {(r.source_api || enr) && (
+                      <div className="flex items-center justify-between pt-2 border-t">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          {r.source_api && (
+                            <Badge variant="outline" className="text-[10px]">
+                              {r.source_api}
+                            </Badge>
+                          )}
+                        </div>
+                        {enr ? (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => setOpenDialog(r.id)}
+                            className="text-xs h-7"
+                          >
+                            <Sparkles className="w-3 h-3 mr-1" />
+                            Ver dados
+                          </Button>
+                        ) : null}
+                      </div>
+                    )}
+                  </CardContent>
+                )}
+              </Card>
+            );
+          }
           return (
             <Card
               key={r.id}
