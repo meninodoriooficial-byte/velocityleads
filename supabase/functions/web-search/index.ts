@@ -77,7 +77,7 @@ serve(async (req) => {
         success: true, 
         resultsCount: searchResults.length,
         totalCount: totalCount || 0,
-        hasMore: searchResults.length >= 10,
+        hasMore: searchResults.length >= 100,
         warning: warning ?? null,
       }),
       { 
@@ -210,38 +210,90 @@ async function callGooglePlaces(
   neighborhood: string | undefined,
   apiKey: string
 ): Promise<{ success: true; data: any[] } | { success: false; errorStatus: string; errorMessage: string; httpStatus?: number }> {
-  const location = neighborhood ? `${neighborhood}, ${city}, ${state}` : `${city}, ${state}`;
-  const query = `${category} ${location}`;
-  const params = new URLSearchParams({
-    query,
-    key: apiKey,
-    language: 'pt-BR',
-    region: 'br',
-  });
-  const placesUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?${params}`;
+  const TARGET = 100;
 
-  const response = await fetch(placesUrl);
-  if (!response.ok) {
-    return {
-      success: false,
-      errorStatus: 'HTTP_ERROR',
-      httpStatus: response.status,
-      errorMessage: `Google Places retornou HTTP ${response.status}.`,
-    };
+  // Monta variações de query para tentar atingir 100 resultados (Google limita ~60 por query)
+  const queries: string[] = [];
+  if (neighborhood) {
+    queries.push(`${category} ${neighborhood}, ${city}, ${state}`);
+    queries.push(`${category} ${neighborhood} ${city}`);
+  }
+  queries.push(`${category} ${city}, ${state}`);
+  queries.push(`${category} em ${city} ${state}`);
+  queries.push(`${category} próximo a ${city} ${state}`);
+
+  const collected: any[] = [];
+  const seenPlaceIds = new Set<string>();
+  let firstError: { errorStatus: string; errorMessage: string; httpStatus?: number } | null = null;
+  let anySuccess = false;
+
+  for (const query of queries) {
+    if (collected.length >= TARGET) break;
+
+    let pageToken: string | undefined = undefined;
+    let pagesFetched = 0;
+
+    // Cada query suporta até 3 páginas (60 resultados) via next_page_token
+    while (pagesFetched < 3 && collected.length < TARGET) {
+      const params = new URLSearchParams({
+        key: apiKey,
+        language: 'pt-BR',
+        region: 'br',
+      });
+      if (pageToken) {
+        params.set('pagetoken', pageToken);
+      } else {
+        params.set('query', query);
+      }
+      const placesUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?${params}`;
+
+      const response = await fetch(placesUrl);
+      if (!response.ok) {
+        if (!anySuccess && !firstError) {
+          firstError = {
+            errorStatus: 'HTTP_ERROR',
+            httpStatus: response.status,
+            errorMessage: `Google Places retornou HTTP ${response.status}.`,
+          };
+        }
+        break;
+      }
+
+      const data = await response.json();
+      if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
+        if (!anySuccess && !firstError) {
+          firstError = {
+            errorStatus: data.status || 'UNKNOWN',
+            errorMessage: data.error_message || `Google Places retornou status ${data.status}`,
+          };
+        }
+        break;
+      }
+
+      anySuccess = true;
+
+      for (const place of data.results || []) {
+        if (collected.length >= TARGET) break;
+        const pid = place.place_id;
+        if (pid && seenPlaceIds.has(pid)) continue;
+        if (pid) seenPlaceIds.add(pid);
+        collected.push(processGooglePlaceResult(place, category, collected.length + 1));
+      }
+
+      pagesFetched++;
+      pageToken = data.next_page_token;
+      if (!pageToken) break;
+
+      // O token só fica válido após ~2s
+      await new Promise((r) => setTimeout(r, 2100));
+    }
   }
 
-  const data = await response.json();
-  if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
-    return {
-      success: false,
-      errorStatus: data.status || 'UNKNOWN',
-      errorMessage: data.error_message || `Google Places retornou status ${data.status}`,
-    };
+  if (!anySuccess && firstError) {
+    return { success: false, ...firstError };
   }
 
-  const results = (data.results || []).slice(0, 10).map((place: any, index: number) =>
-    processGooglePlaceResult(place, category, index + 1)
-  );
+  const results = collected;
 
   // Enriquecer cada resultado com Place Details (telefone, site) e raspar o site
   const enriched = await Promise.all(
