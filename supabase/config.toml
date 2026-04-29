@@ -1,1 +1,7 @@
 project_id = "gtoifsgptdchbmupbkvi"
+
+[functions.mp-create-preference]
+verify_jwt = true
+
+[functions.mp-webhook]
+verify_jwt = false
