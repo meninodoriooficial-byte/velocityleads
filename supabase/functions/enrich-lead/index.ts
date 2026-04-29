@@ -98,7 +98,8 @@ serve(async (req) => {
     const lovableKey = Deno.env.get("LOVABLE_API_KEY");
     if (lovableKey) {
       try {
-        const aiData = await fetchAIEnrichment(result, lovableKey);
+        const customPrompt = await getSystemSetting(supabase, "ai_enrichment_prompt");
+        const aiData = await fetchAIEnrichment(result, lovableKey, customPrompt);
         if (aiData) {
           enrichment.ai = aiData;
           sourceUsed = sourceUsed ? `${sourceUsed}+ai` : "ai";
@@ -152,6 +153,27 @@ async function getDecryptedKey(supabase: any, keyName: string): Promise<string |
   }
 }
 
+async function getSystemSetting(supabase: any, key: string): Promise<string | null> {
+  try {
+    const { data, error } = await supabase
+      .from("system_settings")
+      .select("setting_value")
+      .eq("setting_key", key)
+      .maybeSingle();
+    if (error) {
+      console.log("getSystemSetting err", key, error);
+      return null;
+    }
+    const v = data?.setting_value;
+    if (typeof v === "string") return v;
+    if (v == null) return null;
+    return String(v);
+  } catch (e) {
+    console.log("getSystemSetting throw", e);
+    return null;
+  }
+}
+
 /** Constrói o update final para a search_results, propagando dados úteis (telefone, sócio, redes) para colunas de topo quando ausentes. */
 function buildResultUpdate(
   result: any,
@@ -159,6 +181,7 @@ function buildResultUpdate(
   sourceUsed: string
 ) {
   const cdd = enrichment.casadosdados as any;
+  const ai = enrichment.ai as any;
   const update: Record<string, any> = {
     enriched_data: enrichment,
     enriched_at: new Date().toISOString(),
@@ -179,6 +202,25 @@ function buildResultUpdate(
       socialChanged = true;
     }
     if (socialChanged) update.social_media = social;
+  }
+  if (ai) {
+    if (!update.email && !result.email && Array.isArray(ai.emails) && ai.emails[0]) {
+      update.email = ai.emails[0];
+    }
+    if (!update.phone && !result.phone && Array.isArray(ai.telefones) && ai.telefones[0]) {
+      update.phone = ai.telefones[0];
+    }
+    if (!result.website && ai.site) update.website = ai.site;
+    const social = { ...(update.social_media || result.social_media || {}) };
+    let changed = false;
+    const socials = ai.redes_sociais || {};
+    for (const k of ["instagram", "facebook", "linkedin", "youtube", "tiktok"]) {
+      if (!social[k] && socials[k]) {
+        social[k] = socials[k];
+        changed = true;
+      }
+    }
+    if (changed) update.social_media = social;
   }
   return update;
 }
@@ -329,14 +371,21 @@ async function safeText(resp: Response) {
   }
 }
 
-async function fetchAIEnrichment(result: any, apiKey: string) {
-  const prompt = `Pesquise informações públicas adicionais sobre a empresa abaixo e retorne dados estruturados úteis para prospecção B2B.
+async function fetchAIEnrichment(result: any, apiKey: string, customSystemPrompt?: string | null) {
+  const systemPrompt =
+    (customSystemPrompt && customSystemPrompt.trim().length > 0)
+      ? customSystemPrompt
+      : "Você é um analista de dados B2B brasileiro. Retorne apenas dados plausíveis baseados em informações públicas conhecidas. Se não souber, deixe null.";
+
+  const prompt = `Dados da empresa para pesquisar:
 
 Nome: ${result.business_name}
 Tipo: ${result.business_type || "—"}
 Endereço: ${result.address || "—"}
-Site: ${result.website || "—"}
-Telefone: ${result.phone || "—"}`;
+Site conhecido: ${result.website || "—"}
+Telefone conhecido: ${result.phone || "—"}
+
+Faça a varredura conforme suas instruções e devolva os dados estruturados via a função save_enrichment.`;
 
   const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
@@ -347,7 +396,7 @@ Telefone: ${result.phone || "—"}`;
     body: JSON.stringify({
       model: "google/gemini-3-flash-preview",
       messages: [
-        { role: "system", content: "Você é um analista de dados B2B brasileiro. Retorne apenas dados plausíveis baseados em informações públicas conhecidas. Se não souber, deixe null." },
+        { role: "system", content: systemPrompt },
         { role: "user", content: prompt },
       ],
       tools: [
@@ -355,10 +404,28 @@ Telefone: ${result.phone || "—"}`;
           type: "function",
           function: {
             name: "save_enrichment",
-            description: "Salva dados enriquecidos sobre a empresa",
+            description: "Salva dados enriquecidos sobre a empresa coletados em fontes públicas",
             parameters: {
               type: "object",
               properties: {
+                cnpj: { type: ["string", "null"], description: "CNPJ formatado, se identificado com alta confiança" },
+                razao_social: { type: ["string", "null"] },
+                nome_fantasia: { type: ["string", "null"] },
+                site: { type: ["string", "null"], description: "URL do site oficial" },
+                emails: { type: "array", items: { type: "string" }, description: "E-mails de contato encontrados" },
+                telefones: { type: "array", items: { type: "string" }, description: "Telefones adicionais (fixo/WhatsApp)" },
+                redes_sociais: {
+                  type: "object",
+                  properties: {
+                    instagram: { type: ["string", "null"] },
+                    facebook: { type: ["string", "null"] },
+                    linkedin: { type: ["string", "null"] },
+                    youtube: { type: ["string", "null"] },
+                    tiktok: { type: ["string", "null"] },
+                  },
+                  additionalProperties: false,
+                },
+                socios: { type: "array", items: { type: "string" }, description: "Nomes de sócios/responsáveis públicos" },
                 descricao: { type: "string", description: "Breve descrição (1-2 frases) da empresa" },
                 segmento: { type: "string" },
                 porte_estimado: { type: "string", enum: ["MEI", "Pequeno", "Médio", "Grande", "Desconhecido"] },
