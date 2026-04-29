@@ -375,47 +375,69 @@ export default function Dashboard() {
 
             {activeTab === "plans" && (
               <div className="space-y-6">
-                <div className="flex items-center justify-end gap-2 text-xs">
-                  <span className="text-muted-foreground">Modo de pagamento:</span>
-                  <button
-                    onClick={() => setPaymentMode("test")}
-                    className={`px-2.5 py-1 rounded-md font-semibold transition-colors ${paymentMode === "test" ? "bg-amber-500/15 text-amber-700 dark:text-amber-400" : "text-muted-foreground hover:bg-muted"}`}
-                  >
-                    Teste
-                  </button>
-                  <button
-                    onClick={() => setPaymentMode("live")}
-                    className={`px-2.5 py-1 rounded-md font-semibold transition-colors ${paymentMode === "live" ? "bg-success/15 text-success" : "text-muted-foreground hover:bg-muted"}`}
-                  >
-                    Produção
-                  </button>
+                <div className="flex items-center justify-end gap-3 text-xs">
+                  <span className="text-muted-foreground font-medium">Modo de pagamento</span>
+                  <div className="inline-flex p-1 rounded-xl bg-muted border border-border/60">
+                    <button
+                      onClick={() => setPaymentMode("test")}
+                      className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${paymentMode === "test" ? "bg-card shadow-sm text-amber-700 dark:text-amber-400" : "text-muted-foreground hover:text-foreground"}`}
+                    >
+                      Teste
+                    </button>
+                    <button
+                      onClick={() => setPaymentMode("live")}
+                      className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${paymentMode === "live" ? "bg-card shadow-sm text-success" : "text-muted-foreground hover:text-foreground"}`}
+                    >
+                      Produção
+                    </button>
+                  </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {packages.map((pkg: any) => {
                   const isCurrent = pkg.name.toLowerCase() === profile?.plan;
+                  const isPopular = packages[1]?.id === pkg.id && packages.length >= 3;
                   return (
                     <div
                       key={pkg.id}
-                      className={`card-elevated p-6 flex flex-col gap-4 relative ${
-                        isCurrent ? "ring-2 ring-accent" : ""
+                      className={`surface-raised p-6 flex flex-col gap-5 relative transition-all hover:-translate-y-0.5 ${
+                        isCurrent ? "ring-2 ring-accent" : isPopular ? "ring-1 ring-primary/20" : ""
                       }`}
                     >
                       {isCurrent && (
-                        <div className="absolute -top-3 right-4 px-3 py-1 bg-accent text-accent-foreground text-xs font-bold rounded-full">
+                        <div className="absolute -top-3 right-4 px-3 py-1 bg-accent text-accent-foreground text-xs font-bold rounded-full shadow-sm">
                           ATUAL
                         </div>
                       )}
+                      {!isCurrent && isPopular && (
+                        <div className="absolute -top-3 right-4 px-3 py-1 bg-primary text-accent text-xs font-bold rounded-full shadow-sm">
+                          POPULAR
+                        </div>
+                      )}
                       <div>
-                        <h3 className="font-bold text-xl tracking-tight">{pkg.name}</h3>
+                        <div className="flex items-center gap-2 mb-1">
+                          <Package className="size-4 text-muted-foreground" />
+                          <h3 className="font-bold text-xl tracking-tight">{pkg.name}</h3>
+                        </div>
                         <p className="text-sm text-muted-foreground mt-1">{pkg.description}</p>
                       </div>
                       <div className="flex items-baseline gap-1">
                         <span className="text-4xl font-bold tracking-tight">R$ {pkg.price}</span>
                         <span className="text-sm font-medium text-muted-foreground">/mês</span>
                       </div>
-                      <div className="flex items-center gap-2 text-sm font-medium">
-                        <CheckCircle2 className="size-4 text-success" />
-                        {pkg.searches_limit} buscas mensais
+                      <div className="divider-soft" />
+                      <div className="space-y-2 text-sm font-medium">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="size-4 text-success shrink-0" />
+                          {pkg.searches_limit} buscas mensais
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="size-4 text-success shrink-0" />
+                          Exportação em CSV
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="size-4 text-success shrink-0" />
+                          Suporte por e-mail
+                        </div>
                       </div>
                       <Button
                         className={isCurrent ? "" : "btn-volt"}
