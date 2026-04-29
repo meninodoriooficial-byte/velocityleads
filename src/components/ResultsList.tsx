@@ -772,7 +772,27 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
                       {cdd.porte && <><dt className="text-muted-foreground">Porte</dt><dd>{cdd.porte}</dd></>}
                       {cdd.capital_social && <><dt className="text-muted-foreground">Capital Social</dt><dd>{cdd.capital_social}</dd></>}
                       {cdd.data_abertura && <><dt className="text-muted-foreground">Abertura</dt><dd>{cdd.data_abertura}</dd></>}
+                      {cdd.proprietario && <><dt className="text-muted-foreground">Proprietário</dt><dd className="font-medium">{cdd.proprietario}</dd></>}
+                      {cdd.telefone && <><dt className="text-muted-foreground">Telefone direto</dt><dd><a href={`tel:${cdd.telefone}`} className="text-primary hover:underline">{cdd.telefone}</a></dd></>}
+                      {cdd.email && <><dt className="text-muted-foreground">E-mail</dt><dd><a href={`mailto:${cdd.email}`} className="text-primary hover:underline">{cdd.email}</a></dd></>}
+                      {cdd.instagram && <><dt className="text-muted-foreground">Instagram</dt><dd><a href={instagramUrl(cdd.instagram)} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{cdd.instagram}</a></dd></>}
+                      {cdd.facebook && <><dt className="text-muted-foreground">Facebook</dt><dd><a href={facebookUrl(cdd.facebook)} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{cdd.facebook}</a></dd></>}
                     </dl>
+                    {Array.isArray(cdd.socios) && cdd.socios.length > 0 && (
+                      <div className="mt-3">
+                        <p className="text-xs text-muted-foreground mb-1">Sócios / QSA</p>
+                        <ul className="list-disc pl-5 space-y-0.5 text-xs">
+                          {cdd.socios.slice(0, 8).map((s: any, i: number) => (
+                            <li key={i}>
+                              {s.nome_socio || s.nome || s.razao_social || "—"}
+                              {s.qualificacao_socio || s.qualificacao
+                                ? ` — ${s.qualificacao_socio || s.qualificacao}`
+                                : ""}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 )}
                 {ai && (
