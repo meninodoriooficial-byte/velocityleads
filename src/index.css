@@ -130,3 +130,63 @@
     box-shadow: var(--shadow-soft);
   }
 }
+
+@layer components {
+  /* Surface w/ subtle inner highlight */
+  .surface-raised {
+    @apply bg-card border border-border/60 rounded-2xl;
+    background-image: linear-gradient(180deg, hsl(0 0% 100% / 0.6), hsl(80 33% 99% / 0));
+    box-shadow: 0 1px 0 hsl(0 0% 100%) inset, var(--shadow-card);
+  }
+
+  /* Hero gradient panel */
+  .hero-panel {
+    @apply relative overflow-hidden rounded-3xl border border-border/60;
+    background:
+      radial-gradient(1200px 300px at 110% -20%, hsl(70 100% 50% / 0.18), transparent 60%),
+      radial-gradient(800px 240px at -10% 120%, hsl(240 6% 6% / 0.06), transparent 60%),
+      linear-gradient(180deg, hsl(0 0% 100%), hsl(80 33% 98%));
+  }
+  .hero-grid::before {
+    content: "";
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(hsl(240 6% 6% / 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(240 6% 6% / 0.04) 1px, transparent 1px);
+    background-size: 28px 28px;
+    mask-image: radial-gradient(closest-side at 80% 0%, black 30%, transparent 75%);
+    pointer-events: none;
+  }
+
+  /* Stat tile */
+  .stat-tile {
+    @apply surface-raised p-5 flex flex-col gap-3 relative overflow-hidden transition-all;
+  }
+  .stat-tile:hover {
+    box-shadow: 0 1px 0 hsl(0 0% 100%) inset, 0 12px 32px -16px hsl(240 6% 6% / 0.18);
+    transform: translateY(-1px);
+  }
+
+  /* Volt chip */
+  .chip-volt {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider;
+    background: hsl(70 100% 50% / 0.18);
+    color: hsl(70 80% 25%);
+    border: 1px solid hsl(70 100% 50% / 0.4);
+  }
+
+  .divider-soft {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, hsl(var(--border)), transparent);
+  }
+
+  /* Progress ring helper backgrounds */
+  .ring-track {
+    background: conic-gradient(hsl(var(--accent)) calc(var(--p, 0) * 1%), hsl(var(--muted)) 0);
+  }
+}
+
+/* Subtle scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: hsl(240 6% 80%); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: hsl(240 6% 65%); border: 2px solid transparent; background-clip: padding-box; }
