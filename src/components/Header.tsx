@@ -1,35 +1,38 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { Zap } from "lucide-react";
 
 export const Header = () => {
   return (
-    <header className="border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-50">
-      <div className="container mx-auto px-6 py-4">
+    <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-xl">
+      <div className="container mx-auto px-6 py-3.5">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
-              <span className="text-white font-bold text-sm">BI</span>
+          <Link to="/" className="flex items-center gap-2.5 group">
+            <div className="size-9 rounded-xl bg-primary flex items-center justify-center text-accent shadow-card group-hover:scale-105 transition-transform">
+              <Zap className="size-4" fill="currentColor" />
             </div>
-            <span className="text-xl font-semibold text-foreground">BusinessIntel</span>
-          </div>
+            <span className="text-lg font-bold tracking-tight">
+              Velocity<span className="text-muted-foreground font-medium">Leads</span>
+            </span>
+          </Link>
           
-          <nav className="hidden md:flex items-center space-x-8">
-            <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">
+          <nav className="hidden md:flex items-center gap-8">
+            <a href="#features" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
               Recursos
             </a>
-            <a href="#pricing" className="text-muted-foreground hover:text-foreground transition-colors">
-              Preços
+            <a href="#how-it-works" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+              Como funciona
             </a>
-            <a href="#contact" className="text-muted-foreground hover:text-foreground transition-colors">
-              Contato
+            <a href="#pricing" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+              Preços
             </a>
           </nav>
 
-          <div className="flex items-center space-x-4">
-            <Button variant="ghost" asChild>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" asChild className="font-semibold">
               <Link to="/auth">Entrar</Link>
             </Button>
-            <Button asChild>
+            <Button asChild className="btn-volt">
               <Link to="/auth">Começar Grátis</Link>
             </Button>
           </div>
