@@ -399,8 +399,7 @@ export const AllUserResults = () => {
             Nenhum lead corresponde aos filtros aplicados.
           </p>
         ) : (
-          <div className="border rounded-md overflow-x-auto bg-card">
-            <Table>
+          <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="min-w-[180px]">Empresa</TableHead>
@@ -457,7 +456,6 @@ export const AllUserResults = () => {
                 ))}
               </TableBody>
             </Table>
-          </div>
         )}
       </CardContent>
     </Card>
