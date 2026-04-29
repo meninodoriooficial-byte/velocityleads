@@ -7,13 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/components/ui/use-toast";
 import { SearchForm } from "@/components/SearchForm";
-import { TrendingUp, Users, Sparkles, CheckCircle2, KeyRound, History, AlertTriangle } from "lucide-react";
+import { TrendingUp, Users, Sparkles, CheckCircle2, KeyRound, History, AlertTriangle, Package } from "lucide-react";
 import { ResultsSection } from "@/components/ResultsSection";
 import { ApiConfigManager } from "@/components/admin/ApiConfigManager";
 import { ApiErrorLogs } from "@/components/admin/ApiErrorLogs";
 import { SourceHistory } from "@/components/admin/SourceHistory";
 import { AllUserResults } from "@/components/AllUserResults";
 import { UserManager } from "@/components/admin/UserManager";
+import { PackagesManager } from "@/components/admin/PackagesManager";
 import { explainEdgeError } from "@/lib/edgeFunction";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar, type DashboardTab } from "@/components/AppSidebar";
@@ -349,10 +350,14 @@ export default function Dashboard() {
 
             {activeTab === "admin" && isAdmin && (
               <Tabs defaultValue="users" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto p-1 bg-muted/50 mb-6">
+                <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 h-auto p-1 bg-muted/50 mb-6">
                   <TabsTrigger value="users" className="gap-2 py-2.5">
                     <Users className="w-4 h-4" />
                     <span className="hidden sm:inline">Usuários</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="packages" className="gap-2 py-2.5">
+                    <Package className="w-4 h-4" />
+                    <span className="hidden sm:inline">Pacotes</span>
                   </TabsTrigger>
                   <TabsTrigger value="apis" className="gap-2 py-2.5">
                     <KeyRound className="w-4 h-4" />
@@ -381,6 +386,23 @@ export default function Dashboard() {
                     </CardHeader>
                     <CardContent>
                       <UserManager />
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="packages" className="mt-0">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Package className="w-5 h-5" />
+                        Pacotes de busca
+                      </CardTitle>
+                      <CardDescription>
+                        Crie, edite e remova pacotes oferecidos aos usuários.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <PackagesManager />
                     </CardContent>
                   </Card>
                 </TabsContent>
