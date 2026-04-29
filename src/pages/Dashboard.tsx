@@ -462,28 +462,28 @@ export default function Dashboard() {
 
             {activeTab === "admin" && isAdmin && (
               <Tabs defaultValue="users" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 md:grid-cols-6 h-auto p-1 bg-muted/50 mb-6">
-                  <TabsTrigger value="users" className="gap-2 py-2.5">
+                <TabsList className="grid w-full grid-cols-2 md:grid-cols-6 h-auto p-1.5 bg-muted/60 border border-border/60 rounded-xl mb-6">
+                  <TabsTrigger value="users" className="gap-2 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg font-semibold">
                     <Users className="w-4 h-4" />
                     <span className="hidden sm:inline">Usuários</span>
                   </TabsTrigger>
-                  <TabsTrigger value="packages" className="gap-2 py-2.5">
+                  <TabsTrigger value="packages" className="gap-2 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg font-semibold">
                     <Package className="w-4 h-4" />
                     <span className="hidden sm:inline">Pacotes</span>
                   </TabsTrigger>
-                  <TabsTrigger value="apis" className="gap-2 py-2.5">
+                  <TabsTrigger value="apis" className="gap-2 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg font-semibold">
                     <KeyRound className="w-4 h-4" />
                     <span className="hidden sm:inline">APIs</span>
                   </TabsTrigger>
-                  <TabsTrigger value="payments" className="gap-2 py-2.5">
+                  <TabsTrigger value="payments" className="gap-2 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg font-semibold">
                     <CreditCard className="w-4 h-4" />
                     <span className="hidden sm:inline">Pagamentos</span>
                   </TabsTrigger>
-                  <TabsTrigger value="history" className="gap-2 py-2.5">
+                  <TabsTrigger value="history" className="gap-2 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg font-semibold">
                     <History className="w-4 h-4" />
                     <span className="hidden sm:inline">Histórico</span>
                   </TabsTrigger>
-                  <TabsTrigger value="errors" className="gap-2 py-2.5">
+                  <TabsTrigger value="errors" className="gap-2 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg font-semibold">
                     <AlertTriangle className="w-4 h-4" />
                     <span className="hidden sm:inline">Erros</span>
                   </TabsTrigger>
