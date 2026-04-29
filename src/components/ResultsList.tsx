@@ -292,7 +292,7 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
   return (
     <div className="space-y-4">
       {/* Barra de seleção em lote */}
-      <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-lg border bg-card">
+      <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl border border-border/60 bg-card/80 backdrop-blur-sm shadow-[0_1px_0_hsl(0_0%_100%)_inset,0_2px_10px_-4px_hsl(240_6%_6%/0.05)]">
         <div className="flex items-center gap-3">
           <Checkbox
             checked={allPageSelected ? true : somePageSelected ? "indeterminate" : false}
@@ -370,7 +370,7 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
       </div>
 
       {/* Cards */}
-      <div className="grid grid-cols-1 gap-4">
+      <div className="grid grid-cols-1 gap-3">
         {pageResults.map((r: any) => {
           const enr = getEnriched(r);
           const isSelected = !!selected[r.id];
@@ -379,11 +379,9 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
             return (
               <Card
                 key={r.id}
-                className={`relative transition-all hover:shadow-md ${
-                  isSelected ? "ring-2 ring-primary" : ""
-                }`}
+                className={`lead-card border ${isSelected ? "is-selected" : ""}`}
               >
-                <div className="flex items-center gap-3 px-3 py-2">
+                <div className="flex items-center gap-3 px-4 py-3">
                   <Checkbox
                     checked={isSelected}
                     onCheckedChange={(v) =>
@@ -395,32 +393,42 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
                       })
                     }
                   />
+                  <div className="size-9 rounded-xl bg-secondary text-foreground font-bold flex items-center justify-center text-sm shrink-0">
+                    {(r.business_name || "?").charAt(0).toUpperCase()}
+                  </div>
                   <div className="flex-1 min-w-0 flex items-center gap-3 flex-wrap sm:flex-nowrap">
-                    <h3 className="font-semibold text-sm truncate min-w-0 flex-1">
-                      {r.business_name}
-                    </h3>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-bold text-sm truncate leading-tight">
+                        {r.business_name}
+                      </h3>
+                      {r.business_type && (
+                        <div className="text-[11px] font-medium text-muted-foreground truncate mt-0.5">
+                          {r.business_type}
+                        </div>
+                      )}
+                    </div>
                     {r.rating ? (
-                      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground shrink-0">
-                        <Star className="w-3 h-3 text-yellow-500 fill-current" />
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold shrink-0 px-2 py-1 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-400">
+                        <Star className="w-3 h-3 fill-current" />
                         {r.rating}
-                        {r.reviews_count ? <span>({r.reviews_count})</span> : null}
+                        {r.reviews_count ? <span className="text-muted-foreground font-normal">({r.reviews_count})</span> : null}
                       </span>
                     ) : null}
                     {r.phone && (
                       <a
                         href={`tel:${r.phone}`}
-                        className="hidden md:inline-flex items-center gap-1 text-xs text-primary hover:underline truncate max-w-[140px]"
+                        className="hidden md:inline-flex items-center gap-1.5 text-xs font-medium text-foreground/80 hover:text-primary truncate max-w-[160px] px-2 py-1 rounded-md hover:bg-secondary transition-colors"
                       >
-                        <Phone className="w-3 h-3" /> {r.phone}
+                        <Phone className="w-3 h-3 text-muted-foreground" /> {r.phone}
                       </a>
                     )}
                     {r.address && (
-                      <span className="hidden lg:inline-flex items-center gap-1 text-xs text-muted-foreground truncate max-w-[260px]">
+                      <span className="hidden lg:inline-flex items-center gap-1.5 text-xs text-muted-foreground truncate max-w-[260px]">
                         <MapPin className="w-3 h-3" /> {r.address}
                       </span>
                     )}
                     {enr && (
-                      <Badge variant="default" className="shrink-0 text-[10px] bg-primary/15 text-primary border-primary/30">
+                      <Badge variant="default" className="shrink-0 text-[10px] bg-accent/20 text-accent-foreground border-accent/40">
                         <CheckCircle2 className="w-3 h-3 mr-1" />
                         Enriquecido
                       </Badge>
@@ -431,7 +439,7 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
                     variant="ghost"
                     size="icon"
                     onClick={() => toggleExpand(r.id)}
-                    className="h-7 w-7 shrink-0"
+                    className="h-8 w-8 shrink-0 hover:bg-secondary"
                     aria-label={isExpanded ? "Recolher" : "Expandir"}
                   >
                     <ChevronDown
@@ -440,8 +448,7 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
                   </Button>
                 </div>
                 {isExpanded && (
-                  <CardContent className="space-y-2 text-sm pt-0 border-t">
-                    <div className="pt-3" />
+                  <CardContent className="space-y-2.5 text-sm pt-4 border-t border-border/60 bg-muted/20 rounded-b-2xl">
                     {r.business_type && (
                       <Badge variant="secondary" className="text-[10px]">
                         <Building2 className="w-3 h-3 mr-1" />
@@ -545,13 +552,11 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
           return (
             <Card
               key={r.id}
-              className={`relative transition-all hover:shadow-md ${
-                isSelected ? "ring-2 ring-primary" : ""
-              }`}
+              className={`lead-card border ${isSelected ? "is-selected" : ""}`}
             >
-              <CardHeader className="pb-3">
+              <CardHeader className="pb-4">
                 <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-start gap-2 min-w-0">
+                  <div className="flex items-start gap-3 min-w-0">
                     <Checkbox
                       checked={isSelected}
                       onCheckedChange={(v) =>
@@ -564,57 +569,76 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
                       }
                       className="mt-1"
                     />
+                    <div className="size-10 rounded-xl bg-secondary text-foreground font-bold flex items-center justify-center text-base shrink-0">
+                      {(r.business_name || "?").charAt(0).toUpperCase()}
+                    </div>
                     <div className="min-w-0">
-                      <h3 className="font-semibold text-base leading-tight truncate">
+                      <h3 className="font-bold text-base leading-tight truncate">
                         {r.business_name}
                       </h3>
                       {r.business_type && (
-                        <Badge variant="secondary" className="mt-1 text-[10px]">
+                        <Badge variant="secondary" className="mt-1.5 text-[10px] font-semibold">
                           <Building2 className="w-3 h-3 mr-1" />
                           {r.business_type}
                         </Badge>
                       )}
                     </div>
                   </div>
-                  {enr && (
-                    <Badge variant="default" className="shrink-0 text-[10px] bg-primary/15 text-primary border-primary/30">
-                      <CheckCircle2 className="w-3 h-3 mr-1" />
-                      Enriquecido
-                    </Badge>
-                  )}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {r.rating ? (
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-400">
+                        <Star className="w-3 h-3 fill-current" />
+                        {r.rating}
+                      </span>
+                    ) : null}
+                    {enr && (
+                      <Badge variant="default" className="text-[10px] bg-accent/20 text-accent-foreground border-accent/40">
+                        <CheckCircle2 className="w-3 h-3 mr-1" />
+                        Enriquecido
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-2 text-sm">
+              <CardContent className="space-y-2.5 text-sm">
                 {r.address && (
                   <div className="flex items-start gap-2 text-muted-foreground">
-                    <MapPin className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                    <span className="text-xs leading-snug">{r.address}</span>
+                    <div className="size-6 rounded-md bg-muted flex items-center justify-center shrink-0 mt-0.5">
+                      <MapPin className="w-3.5 h-3.5" />
+                    </div>
+                    <span className="text-xs leading-snug pt-1">{r.address}</span>
                   </div>
                 )}
                 {r.phone && (
                   <div className="flex items-center gap-2">
-                    <Phone className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                    <a href={`tel:${r.phone}`} className="text-xs text-primary hover:underline truncate">
+                    <div className="size-6 rounded-md bg-muted text-muted-foreground flex items-center justify-center shrink-0">
+                      <Phone className="w-3.5 h-3.5" />
+                    </div>
+                    <a href={`tel:${r.phone}`} className="text-xs font-medium text-foreground hover:text-primary hover:underline truncate">
                       {r.phone}
                     </a>
                   </div>
                 )}
                 {r.email && (
                   <div className="flex items-center gap-2">
-                    <Mail className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                    <a href={`mailto:${r.email}`} className="text-xs text-primary hover:underline truncate">
+                    <div className="size-6 rounded-md bg-muted text-muted-foreground flex items-center justify-center shrink-0">
+                      <Mail className="w-3.5 h-3.5" />
+                    </div>
+                    <a href={`mailto:${r.email}`} className="text-xs font-medium text-foreground hover:text-primary hover:underline truncate">
                       {r.email}
                     </a>
                   </div>
                 )}
                 {r.website && (
                   <div className="flex items-center gap-2">
-                    <Globe className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                    <div className="size-6 rounded-md bg-muted text-muted-foreground flex items-center justify-center shrink-0">
+                      <Globe className="w-3.5 h-3.5" />
+                    </div>
                     <a
                       href={r.website}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs text-primary hover:underline truncate"
+                      className="text-xs font-medium text-foreground hover:text-primary hover:underline truncate"
                     >
                       {r.website}
                     </a>
@@ -626,7 +650,7 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
                       href={instagramUrl(r.social_media.instagram)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+                      className="text-[11px] font-semibold inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-secondary hover:bg-accent hover:text-accent-foreground transition-colors"
                     >
                       <Instagram className="w-3 h-3" /> Instagram
                     </a>
@@ -636,7 +660,7 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
                       href={facebookUrl(r.social_media.facebook)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+                      className="text-[11px] font-semibold inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-secondary hover:bg-accent hover:text-accent-foreground transition-colors"
                     >
                       <Facebook className="w-3 h-3" /> Facebook
                     </a>
@@ -646,25 +670,21 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
                       href={r.additional_data.google_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+                      className="text-[11px] font-semibold inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-secondary hover:bg-accent hover:text-accent-foreground transition-colors"
                     >
                       <MapPin className="w-3 h-3" /> Mapa
                     </a>
                   )}
                 </div>
-                <div className="flex items-center justify-between pt-2 border-t">
+                <div className="flex items-center justify-between pt-3 mt-1 border-t border-border/60">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    {r.rating ? (
-                      <span className="inline-flex items-center gap-1">
-                        <Star className="w-3 h-3 text-yellow-500 fill-current" />
-                        {r.rating}
-                        {r.reviews_count ? <span>({r.reviews_count})</span> : null}
-                      </span>
+                    {r.reviews_count ? (
+                      <span className="font-medium">{r.reviews_count} avaliações</span>
                     ) : (
                       <span>Sem avaliações</span>
                     )}
                     {r.source_api && (
-                      <Badge variant="outline" className="text-[10px]">
+                      <Badge variant="outline" className="text-[10px] font-semibold">
                         {r.source_api}
                       </Badge>
                     )}
@@ -674,7 +694,7 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
                       size="sm"
                       variant="secondary"
                       onClick={() => setOpenDialog(r.id)}
-                      className="text-xs h-7"
+                      className="text-xs h-8 font-semibold"
                     >
                       <Sparkles className="w-3 h-3 mr-1" />
                       Ver dados

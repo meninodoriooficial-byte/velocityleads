@@ -184,6 +184,43 @@
   .ring-track {
     background: conic-gradient(hsl(var(--accent)) calc(var(--p, 0) * 1%), hsl(var(--muted)) 0);
   }
+
+  /* Lead card (results) */
+  .lead-card {
+    @apply surface-raised transition-all;
+  }
+  .lead-card:hover {
+    box-shadow: 0 1px 0 hsl(0 0% 100%) inset, 0 16px 40px -20px hsl(240 6% 6% / 0.18);
+    border-color: hsl(var(--border));
+    transform: translateY(-1px);
+  }
+  .lead-card.is-selected {
+    border-color: hsl(var(--accent));
+    box-shadow: 0 0 0 3px hsl(var(--accent) / 0.18), 0 1px 0 hsl(0 0% 100%) inset, var(--shadow-card);
+  }
+
+  /* Package card highlight ring */
+  .pkg-card {
+    @apply surface-raised relative transition-all;
+  }
+  .pkg-card:hover {
+    box-shadow: 0 1px 0 hsl(0 0% 100%) inset, 0 24px 48px -24px hsl(240 6% 6% / 0.22);
+    transform: translateY(-3px);
+  }
+  .pkg-card.is-popular {
+    background-image:
+      radial-gradient(600px 160px at 100% -20%, hsl(70 100% 50% / 0.18), transparent 60%),
+      linear-gradient(180deg, hsl(0 0% 100%), hsl(80 33% 99%));
+    border-color: hsl(70 100% 50% / 0.35);
+  }
+  .pkg-card.is-current {
+    box-shadow: 0 0 0 2px hsl(var(--accent)), 0 1px 0 hsl(0 0% 100%) inset, var(--shadow-card);
+  }
+
+  /* Mini icon chip */
+  .icon-chip {
+    @apply inline-flex items-center justify-center rounded-lg shrink-0;
+  }
 }
 
 /* Subtle scrollbar */
