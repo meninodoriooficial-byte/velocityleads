@@ -221,6 +221,55 @@
   .icon-chip {
     @apply inline-flex items-center justify-center rounded-lg shrink-0;
   }
+
+  /* Shimmer skeleton */
+  .skeleton-shimmer {
+    @apply relative overflow-hidden bg-muted rounded-md;
+  }
+  .skeleton-shimmer::after {
+    content: "";
+    position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent, hsl(0 0% 100% / 0.55), transparent);
+    transform: translateX(-100%);
+    animation: shimmer 1.6s infinite;
+  }
+  @keyframes shimmer {
+    100% { transform: translateX(100%); }
+  }
+
+  /* Radar pulse — for maps loader */
+  .radar {
+    @apply relative inline-flex items-center justify-center;
+  }
+  .radar::before, .radar::after {
+    content: "";
+    position: absolute; inset: 0;
+    border-radius: 9999px;
+    border: 2px solid hsl(var(--accent));
+    opacity: 0.6;
+    animation: radar-pulse 2s ease-out infinite;
+  }
+  .radar::after { animation-delay: 1s; }
+  @keyframes radar-pulse {
+    0%   { transform: scale(0.6); opacity: 0.7; }
+    80%  { opacity: 0.05; }
+    100% { transform: scale(2.2); opacity: 0; }
+  }
+
+  /* Sweep gradient (used for map progress bar) */
+  .sweep-bar {
+    @apply relative h-1 rounded-full overflow-hidden bg-muted;
+  }
+  .sweep-bar::after {
+    content: "";
+    position: absolute; top: 0; left: -40%; height: 100%; width: 40%;
+    background: linear-gradient(90deg, transparent, hsl(var(--accent)), transparent);
+    animation: sweep 1.4s ease-in-out infinite;
+  }
+  @keyframes sweep {
+    0%   { left: -40%; }
+    100% { left: 100%; }
+  }
 }
 
 /* Subtle scrollbar */
