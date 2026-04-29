@@ -337,7 +337,23 @@ export default function Dashboard() {
             )}
 
             {activeTab === "plans" && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-6">
+                <div className="flex items-center justify-end gap-2 text-xs">
+                  <span className="text-muted-foreground">Modo de pagamento:</span>
+                  <button
+                    onClick={() => setPaymentMode("test")}
+                    className={`px-2.5 py-1 rounded-md font-semibold transition-colors ${paymentMode === "test" ? "bg-amber-500/15 text-amber-700 dark:text-amber-400" : "text-muted-foreground hover:bg-muted"}`}
+                  >
+                    Teste
+                  </button>
+                  <button
+                    onClick={() => setPaymentMode("live")}
+                    className={`px-2.5 py-1 rounded-md font-semibold transition-colors ${paymentMode === "live" ? "bg-success/15 text-success" : "text-muted-foreground hover:bg-muted"}`}
+                  >
+                    Produção
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {packages.map((pkg: any) => {
                   const isCurrent = pkg.name.toLowerCase() === profile?.plan;
                   return (
@@ -366,14 +382,20 @@ export default function Dashboard() {
                       </div>
                       <Button
                         className={isCurrent ? "" : "btn-volt"}
-                        disabled={isCurrent}
+                        disabled={isCurrent || purchasingId === pkg.id}
                         variant={isCurrent ? "secondary" : "default"}
+                        onClick={() => !isCurrent && handleBuyPackage(pkg)}
                       >
-                        {isCurrent ? "Plano Atual" : "Fazer Upgrade"}
+                        {isCurrent
+                          ? "Plano Atual"
+                          : purchasingId === pkg.id
+                            ? "Redirecionando..."
+                            : "Comprar pacote"}
                       </Button>
                     </div>
                   );
                 })}
+                </div>
               </div>
             )}
 
