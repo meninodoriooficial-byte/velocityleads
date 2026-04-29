@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, RefreshCw, Receipt } from "lucide-react";
+import { Loader2, RefreshCw, Receipt, Wallet, Search as SearchIcon, ShoppingBag } from "lucide-react";
 
 type Order = {
   id: string;
@@ -116,27 +116,36 @@ export function PurchasesHistory() {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="card-elevated p-5">
-          <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Total pago
+        <div className="surface-raised p-5 flex items-center gap-4">
+          <div className="size-11 rounded-xl bg-success/10 text-success flex items-center justify-center">
+            <Wallet className="size-5" />
           </div>
-          <div className="text-2xl font-bold tabular-nums mt-1">{formatBRL(totalPaid)}</div>
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Total pago</div>
+            <div className="text-2xl font-bold tabular-nums mt-0.5">{formatBRL(totalPaid)}</div>
+          </div>
         </div>
-        <div className="card-elevated p-5">
-          <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Buscas adquiridas
+        <div className="surface-raised p-5 flex items-center gap-4">
+          <div className="size-11 rounded-xl bg-accent/15 text-accent-foreground flex items-center justify-center">
+            <SearchIcon className="size-5" />
           </div>
-          <div className="text-2xl font-bold tabular-nums mt-1">{totalCredited}</div>
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Buscas adquiridas</div>
+            <div className="text-2xl font-bold tabular-nums mt-0.5">{totalCredited}</div>
+          </div>
         </div>
-        <div className="card-elevated p-5">
-          <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Pedidos
+        <div className="surface-raised p-5 flex items-center gap-4">
+          <div className="size-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+            <ShoppingBag className="size-5" />
           </div>
-          <div className="text-2xl font-bold tabular-nums mt-1">{orders.length}</div>
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Pedidos</div>
+            <div className="text-2xl font-bold tabular-nums mt-0.5">{orders.length}</div>
+          </div>
         </div>
       </div>
 
-      <div className="card-elevated p-6">
+      <div className="surface-raised p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-lg flex items-center gap-2">
             <Receipt className="size-5" /> Histórico de compras
