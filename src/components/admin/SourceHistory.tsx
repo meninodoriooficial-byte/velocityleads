@@ -69,8 +69,7 @@ export const SourceHistory = () => {
           Nenhuma ação registrada ainda.
         </div>
       ) : (
-        <div className="border rounded-md">
-          <Table>
+        <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Integração / Fonte</TableHead>
@@ -90,7 +89,6 @@ export const SourceHistory = () => {
               ))}
             </TableBody>
           </Table>
-        </div>
       )}
     </div>
   );
