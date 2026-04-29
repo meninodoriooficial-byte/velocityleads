@@ -12,6 +12,7 @@ import { ResultsSection } from "@/components/ResultsSection";
 import { ApiConfigManager } from "@/components/admin/ApiConfigManager";
 import { ApiErrorLogs } from "@/components/admin/ApiErrorLogs";
 import { SourceHistory } from "@/components/admin/SourceHistory";
+import { AiPromptManager } from "@/components/admin/AiPromptManager";
 import { AllUserResults } from "@/components/AllUserResults";
 import { UserManager } from "@/components/admin/UserManager";
 import { PackagesManager } from "@/components/admin/PackagesManager";
