@@ -77,7 +77,7 @@ serve(async (req) => {
         success: true, 
         resultsCount: searchResults.length,
         totalCount: totalCount || 0,
-        hasMore: searchResults.length >= 10,
+        hasMore: searchResults.length >= 100,
         warning: warning ?? null,
       }),
       { 
