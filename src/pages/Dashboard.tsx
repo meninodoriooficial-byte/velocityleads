@@ -27,6 +27,8 @@ export default function Dashboard() {
   const [packages, setPackages] = useState([]);
   const [activeTab, setActiveTab] = useState<DashboardTab>("search");
   const [selectedSearch, setSelectedSearch] = useState(null);
+  const [purchasingId, setPurchasingId] = useState<string | null>(null);
+  const [paymentMode, setPaymentMode] = useState<"test" | "live">("test");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -61,6 +63,32 @@ export default function Dashboard() {
       setPackages(data || []);
     } catch (error) {
       console.error('Error fetching packages:', error);
+    }
+  };
+
+  const handleBuyPackage = async (pkg: any) => {
+    setPurchasingId(pkg.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("mp-create-preference", {
+        body: {
+          packageId: pkg.id,
+          mode: paymentMode,
+          returnUrl: `${window.location.origin}/payment/return`,
+        },
+      });
+      if (error) throw error;
+      if (!data?.initPoint) throw new Error("URL de checkout não retornada");
+      window.location.href = data.initPoint;
+    } catch (e: any) {
+      console.error("Erro ao iniciar pagamento", e);
+      toast({
+        title: "Não foi possível iniciar o pagamento",
+        description:
+          e?.message ||
+          "Verifique se o Access Token do Mercado Pago está configurado no painel admin.",
+        variant: "destructive",
+      });
+      setPurchasingId(null);
     }
   };
 
