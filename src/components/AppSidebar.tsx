@@ -26,7 +26,7 @@ interface AppSidebarProps {
 const navItems: { key: DashboardTab; label: string; icon: any; group: "main" | "manage" }[] = [
   { key: "search", label: "Nova Busca", icon: Search, group: "main" },
   { key: "results", label: "Histórico de Leads", icon: ListChecks, group: "main" },
-  { key: "history", label: "Histórico", icon: History, group: "main" },
+  { key: "history", label: "Histórico de Buscas", icon: History, group: "main" },
   { key: "plans", label: "Planos", icon: Package, group: "manage" },
 ];
 
