@@ -77,7 +77,14 @@ serve(async (req) => {
     const cddKey = await getDecryptedKey(supabase, "CASADOSDADOS_API_KEY");
     if (cddKey) {
       try {
-        const cddData = await fetchCasaDosDados(result.business_name, cddKey);
+        const cddData = await fetchCasaDosDados(
+          {
+            name: result.business_name,
+            atividade: result.business_type,
+            address: result.address,
+          },
+          cddKey
+        );
         if (cddData) {
           enrichment.casadosdados = cddData;
           sourceUsed = "casadosdados";
@@ -113,11 +120,7 @@ serve(async (req) => {
 
     const { error: upErr } = await supabase
       .from("search_results")
-      .update({
-        enriched_data: enrichment,
-        enriched_at: new Date().toISOString(),
-        enriched_source: sourceUsed,
-      })
+      .update(buildResultUpdate(result, enrichment, sourceUsed))
       .eq("id", resultId);
 
     if (upErr) throw upErr;
@@ -149,36 +152,181 @@ async function getDecryptedKey(supabase: any, keyName: string): Promise<string |
   }
 }
 
-async function fetchCasaDosDados(name: string, apiKey: string) {
+/** Constrói o update final para a search_results, propagando dados úteis (telefone, sócio, redes) para colunas de topo quando ausentes. */
+function buildResultUpdate(
+  result: any,
+  enrichment: Record<string, any>,
+  sourceUsed: string
+) {
+  const cdd = enrichment.casadosdados as any;
+  const update: Record<string, any> = {
+    enriched_data: enrichment,
+    enriched_at: new Date().toISOString(),
+    enriched_source: sourceUsed,
+  };
+  if (cdd) {
+    if (!result.phone && cdd.telefone) update.phone = cdd.telefone;
+    if (!result.email && cdd.email) update.email = cdd.email;
+    if (!result.owner_name && cdd.proprietario) update.owner_name = cdd.proprietario;
+    const social = { ...(result.social_media || {}) };
+    let socialChanged = false;
+    if (!social.instagram && cdd.instagram) {
+      social.instagram = cdd.instagram;
+      socialChanged = true;
+    }
+    if (!social.facebook && cdd.facebook) {
+      social.facebook = cdd.facebook;
+      socialChanged = true;
+    }
+    if (socialChanged) update.social_media = social;
+  }
+  return update;
+}
+
+/**
+ * Casa dos Dados — busca por razão social + atividade (CNAE) e enriquece
+ * com detalhes do CNPJ (sócios, telefone direto, e-mail, redes sociais).
+ */
+async function fetchCasaDosDados(
+  input: { name: string; atividade?: string | null; address?: string | null },
+  apiKey: string
+) {
+  const name = (input.name || "").trim();
   if (!name) return null;
-  // Casa dos Dados — endpoint público de pesquisa por razão social
-  const url = `https://api.casadosdados.com.br/v2/public/cnpj/search`;
-  const resp = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "api-key": apiKey,
+
+  // 1) Buscar candidatos por razão social, filtrando por atividade quando possível
+  const cnaeCode = extractCnaeCode(input.atividade);
+  const uf = extractUF(input.address);
+
+  const searchBody: Record<string, any> = {
+    query: {
+      razao_social: name,
+      ...(cnaeCode ? { atividade_principal: [cnaeCode] } : {}),
+      ...(uf ? { uf: [uf] } : {}),
     },
-    body: JSON.stringify({ query: { razaoSocial: name }, page: 1 }),
-  });
-  if (!resp.ok) {
-    console.log("CDD HTTP", resp.status);
+    page: 1,
+  };
+
+  const searchResp = await fetch(
+    "https://api.casadosdados.com.br/v2/public/cnpj/search",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "api-key": apiKey,
+      },
+      body: JSON.stringify(searchBody),
+    }
+  );
+
+  if (!searchResp.ok) {
+    console.log("CDD search HTTP", searchResp.status, await safeText(searchResp));
     return null;
   }
-  const data = await resp.json();
-  const first = data?.data?.[0] || data?.cnpjs?.[0] || null;
-  if (!first) return null;
+
+  const searchData = await searchResp.json();
+  const candidates: any[] =
+    searchData?.data || searchData?.cnpjs || searchData?.results || [];
+  if (!candidates.length) {
+    console.log("CDD: sem candidatos para", name);
+    return null;
+  }
+
+  // 2) Pegar o melhor candidato (primeiro retornado) e detalhar via /cnpj/:cnpj
+  const first = candidates[0];
+  const cnpjRaw: string | null =
+    first.cnpj || first.numeroDeInscricao || first.numero_inscricao || null;
+  const cnpjDigits = cnpjRaw ? cnpjRaw.replace(/\D/g, "") : null;
+
+  let detail: any = first;
+  if (cnpjDigits) {
+    try {
+      const dResp = await fetch(
+        `https://api.casadosdados.com.br/v2/public/cnpj/${cnpjDigits}`,
+        { headers: { "api-key": apiKey } }
+      );
+      if (dResp.ok) {
+        const dJson = await dResp.json();
+        detail = dJson?.data || dJson || first;
+      } else {
+        console.log("CDD detail HTTP", dResp.status);
+      }
+    } catch (e) {
+      console.log("CDD detail throw", e);
+    }
+  }
+
+  const socios: any[] = detail.socios || detail.qsa || first.socios || [];
+  const proprietario =
+    socios?.[0]?.nome_socio ||
+    socios?.[0]?.nome ||
+    socios?.[0]?.razao_social ||
+    null;
+
+  const telefone =
+    detail.telefone ||
+    detail.ddd_telefone_1 ||
+    (detail.ddd_1 && detail.telefone_1
+      ? `(${detail.ddd_1}) ${detail.telefone_1}`
+      : null) ||
+    detail.contato_telefonico ||
+    null;
+
+  const email = detail.email || detail.contato_email || null;
+
+  // Redes sociais raramente vêm direto da Receita; tentar campos comuns
+  const instagram =
+    detail.instagram || detail.redes_sociais?.instagram || null;
+  const facebook =
+    detail.facebook || detail.redes_sociais?.facebook || null;
+
   return {
-    cnpj: first.cnpj || first.numeroDeInscricao || null,
-    razao_social: first.razao_social || first.razaoSocial || null,
-    nome_fantasia: first.nome_fantasia || first.nomeFantasia || null,
-    atividade_principal: first.atividade_principal || first.cnaePrincipal || null,
-    porte: first.porte || null,
-    capital_social: first.capital_social || null,
-    data_abertura: first.data_abertura || first.dataAbertura || null,
-    socios: first.socios || first.qsa || [],
-    raw: first,
+    cnpj: cnpjRaw,
+    razao_social:
+      detail.razao_social || detail.razaoSocial || first.razao_social || null,
+    nome_fantasia:
+      detail.nome_fantasia || detail.nomeFantasia || first.nome_fantasia || null,
+    atividade_principal:
+      detail.atividade_principal ||
+      detail.cnae_fiscal_descricao ||
+      first.atividade_principal ||
+      null,
+    porte: detail.porte || first.porte || null,
+    capital_social: detail.capital_social || first.capital_social || null,
+    data_abertura:
+      detail.data_abertura ||
+      detail.dataAbertura ||
+      first.data_abertura ||
+      null,
+    socios,
+    proprietario,
+    telefone,
+    email,
+    instagram,
+    facebook,
+    raw: detail,
   };
+}
+
+function extractCnaeCode(atividade?: string | null): string | null {
+  if (!atividade) return null;
+  // Aceita formatos "47.21-1-02", "4721102", etc. — devolve apenas dígitos.
+  const digits = String(atividade).replace(/\D/g, "");
+  return digits.length >= 5 ? digits : null;
+}
+
+function extractUF(address?: string | null): string | null {
+  if (!address) return null;
+  const m = address.match(/\b([A-Z]{2})\b(?!.*\b[A-Z]{2}\b)/);
+  return m ? m[1] : null;
+}
+
+async function safeText(resp: Response) {
+  try {
+    return await resp.text();
+  } catch {
+    return "";
+  }
 }
 
 async function fetchAIEnrichment(result: any, apiKey: string) {
