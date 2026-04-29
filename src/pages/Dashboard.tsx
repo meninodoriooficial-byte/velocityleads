@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/components/ui/use-toast";
 import { SearchForm } from "@/components/SearchForm";
-import { TrendingUp, Users, Sparkles, CheckCircle2, KeyRound, History, AlertTriangle, Package, CreditCard, Zap, Target, ArrowUpRight } from "lucide-react";
+import { TrendingUp, Users, Sparkles, CheckCircle2, KeyRound, History, AlertTriangle, Package, CreditCard, Zap, Target, ArrowUpRight, Bot } from "lucide-react";
 import { ResultsSection } from "@/components/ResultsSection";
 import { ApiConfigManager } from "@/components/admin/ApiConfigManager";
 import { ApiErrorLogs } from "@/components/admin/ApiErrorLogs";
@@ -475,7 +475,7 @@ export default function Dashboard() {
 
             {activeTab === "admin" && isAdmin && (
               <Tabs defaultValue="users" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 md:grid-cols-6 h-auto p-1.5 bg-muted/60 border border-border/60 rounded-xl mb-6">
+                <TabsList className="grid w-full grid-cols-2 md:grid-cols-7 h-auto p-1.5 bg-muted/60 border border-border/60 rounded-xl mb-6">
                   <TabsTrigger value="users" className="gap-2 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg font-semibold">
                     <Users className="w-4 h-4" />
                     <span className="hidden sm:inline">Usuários</span>
@@ -487,6 +487,10 @@ export default function Dashboard() {
                   <TabsTrigger value="apis" className="gap-2 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg font-semibold">
                     <KeyRound className="w-4 h-4" />
                     <span className="hidden sm:inline">APIs</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="ai" className="gap-2 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg font-semibold">
+                    <Bot className="w-4 h-4" />
+                    <span className="hidden sm:inline">IA</span>
                   </TabsTrigger>
                   <TabsTrigger value="payments" className="gap-2 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg font-semibold">
                     <CreditCard className="w-4 h-4" />
@@ -549,6 +553,23 @@ export default function Dashboard() {
                     </CardHeader>
                     <CardContent>
                       <ApiConfigManager />
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="ai" className="mt-0">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Bot className="w-5 h-5" />
+                        Prompt de Enriquecimento por IA
+                      </CardTitle>
+                      <CardDescription>
+                        Configure como a IA deve pesquisar e estruturar os dados dos leads (redes sociais, e-mails, CNPJ, etc.).
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <AiPromptManager />
                     </CardContent>
                   </Card>
                 </TabsContent>
