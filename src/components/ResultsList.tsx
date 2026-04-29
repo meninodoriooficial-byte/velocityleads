@@ -312,6 +312,26 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
           )}
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setCompact((c) => !c)}
+            className="h-8 text-xs"
+            title={compact ? "Visualização expandida" : "Visualização compacta"}
+          >
+            {compact ? (
+              <>
+                <LayoutList className="w-3.5 h-3.5 mr-1" />
+                Expandir
+              </>
+            ) : (
+              <>
+                <Rows3 className="w-3.5 h-3.5 mr-1" />
+                Compacto
+              </>
+            )}
+          </Button>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <ArrowUpDown className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Ordenar:</span>
