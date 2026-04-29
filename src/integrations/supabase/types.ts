@@ -92,6 +92,54 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_orders: {
+        Row: {
+          amount: number
+          created_at: string
+          environment: string
+          id: string
+          package_id: string
+          payment_id: string | null
+          preference_id: string | null
+          provider: string
+          raw_response: Json | null
+          searches_credited: number
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          environment?: string
+          id?: string
+          package_id: string
+          payment_id?: string | null
+          preference_id?: string | null
+          provider?: string
+          raw_response?: Json | null
+          searches_credited?: number
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          environment?: string
+          id?: string
+          package_id?: string
+          payment_id?: string | null
+          preference_id?: string | null
+          provider?: string
+          raw_response?: Json | null
+          searches_credited?: number
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
