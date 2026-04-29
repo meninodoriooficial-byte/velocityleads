@@ -399,48 +399,60 @@ export default function Dashboard() {
                   return (
                     <div
                       key={pkg.id}
-                      className={`surface-raised p-6 flex flex-col gap-5 relative transition-all hover:-translate-y-0.5 ${
-                        isCurrent ? "ring-2 ring-accent" : isPopular ? "ring-1 ring-primary/20" : ""
+                      className={`pkg-card p-7 flex flex-col gap-5 ${
+                        isCurrent ? "is-current" : isPopular ? "is-popular" : ""
                       }`}
                     >
                       {isCurrent && (
-                        <div className="absolute -top-3 right-4 px-3 py-1 bg-accent text-accent-foreground text-xs font-bold rounded-full shadow-sm">
-                          ATUAL
+                        <div className="absolute -top-3 right-5 px-3 py-1 bg-accent text-accent-foreground text-[10px] font-bold tracking-wider rounded-full shadow-sm uppercase">
+                          Plano atual
                         </div>
                       )}
                       {!isCurrent && isPopular && (
-                        <div className="absolute -top-3 right-4 px-3 py-1 bg-primary text-accent text-xs font-bold rounded-full shadow-sm">
-                          POPULAR
+                        <div className="absolute -top-3 right-5 px-3 py-1 bg-primary text-accent text-[10px] font-bold tracking-wider rounded-full shadow-sm uppercase flex items-center gap-1">
+                          <Sparkles className="size-3" /> Mais escolhido
                         </div>
                       )}
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <Package className="size-4 text-muted-foreground" />
-                          <h3 className="font-bold text-xl tracking-tight">{pkg.name}</h3>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2.5 mb-1.5">
+                            <div className={`icon-chip size-9 ${isPopular ? "bg-accent text-accent-foreground" : "bg-primary/5 text-primary"}`}>
+                              <Package className="size-4" />
+                            </div>
+                            <h3 className="font-bold text-xl tracking-tight">{pkg.name}</h3>
+                          </div>
+                          <p className="text-sm text-muted-foreground leading-relaxed">{pkg.description}</p>
                         </div>
-                        <p className="text-sm text-muted-foreground mt-1">{pkg.description}</p>
                       </div>
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-4xl font-bold tracking-tight">R$ {pkg.price}</span>
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">R$</span>
+                        <span className="text-5xl font-bold tracking-tight tabular-nums leading-none">{pkg.price}</span>
                         <span className="text-sm font-medium text-muted-foreground">/mês</span>
                       </div>
                       <div className="divider-soft" />
-                      <div className="space-y-2 text-sm font-medium">
-                        <div className="flex items-center gap-2">
-                          <CheckCircle2 className="size-4 text-success shrink-0" />
-                          {pkg.searches_limit} buscas mensais
+                      <div className="space-y-2.5 text-sm font-medium">
+                        <div className="flex items-center gap-2.5">
+                          <div className="size-5 rounded-full bg-success/15 text-success flex items-center justify-center shrink-0">
+                            <CheckCircle2 className="size-3.5" />
+                          </div>
+                          <span><span className="tabular-nums font-bold">{pkg.searches_limit}</span> buscas mensais</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <CheckCircle2 className="size-4 text-success shrink-0" />
-                          Exportação em CSV
+                        <div className="flex items-center gap-2.5">
+                          <div className="size-5 rounded-full bg-success/15 text-success flex items-center justify-center shrink-0">
+                            <CheckCircle2 className="size-3.5" />
+                          </div>
+                          <span>Exportação em CSV</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <CheckCircle2 className="size-4 text-success shrink-0" />
-                          Suporte por e-mail
+                        <div className="flex items-center gap-2.5">
+                          <div className="size-5 rounded-full bg-success/15 text-success flex items-center justify-center shrink-0">
+                            <CheckCircle2 className="size-3.5" />
+                          </div>
+                          <span>Suporte por e-mail</span>
                         </div>
                       </div>
                       <Button
-                        className={isCurrent ? "" : "btn-volt"}
+                        size="lg"
+                        className={`w-full mt-1 ${isCurrent ? "" : "btn-volt"}`}
                         disabled={isCurrent || purchasingId === pkg.id}
                         variant={isCurrent ? "secondary" : "default"}
                         onClick={() => !isCurrent && handleBuyPackage(pkg)}
