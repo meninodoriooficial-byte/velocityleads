@@ -19,29 +19,55 @@ type ConfigRow = {
   provider: string | null;
 };
 
-const MP_KEYS: Array<{
+type MpKey = {
   key_name: string;
   display_name: string;
   description: string;
   placeholder: string;
-}> = [
+  env: "test" | "live" | "shared";
+  group: "access_token" | "public_key" | "webhook";
+};
+
+const MP_KEYS: MpKey[] = [
   {
-    key_name: "MERCADO_PAGO_ACCESS_TOKEN",
-    display_name: "Access Token (Mercado Pago)",
-    description: "Token privado usado pelo backend para criar preferências e validar pagamentos. Começa com APP_USR-... (produção) ou TEST-... (testes).",
-    placeholder: "APP_USR-xxxxxxxxxxxxxxxx-xxxxxx-xxxxxxxxxxxxx",
+    key_name: "MERCADO_PAGO_ACCESS_TOKEN_TEST",
+    display_name: "Access Token — Teste (sandbox)",
+    description: "Token privado de TESTE. Começa com TEST-... Usado para validar o fluxo sem cobrar de verdade.",
+    placeholder: "TEST-xxxxxxxxxxxxxxxx-xxxxxx-xxxxxxxxxxxxx",
+    env: "test",
+    group: "access_token",
   },
   {
-    key_name: "MERCADO_PAGO_PUBLIC_KEY",
-    display_name: "Public Key (Mercado Pago)",
-    description: "Chave pública usada no frontend (Checkout Pro/Brick). Começa com APP_USR- ou TEST-.",
+    key_name: "MERCADO_PAGO_ACCESS_TOKEN_LIVE",
+    display_name: "Access Token — Produção",
+    description: "Token privado de PRODUÇÃO. Começa com APP_USR-... Cobranças reais usam este token.",
+    placeholder: "APP_USR-xxxxxxxxxxxxxxxx-xxxxxx-xxxxxxxxxxxxx",
+    env: "live",
+    group: "access_token",
+  },
+  {
+    key_name: "MERCADO_PAGO_PUBLIC_KEY_TEST",
+    display_name: "Public Key — Teste",
+    description: "Chave pública de TESTE usada no frontend (Checkout Pro/Brick). Começa com TEST-.",
+    placeholder: "TEST-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+    env: "test",
+    group: "public_key",
+  },
+  {
+    key_name: "MERCADO_PAGO_PUBLIC_KEY_LIVE",
+    display_name: "Public Key — Produção",
+    description: "Chave pública de PRODUÇÃO usada no frontend. Começa com APP_USR-.",
     placeholder: "APP_USR-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+    env: "live",
+    group: "public_key",
   },
   {
     key_name: "MERCADO_PAGO_WEBHOOK_SECRET",
     display_name: "Assinatura do Webhook (opcional)",
     description: "Segredo para validar a assinatura dos webhooks do Mercado Pago (campo 'Chave secreta' nas configurações de notificações).",
     placeholder: "Cole aqui a chave secreta de webhooks",
+    env: "shared",
+    group: "webhook",
   },
 ];
 
@@ -184,8 +210,23 @@ export function PaymentsConfig() {
           <Loader2 className="size-5 animate-spin mr-2" /> Carregando...
         </div>
       ) : (
-        <div className="space-y-4">
-          {MP_KEYS.map((key) => {
+        <div className="space-y-6">
+          {(["test", "live", "shared"] as const).map((envGroup) => {
+            const items = MP_KEYS.filter((k) => k.env === envGroup);
+            if (items.length === 0) return null;
+            const titleMap = {
+              test: { label: "Ambiente de Teste (sandbox)", tone: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30" },
+              live: { label: "Ambiente de Produção", tone: "bg-success/10 text-success border-success/30" },
+              shared: { label: "Configurações compartilhadas", tone: "bg-muted text-muted-foreground border-border" },
+            } as const;
+            return (
+              <div key={envGroup} className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className={titleMap[envGroup].tone}>
+                    {titleMap[envGroup].label}
+                  </Badge>
+                </div>
+                {items.map((key) => {
             const cfg = configs[key.key_name];
             const last4 = cfg?.api_key_last4;
             return (
@@ -241,6 +282,9 @@ export function PaymentsConfig() {
                   </div>
                 </CardContent>
               </Card>
+            );
+                })}
+              </div>
             );
           })}
         </div>
