@@ -43,8 +43,9 @@ export function AppSidebar({ active, onChange, isAdmin }: AppSidebarProps) {
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
       <SidebarHeader className="h-16 px-4 flex items-center justify-center border-b border-sidebar-border">
         <div className="flex items-center gap-2.5">
-          <div className="size-8 rounded-lg bg-primary flex items-center justify-center text-accent shrink-0">
+          <div className="relative size-9 rounded-xl bg-primary flex items-center justify-center text-accent shrink-0 shadow-[0_4px_14px_-4px_hsl(240_6%_6%/0.4)]">
             <Zap className="size-4" fill="currentColor" />
+            <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-accent animate-pulse" />
           </div>
           {!collapsed && (
             <div className="font-bold text-lg tracking-tight text-foreground leading-none">
@@ -123,9 +124,10 @@ export function AppSidebar({ active, onChange, isAdmin }: AppSidebarProps) {
       </SidebarContent>
 
       <SidebarFooter className="p-3 border-t border-sidebar-border">
-        <div className={`flex items-center gap-3 p-2 rounded-xl ${collapsed ? "justify-center" : ""}`}>
-          <div className="size-9 rounded-full bg-secondary flex items-center justify-center text-foreground font-semibold text-sm shrink-0">
+        <div className={`flex items-center gap-3 p-2 rounded-xl bg-secondary/40 ${collapsed ? "justify-center !bg-transparent" : ""}`}>
+          <div className="relative size-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm shrink-0">
             {(profile?.full_name || user?.email || "?").charAt(0).toUpperCase()}
+            <span className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full bg-success border-2 border-sidebar-background" />
           </div>
           {!collapsed && (
             <div className="flex-1 min-w-0">
@@ -134,7 +136,7 @@ export function AppSidebar({ active, onChange, isAdmin }: AppSidebarProps) {
             </div>
           )}
           {!collapsed && (
-            <Button variant="ghost" size="icon" onClick={signOut} className="shrink-0" title="Sair">
+            <Button variant="ghost" size="icon" onClick={signOut} className="shrink-0 hover:bg-destructive/10 hover:text-destructive" title="Sair">
               <LogOut className="size-4" />
             </Button>
           )}
