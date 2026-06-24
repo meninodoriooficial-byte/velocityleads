@@ -220,12 +220,12 @@ export type Database = {
           environment: string
           id: string
           order_kind: string
-          package_id: string
+          package_id: string | null
           payment_id: string | null
           preference_id: string | null
           provider: string
           raw_response: Json | null
-          searches_credited: number
+          searches_credited: number | null
           status: string
           updated_at: string
           user_id: string
@@ -237,12 +237,12 @@ export type Database = {
           environment?: string
           id?: string
           order_kind?: string
-          package_id: string
+          package_id?: string | null
           payment_id?: string | null
           preference_id?: string | null
           provider?: string
           raw_response?: Json | null
-          searches_credited?: number
+          searches_credited?: number | null
           status?: string
           updated_at?: string
           user_id: string
@@ -254,12 +254,12 @@ export type Database = {
           environment?: string
           id?: string
           order_kind?: string
-          package_id?: string
+          package_id?: string | null
           payment_id?: string | null
           preference_id?: string | null
           provider?: string
           raw_response?: Json | null
-          searches_credited?: number
+          searches_credited?: number | null
           status?: string
           updated_at?: string
           user_id?: string
