@@ -587,5 +587,10 @@ export const AllUserResults = () => {
 };
 
 function normalizePhone(p?: string | null): string {
-  return String(p || "").replace(/\D/g, "");
+  let d = String(p || "").replace(/\D/g, "");
+  // Remove DDI Brasil (55) para casar com números armazenados sem prefixo
+  if (d.length === 12 || d.length === 13) {
+    if (d.startsWith("55")) d = d.slice(2);
+  }
+  return d;
 }
