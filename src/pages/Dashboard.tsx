@@ -262,7 +262,7 @@ export default function Dashboard() {
 
             {/* Stats */}
             {activeTab === "search" && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
                 <div className="stat-tile">
                   <div className="flex justify-between items-start">
                     <div className="flex items-center gap-2">
@@ -304,6 +304,52 @@ export default function Dashboard() {
                   <div>
                     <div className="text-4xl font-bold tabular-nums tracking-tight">{searches.length}</div>
                     <div className="text-sm font-medium text-muted-foreground mt-1">prospecções realizadas</div>
+                  </div>
+                </div>
+
+                <div className="stat-tile">
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-2">
+                      <div className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                        <Users className="size-4" />
+                      </div>
+                      <span className="text-sm font-semibold text-muted-foreground">Leads Capturados</span>
+                    </div>
+                    <Badge variant="secondary" className="text-[10px] font-bold">TOTAL</Badge>
+                  </div>
+                  <div>
+                    <div className="text-4xl font-bold tabular-nums tracking-tight">
+                      {leadsStats.total.toLocaleString("pt-BR")}
+                    </div>
+                    <div className="text-sm font-medium text-muted-foreground mt-1">empresas encontradas</div>
+                  </div>
+                </div>
+
+                <div className="stat-tile">
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-2">
+                      <div className="size-9 rounded-xl bg-success/10 text-success flex items-center justify-center">
+                        <Sparkles className="size-4" />
+                      </div>
+                      <span className="text-sm font-semibold text-muted-foreground">Enriquecidos (IA)</span>
+                    </div>
+                    <span className="text-xs font-bold text-success bg-success/10 px-2 py-1 rounded-md">
+                      {leadsStats.total > 0
+                        ? `${Math.round((leadsStats.enriched / leadsStats.total) * 100)}%`
+                        : "0%"}
+                    </span>
+                  </div>
+                  <div>
+                    <div className="text-4xl font-bold tabular-nums tracking-tight text-success">
+                      {leadsStats.enriched.toLocaleString("pt-BR")}
+                    </div>
+                    <Progress
+                      value={leadsStats.total > 0 ? (leadsStats.enriched / leadsStats.total) * 100 : 0}
+                      className="h-2 mt-3"
+                    />
+                    <div className="text-[11px] font-semibold text-muted-foreground mt-2 uppercase tracking-wider">
+                      CNPJ + e-mail + redes
+                    </div>
                   </div>
                 </div>
 
