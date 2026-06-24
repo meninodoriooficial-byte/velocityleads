@@ -22,6 +22,7 @@ import { PurchasesHistory } from "@/components/PurchasesHistory";
 import { AddonsMarketplace } from "@/components/addons/AddonsMarketplace";
 import { WhatsAppAddon } from "@/components/addons/WhatsAppAddon";
 import { WhatsAppCrmAddon } from "@/components/addons/WhatsAppCrmAddon";
+import { EmailMarketingAddon } from "@/components/addons/EmailMarketingAddon";
 import { explainEdgeError } from "@/lib/edgeFunction";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar, type DashboardTab } from "@/components/AppSidebar";
@@ -547,12 +548,14 @@ export default function Dashboard() {
                 onOpenAddon={(slug) => {
                   if (slug === "whatsapp") setActiveTab("addon-whatsapp");
                   if (slug === "whatsapp_crm") setActiveTab("addon-crm");
+                  if (slug === "email_marketing") setActiveTab("addon-email");
                 }}
               />
             )}
 
             {activeTab === "addon-whatsapp" && <WhatsAppAddon />}
             {activeTab === "addon-crm" && <WhatsAppCrmAddon />}
+            {activeTab === "addon-email" && <EmailMarketingAddon />}
 
             {activeTab === "admin" && isAdmin && (
               <Tabs defaultValue="users" className="w-full">
