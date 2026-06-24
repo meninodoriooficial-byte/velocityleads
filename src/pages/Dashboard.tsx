@@ -239,14 +239,14 @@ export default function Dashboard() {
 
           <main className="flex-1 px-4 md:px-10 py-8 max-w-7xl w-full mx-auto animate-fade-in">
             {/* Hero panel */}
-            <div className="hero-panel hero-grid mb-8 p-6 md:p-8">
-              <div className="relative z-10 flex items-end justify-between gap-6 flex-wrap">
+            <div className="hero-panel hero-grid mb-6 p-4 md:p-5">
+              <div className="relative z-10 flex items-center justify-between gap-4 flex-wrap">
                 <div className="max-w-2xl">
-                  <div className="inline-flex items-center gap-2 mb-3 chip-volt">
+                  <div className="inline-flex items-center gap-2 mb-2 chip-volt">
                     <Zap className="size-3" fill="currentColor" /> Velocity Track
                   </div>
-                  <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-balance mb-2">{head.title}</h2>
-                  <p className="text-muted-foreground font-medium text-pretty">{head.subtitle}</p>
+                  <h2 className="text-xl md:text-2xl font-bold tracking-tight text-balance mb-1 text-foreground">{head.title}</h2>
+                  <p className="text-sm text-muted-foreground font-medium text-pretty">{head.subtitle}</p>
                 </div>
                 {activeTab === "search" && (
                   <div className="flex items-center gap-4">
