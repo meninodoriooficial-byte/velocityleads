@@ -15,6 +15,7 @@ import { Search, ListChecks, History, Package, ShieldCheck, Zap, LogOut, Receipt
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserAddons } from "@/hooks/useUserAddons";
+import { Mail } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 export type DashboardTab =
@@ -26,6 +27,7 @@ export type DashboardTab =
   | "addons"
   | "addon-whatsapp"
   | "addon-crm"
+  | "addon-email"
   | "admin";
 
 interface AppSidebarProps {
@@ -45,6 +47,7 @@ const navItems: { key: DashboardTab; label: string; icon: any; group: "main" | "
 const ADDON_META: Record<string, { label: string; icon: any; tab: DashboardTab }> = {
   whatsapp: { label: "WhatsApp", icon: MessageCircle, tab: "addon-whatsapp" },
   whatsapp_crm: { label: "WhatsApp CRM", icon: Kanban, tab: "addon-crm" },
+  email_marketing: { label: "Email Marketing", icon: Mail, tab: "addon-email" },
 };
 
 export function AppSidebar({ active, onChange, isAdmin }: AppSidebarProps) {
