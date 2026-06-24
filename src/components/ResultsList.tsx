@@ -94,20 +94,41 @@ const getOverlay = (r: any, enr: any) => {
     (Array.isArray(ai.telefones) ? ai.telefones[0] : ai.telefone) ||
     null;
   const website = r.website || cdd.website || ai.site || ai.website || null;
-  const sociosRaw: any[] =
-    (Array.isArray(brasil.socios) && brasil.socios) ||
-    (Array.isArray(cdd.socios) && cdd.socios) ||
-    [];
+  const sociosRaw: any[] = [
+    ...(Array.isArray(brasil.qsa) ? brasil.qsa : []),
+    ...(Array.isArray(brasil.socios) ? brasil.socios : []),
+    ...(Array.isArray(cdd.qsa) ? cdd.qsa : []),
+    ...(Array.isArray(cdd.socios) ? cdd.socios : []),
+    ...(Array.isArray(cdd.quadro_societario) ? cdd.quadro_societario : []),
+    ...(Array.isArray(ai.socios) ? ai.socios : []),
+    ...(Array.isArray(scraped.socios) ? scraped.socios : []),
+  ];
+  const seen = new Set<string>();
   const socios = sociosRaw
-    .map((s: any) => ({
-      nome: s?.nome_socio || s?.nome || s?.razao_social || null,
-      qualificacao:
-        s?.qualificacao_socio ||
-        s?.codigo_qualificacao_socio ||
-        s?.qualificacao ||
-        null,
-    }))
-    .filter((s: any) => s.nome);
+    .map((s: any) => {
+      if (typeof s === "string") return { nome: s, qualificacao: null };
+      return {
+        nome:
+          s?.nome_socio ||
+          s?.nome ||
+          s?.razao_social ||
+          s?.nome_completo ||
+          null,
+        qualificacao:
+          s?.qualificacao_socio ||
+          s?.codigo_qualificacao_socio ||
+          s?.qualificacao ||
+          s?.cargo ||
+          null,
+      };
+    })
+    .filter((s: any) => {
+      if (!s.nome) return false;
+      const k = String(s.nome).trim().toLowerCase();
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
   const aiSocials = ai?.redes_sociais || {};
   const social = {
     instagram:
