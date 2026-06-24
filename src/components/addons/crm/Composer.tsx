@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
-import { Send, Paperclip, StickyNote, Loader2 } from "lucide-react";
+import { Send, Paperclip, StickyNote, Loader2, Sparkles } from "lucide-react";
 import { AudioRecorder } from "./AudioRecorder";
 import { QuickReplyPicker, type QuickReply } from "./QuickReplyPicker";
 import { ButtonComposer, type BtnDef } from "./ButtonComposer";
@@ -30,6 +30,7 @@ export function Composer({ conversationId, contactName, phone, onSent }: Props) 
   const { toast } = useToast();
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
+  const [aiBusy, setAiBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   const ctx: LeadContext = { nome: contactName, telefone: phone };
@@ -88,6 +89,17 @@ export function Composer({ conversationId, contactName, phone, onSent }: Props) 
     await call({ type: "buttons", text: renderTemplate(text, ctx), title, footer, buttons });
   };
 
+  const suggestAi = async () => {
+    setAiBusy(true);
+    const { data, error } = await supabase.functions.invoke("crm-ai", { body: { conversationId, mode: "suggest" } });
+    setAiBusy(false);
+    if (error || !data?.ok) {
+      toast({ title: "IA indisponível", description: data?.error || error?.message, variant: "destructive" });
+      return;
+    }
+    setText(data.text || "");
+  };
+
   return (
     <div className="border-t border-border/60 p-3 bg-background space-y-2">
       <Textarea
@@ -110,6 +122,9 @@ export function Composer({ conversationId, contactName, phone, onSent }: Props) 
         <ButtonComposer onSend={onButtons} />
         <Button type="button" variant="ghost" size="icon" onClick={sendNote} disabled={busy || !text.trim()} title="Salvar como nota interna">
           <StickyNote className="size-4 text-amber-600" />
+        </Button>
+        <Button type="button" variant="ghost" size="icon" onClick={suggestAi} disabled={aiBusy || busy} title="Sugerir resposta com IA">
+          {aiBusy ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4 text-purple-600" />}
         </Button>
         <div className="flex-1" />
         <Button onClick={sendText} disabled={busy || !text.trim()} className="bg-green-600 hover:bg-green-700">

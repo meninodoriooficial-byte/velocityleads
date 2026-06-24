@@ -1,0 +1,103 @@
+// Executor de fluxos do CRM. Público (chamado por pg_cron) — autorizado via header X-Cron-Secret.
+// Processa runs em status 'running' com next_run_at <= now().
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { createClient } from "npm:@supabase/supabase-js@2";
+
+const TAG_RE = /\{\{\s*([a-z_]+)\s*\}\}/gi;
+function renderTags(s: string, ctx: Record<string, any>) {
+  return (s || "").replace(TAG_RE, (_, k) => (ctx[k.toLowerCase()] ?? "") as string);
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  try {
+    const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+
+    // Config Evolution
+    const { data: cfgRow } = await admin
+      .from("system_settings").select("setting_value").eq("setting_key", "evolution_api").maybeSingle();
+    const cfg: any = cfgRow?.setting_value || {};
+    const baseUrl = cfg.api_url ? String(cfg.api_url).replace(/\/+$/, "") : null;
+    const evoHeaders = { apikey: cfg.api_key, "Content-Type": "application/json" };
+
+    const { data: runs } = await admin
+      .from("crm_flow_runs")
+      .select("*, crm_flows(*), crm_conversations(*)")
+      .eq("status", "running")
+      .lte("next_run_at", new Date().toISOString())
+      .limit(50);
+
+    let processed = 0;
+    for (const run of runs || []) {
+      const flow: any = (run as any).crm_flows;
+      const conv: any = (run as any).crm_conversations;
+      if (!flow || !conv || conv.opted_out) {
+        await admin.from("crm_flow_runs").update({ status: "failed", error: "flow/conv missing or opted_out" }).eq("id", run.id);
+        continue;
+      }
+      const steps: any[] = Array.isArray(flow.steps) ? flow.steps : [];
+      let idx = run.current_step_index || 0;
+      const ctx: Record<string, any> = { nome: conv.contact_name || "", telefone: conv.phone, ...(run.context || {}) };
+
+      // Executa passos até encontrar wait/end ou fim
+      while (idx < steps.length) {
+        const step = steps[idx];
+        try {
+          if (step.type === "send_message" && baseUrl) {
+            const { data: inst } = await admin.from("user_whatsapp_instances").select("instance_name").eq("user_id", run.user_id).maybeSingle();
+            if (inst?.instance_name) {
+              const text = renderTags(String(step.text || ""), ctx);
+              const r = await fetch(`${baseUrl}/message/sendText/${encodeURIComponent(inst.instance_name)}`, {
+                method: "POST", headers: evoHeaders,
+                body: JSON.stringify({ number: conv.phone, text }),
+              });
+              const ok = r.ok;
+              await admin.from("crm_messages").insert({
+                conversation_id: conv.id, user_id: run.user_id,
+                direction: "out", type: "text", body: text,
+                status: ok ? "sent" : "failed",
+              });
+              await admin.from("crm_conversations").update({
+                last_message_at: new Date().toISOString(),
+                last_message_preview: text.slice(0, 120),
+              }).eq("id", conv.id);
+              // incrementa cota
+              const { data: addon } = await admin.from("user_addons").select("*").eq("user_id", run.user_id).eq("addon_slug", "whatsapp_crm").maybeSingle();
+              if (addon && ok) await admin.from("user_addons").update({ monthly_used: (addon.monthly_used || 0) + 1 }).eq("id", addon.id);
+            }
+          } else if (step.type === "wait") {
+            const minutes = Number(step.minutes || step.hours * 60 || 0);
+            const nextAt = new Date(Date.now() + minutes * 60_000).toISOString();
+            await admin.from("crm_flow_runs").update({ current_step_index: idx + 1, next_run_at: nextAt }).eq("id", run.id);
+            idx = -1; // sai do loop
+            break;
+          } else if (step.type === "move_stage" && step.stage_name) {
+            const { data: stage } = await admin.from("crm_stages").select("id").eq("user_id", run.user_id).ilike("name", step.stage_name).maybeSingle();
+            if (stage) await admin.from("crm_conversations").update({ stage_id: stage.id }).eq("id", conv.id);
+          } else if (step.type === "add_tag" && step.tag) {
+            const tags = Array.from(new Set([...(conv.tags || []), String(step.tag)]));
+            await admin.from("crm_conversations").update({ tags }).eq("id", conv.id);
+          } else if (step.type === "end") {
+            await admin.from("crm_flow_runs").update({ status: "completed", current_step_index: idx + 1, next_run_at: null }).eq("id", run.id);
+            idx = -2;
+            break;
+          }
+        } catch (e) {
+          console.error("step error", e);
+        }
+        idx++;
+      }
+
+      if (idx >= steps.length) {
+        await admin.from("crm_flow_runs").update({ status: "completed", current_step_index: steps.length, next_run_at: null }).eq("id", run.id);
+      }
+      processed++;
+    }
+
+    return new Response(JSON.stringify({ ok: true, processed }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  } catch (e) {
+    console.error("crm-flow-run error", e);
+    return new Response(JSON.stringify({ ok: false, error: String(e) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+});
