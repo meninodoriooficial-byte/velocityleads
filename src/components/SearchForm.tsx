@@ -109,30 +109,10 @@ export const SearchForm = ({ onSearch, selectedSearch }: SearchFormProps) => {
     const controller = new AbortController();
 
     const loadNeighborhoods = async () => {
-      try {
-        // 1) Localizar a área da cidade no OSM via Nominatim (filtra por estado/UF)
-        const stateName = states.find((s) => s.code === selectedState)?.name || "";
-        const nomUrl =
-          `https://nominatim.openstreetmap.org/search?format=json&limit=1&country=Brasil` +
-          `&state=${encodeURIComponent(stateName)}&city=${encodeURIComponent(city)}`;
-
-        const nomRes = await fetch(nomUrl, {
-          signal: controller.signal,
-          headers: { "Accept-Language": "pt-BR" },
-        });
-        const nomData = await nomRes.json();
-        const place = Array.isArray(nomData) ? nomData[0] : null;
-
-        let elements: any[] = [];
-
-        if (place?.osm_id && place?.osm_type) {
-          // Nominatim retorna osm_type "relation"|"way"|"node". Para Overpass area: relation -> 3600000000+id, way -> 2400000000+id
-          const typeMap: Record<string, number> = { relation: 3600000000, way: 2400000000 };
-          const offset = typeMap[place.osm_type];
-          if (offset) {
-            const areaId = offset + Number(place.osm_id);
-            const query = `[out:json][timeout:25];
-area(${areaId})->.a;
+      // Query Overpass restrita pelo estado (ISO3166-2) — bem mais confiável
+      const query = `[out:json][timeout:25];
+area["ISO3166-2"="BR-${selectedState}"]->.s;
+area["name"="${city}"]["admin_level"~"8|9|10"](area.s)->.a;
 (
   node["place"~"suburb|neighbourhood|quarter|city_block"](area.a);
   way["place"~"suburb|neighbourhood|quarter|city_block"](area.a);
@@ -140,35 +120,31 @@ area(${areaId})->.a;
   relation["boundary"="administrative"]["admin_level"~"10|11"](area.a);
 );
 out tags;`;
-            const ovRes = await fetch("https://overpass-api.de/api/interpreter", {
+
+      const endpoints = [
+        "https://overpass-api.de/api/interpreter",
+        "https://overpass.kumi.systems/api/interpreter",
+        "https://overpass.private.coffee/api/interpreter",
+      ];
+
+      let elements: any[] = [];
+      try {
+        for (const url of endpoints) {
+          try {
+            const res = await fetch(url, {
               method: "POST",
               headers: { "Content-Type": "text/plain" },
-              body: query,
+              body: "data=" + encodeURIComponent(query),
               signal: controller.signal,
             });
-            const ovData = await ovRes.json();
-            elements = ovData?.elements || [];
+            if (!res.ok) continue;
+            const data = await res.json();
+            elements = data?.elements || [];
+            if (elements.length > 0) break;
+          } catch (e: any) {
+            if (e?.name === "AbortError") throw e;
+            continue;
           }
-        }
-
-        // Fallback: query por nome se nada veio
-        if (elements.length === 0) {
-          const fallback = `[out:json][timeout:25];
-area["name"="${city}"]["admin_level"~"8|9|10"]->.a;
-(
-  node["place"~"suburb|neighbourhood|quarter"](area.a);
-  way["place"~"suburb|neighbourhood|quarter"](area.a);
-  relation["place"~"suburb|neighbourhood|quarter"](area.a);
-);
-out tags;`;
-          const fbRes = await fetch("https://overpass-api.de/api/interpreter", {
-            method: "POST",
-            headers: { "Content-Type": "text/plain" },
-            body: fallback,
-            signal: controller.signal,
-          });
-          const fbData = await fbRes.json();
-          elements = fbData?.elements || [];
         }
 
         const names = Array.from(
