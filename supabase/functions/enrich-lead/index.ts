@@ -431,6 +431,190 @@ async function safeText(resp: Response) {
   }
 }
 
+/** BrasilAPI — consulta CNPJ (grátis, sem chave). */
+async function fetchBrasilApi(cnpjDigits: string) {
+  try {
+    const resp = await fetch(
+      `https://brasilapi.com.br/api/cnpj/v1/${cnpjDigits}`,
+      { headers: { Accept: "application/json" } }
+    );
+    if (!resp.ok) {
+      console.log("BrasilAPI HTTP", resp.status);
+      return null;
+    }
+    const d = await resp.json();
+    const socios: any[] = d.qsa || [];
+    const proprietario =
+      socios?.[0]?.nome_socio || socios?.[0]?.nome || null;
+    const telefone =
+      d.ddd_telefone_1
+        ? formatPhoneBR(d.ddd_telefone_1)
+        : (d.ddd_1 && d.telefone_1 ? `(${d.ddd_1}) ${d.telefone_1}` : null);
+    return {
+      cnpj: d.cnpj || cnpjDigits,
+      razao_social: d.razao_social || null,
+      nome_fantasia: d.nome_fantasia || null,
+      situacao_cadastral: d.descricao_situacao_cadastral || null,
+      data_abertura: d.data_inicio_atividade || null,
+      capital_social: d.capital_social || null,
+      porte: d.descricao_porte || null,
+      natureza_juridica: d.natureza_juridica || null,
+      atividade_principal: d.cnae_fiscal_descricao || null,
+      atividades_secundarias: (d.cnaes_secundarios || []).map((c: any) => c.descricao).filter(Boolean),
+      endereco_completo: [
+        d.logradouro,
+        d.numero,
+        d.complemento,
+        d.bairro,
+        d.municipio,
+        d.uf,
+        d.cep,
+      ].filter(Boolean).join(", "),
+      email: d.email || null,
+      telefone,
+      socios,
+      proprietario,
+    };
+  } catch (e) {
+    console.log("fetchBrasilApi throw", e);
+    return null;
+  }
+}
+
+function formatPhoneBR(raw: string) {
+  const cleaned = String(raw).replace(/\D/g, "");
+  if (cleaned.length >= 10) {
+    return `(${cleaned.substring(0, 2)}) ${cleaned.substring(2)}`;
+  }
+  return raw;
+}
+
+/**
+ * Scraper aprimorado: visita a home + páginas comuns de contato e extrai
+ * múltiplos e-mails (incluindo mailto:), telefones e redes sociais.
+ * Filtra e-mails genéricos (sentry, wixpress, no-reply, etc.).
+ */
+async function scrapeSiteDeep(rawUrl: string) {
+  const result = {
+    emails: [] as string[],
+    phones: [] as string[],
+    instagram: null as string | null,
+    facebook: null as string | null,
+    linkedin: null as string | null,
+    youtube: null as string | null,
+    tiktok: null as string | null,
+    pages_visited: [] as string[],
+  };
+
+  let baseUrl = rawUrl.trim();
+  if (!/^https?:\/\//i.test(baseUrl)) baseUrl = `https://${baseUrl}`;
+
+  let origin = "";
+  try {
+    origin = new URL(baseUrl).origin;
+  } catch {
+    return null;
+  }
+
+  const candidatePaths = [
+    "",
+    "/contato",
+    "/contact",
+    "/contact-us",
+    "/fale-conosco",
+    "/sobre",
+    "/about",
+    "/sobre-nos",
+  ];
+  const urls = Array.from(new Set(candidatePaths.map((p) => `${origin}${p}`)));
+
+  const emailSet = new Set<string>();
+  const phoneSet = new Set<string>();
+
+  for (const url of urls) {
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 7000);
+      const resp = await fetch(url, {
+        signal: ctrl.signal,
+        headers: {
+          "User-Agent": "Mozilla/5.0 (compatible; LeadFinderBot/1.0; +https://lovable.dev)",
+          Accept: "text/html,application/xhtml+xml",
+        },
+        redirect: "follow",
+      }).finally(() => clearTimeout(timer));
+
+      if (!resp.ok) continue;
+      const ctype = resp.headers.get("content-type") || "";
+      if (!ctype.includes("text/html") && !ctype.includes("text/plain")) continue;
+
+      const html = (await resp.text()).slice(0, 500_000);
+      result.pages_visited.push(url);
+
+      // mailto: tem prioridade
+      for (const m of html.matchAll(/mailto:([^"'?\s>]+)/gi)) {
+        const e = m[1].trim().toLowerCase();
+        if (isUsableEmail(e)) emailSet.add(e);
+      }
+      // Regex genérica
+      for (const m of html.matchAll(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g)) {
+        const e = m[0].toLowerCase();
+        if (isUsableEmail(e)) emailSet.add(e);
+      }
+
+      // Telefone BR
+      for (const m of html.matchAll(/(?:\+?55\s*)?\(?\d{2}\)?\s*9?\d{4}[-.\s]?\d{4}/g)) {
+        const cleaned = m[0].replace(/\D/g, "").replace(/^55/, "");
+        if (cleaned.length >= 10 && cleaned.length <= 11) {
+          phoneSet.add(`(${cleaned.substring(0, 2)}) ${cleaned.substring(2)}`);
+        }
+      }
+
+      // Redes sociais (primeira ocorrência válida)
+      if (!result.instagram) {
+        const ig = html.match(/(?:https?:\/\/)?(?:www\.)?instagram\.com\/([A-Za-z0-9._]{1,30})/i);
+        if (ig && !/\/(p|reel|explore|accounts|tv|stories)\b/i.test(ig[0])) {
+          result.instagram = `@${ig[1]}`;
+        }
+      }
+      if (!result.facebook) {
+        const fb = html.match(/(?:https?:\/\/)?(?:www\.|m\.)?facebook\.com\/([A-Za-z0-9.\-_]{2,})/i);
+        if (fb && !/\/(sharer|plugins|tr|dialog|login)\b/i.test(fb[0])) {
+          result.facebook = fb[1];
+        }
+      }
+      if (!result.linkedin) {
+        const li = html.match(/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/(?:company|in)\/([A-Za-z0-9._-]{2,})/i);
+        if (li) result.linkedin = li[0].startsWith("http") ? li[0] : `https://${li[0]}`;
+      }
+      if (!result.youtube) {
+        const yt = html.match(/(?:https?:\/\/)?(?:www\.)?youtube\.com\/(?:@|channel\/|c\/|user\/)([A-Za-z0-9._-]{2,})/i);
+        if (yt) result.youtube = yt[0].startsWith("http") ? yt[0] : `https://${yt[0]}`;
+      }
+      if (!result.tiktok) {
+        const tk = html.match(/(?:https?:\/\/)?(?:www\.)?tiktok\.com\/@([A-Za-z0-9._-]{2,})/i);
+        if (tk) result.tiktok = `@${tk[1]}`;
+      }
+    } catch (e) {
+      // segue para a próxima URL
+    }
+  }
+
+  result.emails = Array.from(emailSet).slice(0, 10);
+  result.phones = Array.from(phoneSet).slice(0, 5);
+  return result;
+}
+
+function isUsableEmail(email: string): boolean {
+  if (!email || email.length > 120) return false;
+  // Bloquear lixos comuns / assets / serviços técnicos
+  if (/@(?:sentry|wixpress|example|.*\.png|.*\.jpg|.*\.svg)/i.test(email)) return false;
+  if (/(?:noreply|no-reply|do-not-reply|donotreply)@/i.test(email)) return false;
+  if (/(?:@2x|@3x|\.(?:png|jpe?g|svg|gif|webp))$/i.test(email)) return false;
+  if (/(?:wordpress|wpengine|gravatar|cloudflare|gstatic|googleusercontent)/i.test(email)) return false;
+  return true;
+}
+
 async function fetchAIEnrichment(result: any, apiKey: string, customSystemPrompt?: string | null) {
   const systemPrompt =
     (customSystemPrompt && customSystemPrompt.trim().length > 0)
