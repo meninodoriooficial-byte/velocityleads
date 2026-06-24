@@ -3,7 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Download, AlertTriangle } from "lucide-react";
+import { RefreshCw, Download, AlertTriangle, Loader2 } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import { ResultsList } from "./ResultsList";
 import { toast } from "sonner";
 
@@ -16,12 +17,16 @@ export const ResultsSection = ({ searchData }: ResultsSectionProps) => {
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [planLimit, setPlanLimit] = useState<number | null>(null);
+  const [batchNumber, setBatchNumber] = useState(0);
+  const [isFetchingBatch, setIsFetchingBatch] = useState(false);
 
   useEffect(() => {
     if (searchData?.id) {
       setAllResults([]);
       setCurrentPage(1);
       setHasMore(true);
+      setBatchNumber(0);
       fetchResults(true);
     }
   }, [searchData?.id]);
@@ -30,6 +35,8 @@ export const ResultsSection = ({ searchData }: ResultsSectionProps) => {
     if (!searchData?.id) return;
     
     setLoading(true);
+    setIsFetchingBatch(true);
+    setBatchNumber((n) => n + 1);
     try {
       // Garantir sessão válida antes de chamar a edge function
       const { data: sessionData } = await supabase.auth.getSession();
@@ -92,6 +99,9 @@ export const ResultsSection = ({ searchData }: ResultsSectionProps) => {
       // hasMore vem da edge function (respeita limite do plano)
       const more = !!(functionData && (functionData as any).hasMore);
       setHasMore(more);
+      if ((functionData as any)?.planLimit) {
+        setPlanLimit((functionData as any).planLimit);
+      }
       if ((functionData as any)?.planReached) {
         toast.info("Limite do plano atingido", {
           description: `Você capturou ${(functionData as any).totalCount} de ${(functionData as any).planLimit} leads do seu plano.`,
@@ -107,6 +117,7 @@ export const ResultsSection = ({ searchData }: ResultsSectionProps) => {
       setHasMore(false);
     } finally {
       setLoading(false);
+      setIsFetchingBatch(false);
     }
   };
 
@@ -232,6 +243,40 @@ export const ResultsSection = ({ searchData }: ResultsSectionProps) => {
               <p className="font-semibold">Aviso sobre estes resultados</p>
               <p className="opacity-90 mt-1">{searchData.warning}</p>
             </div>
+          </div>
+        )}
+
+        {(isFetchingBatch || planLimit) && (
+          <div className="mt-4 rounded-xl border border-border bg-muted/30 p-3">
+            <div className="flex items-center justify-between gap-2 mb-2 text-sm">
+              <div className="flex items-center gap-2 font-medium">
+                {isFetchingBatch ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                    <span>Capturando lote #{batchNumber} (até 100 novos leads)...</span>
+                  </>
+                ) : (
+                  <span>Progresso de captura</span>
+                )}
+              </div>
+              <span className="text-xs text-muted-foreground tabular-nums">
+                {allResults.length}
+                {planLimit ? ` / ${planLimit}` : ""} leads
+              </span>
+            </div>
+            <Progress
+              value={planLimit ? Math.min(100, (allResults.length / planLimit) * 100) : (isFetchingBatch ? 30 : 100)}
+              className="h-2"
+            />
+            <p className="text-xs text-muted-foreground mt-2">
+              {isFetchingBatch
+                ? "Buscando novos resultados — isso pode levar alguns segundos."
+                : hasMore
+                  ? "Clique em \"Carregar mais\" para capturar os próximos 100 leads (sem repetir)."
+                  : planLimit && allResults.length >= planLimit
+                    ? "Limite do seu plano atingido."
+                    : "Não há mais resultados disponíveis para esta busca."}
+            </p>
           </div>
         )}
       </div>
