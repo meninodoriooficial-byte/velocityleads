@@ -22,7 +22,8 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Loader2, MoreVertical, Plus, Pencil, KeyRound, Ban, Trash2, ShieldCheck, Users } from "lucide-react";
+import { Loader2, MoreVertical, Plus, Pencil, KeyRound, Ban, Trash2, ShieldCheck, Users, Layers, Package } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { invokeEdgeFunction } from "@/lib/edgeFunction";
 
 interface UserRow {
@@ -60,6 +61,18 @@ export const UserManager = () => {
   const [pwOpen, setPwOpen] = useState(false);
   const [pwUser, setPwUser] = useState<UserRow | null>(null);
   const [newPassword, setNewPassword] = useState("");
+
+  // Plan dialog
+  const [planOpen, setPlanOpen] = useState(false);
+  const [planUser, setPlanUser] = useState<UserRow | null>(null);
+  const [planChoice, setPlanChoice] = useState<string>("basic");
+  const [planLimit, setPlanLimit] = useState<number>(10);
+
+  // Addons dialog
+  const [addonsOpen, setAddonsOpen] = useState(false);
+  const [addonsUser, setAddonsUser] = useState<UserRow | null>(null);
+  const [addonsList, setAddonsList] = useState<any[]>([]);
+  const [addonsLoading, setAddonsLoading] = useState(false);
 
   const callApi = async (action: string, payload: any = {}) => {
     // showToast=false: tratamos os toasts em cada handler
@@ -170,6 +183,54 @@ export const UserManager = () => {
       });
       toast({ title: `Plano alterado para ${plan}` });
       load();
+    } catch (e: any) {
+      toast({ title: "Erro", description: e.description || e.message, variant: "destructive" });
+    }
+  };
+
+  const openPlanDialog = (u: UserRow) => {
+    setPlanUser(u);
+    setPlanChoice(u.plan);
+    setPlanLimit(u.plan_searches_limit);
+    setPlanOpen(true);
+  };
+
+  const savePlan = async () => {
+    if (!planUser) return;
+    setActionLoading(true);
+    try {
+      await callApi("update_profile", {
+        user_id: planUser.user_id,
+        plan: planChoice,
+        plan_searches_limit: planLimit,
+      });
+      toast({ title: `Plano atualizado para ${planChoice}` });
+      setPlanOpen(false);
+      load();
+    } catch (e: any) {
+      toast({ title: "Erro", description: e.description || e.message, variant: "destructive" });
+    } finally { setActionLoading(false); }
+  };
+
+  const openAddonsDialog = async (u: UserRow) => {
+    setAddonsUser(u);
+    setAddonsOpen(true);
+    setAddonsLoading(true);
+    try {
+      const data = await callApi("list_user_addons", { user_id: u.user_id });
+      setAddonsList(data.items || []);
+    } catch (e: any) {
+      toast({ title: "Erro ao carregar add-ons", description: e.description || e.message, variant: "destructive" });
+    } finally { setAddonsLoading(false); }
+  };
+
+  const toggleAddon = async (addon_slug: string, activate: boolean) => {
+    if (!addonsUser) return;
+    try {
+      await callApi("toggle_addon", { user_id: addonsUser.user_id, addon_slug, activate, months: 1 });
+      const data = await callApi("list_user_addons", { user_id: addonsUser.user_id });
+      setAddonsList(data.items || []);
+      toast({ title: activate ? "Add-on habilitado" : "Add-on desativado" });
     } catch (e: any) {
       toast({ title: "Erro", description: e.description || e.message, variant: "destructive" });
     }
@@ -289,13 +350,12 @@ export const UserManager = () => {
                           <KeyRound className="w-4 h-4 mr-2" />Mudar senha
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <div className="px-2 py-1 text-xs text-muted-foreground">Mudar plano</div>
-                        {PLANS.map(p => (
-                          <DropdownMenuItem key={p} onClick={() => handleChangePlan(u, p)}
-                            disabled={u.plan === p} className="capitalize">
-                            {p}
-                          </DropdownMenuItem>
-                        ))}
+                        <DropdownMenuItem onClick={() => openPlanDialog(u)}>
+                          <Layers className="w-4 h-4 mr-2" />Mudar plano
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openAddonsDialog(u)}>
+                          <Package className="w-4 h-4 mr-2" />Habilitar add-ons
+                        </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => handleSuspend(u)}>
                           <Ban className="w-4 h-4 mr-2" />
@@ -393,6 +453,81 @@ export const UserManager = () => {
               <Button onClick={handleChangePassword} disabled={actionLoading}>
                 {actionLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Alterar
               </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Plan Dialog */}
+        <Dialog open={planOpen} onOpenChange={setPlanOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2"><Layers className="w-5 h-5" /> Mudar Plano</DialogTitle>
+              <DialogDescription>{planUser?.email}</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <Label>Plano</Label>
+                <Select value={planChoice} onValueChange={(v) => {
+                  setPlanChoice(v);
+                  const limits: Record<string, number> = { basic: 10, pro: 100, business: 500, enterprise: 5000 };
+                  setPlanLimit(limits[v] ?? planLimit);
+                }}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {PLANS.map(p => <SelectItem key={p} value={p} className="capitalize">{p}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Limite de buscas/mês</Label>
+                <Input type="number" value={planLimit}
+                  onChange={(e) => setPlanLimit(parseInt(e.target.value) || 0)} />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setPlanOpen(false)}>Cancelar</Button>
+              <Button onClick={savePlan} disabled={actionLoading}>
+                {actionLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Salvar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Addons Dialog */}
+        <Dialog open={addonsOpen} onOpenChange={setAddonsOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2"><Package className="w-5 h-5" /> Habilitar Add-ons</DialogTitle>
+              <DialogDescription>{addonsUser?.email}</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+              {addonsLoading ? (
+                <div className="flex items-center justify-center py-8"><Loader2 className="w-5 h-5 animate-spin" /></div>
+              ) : addonsList.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-6">Nenhum add-on cadastrado.</p>
+              ) : addonsList.map((a) => {
+                const active = a.user_addon?.status === "active";
+                return (
+                  <div key={a.slug} className="flex items-center justify-between p-3 rounded-lg border border-border/60 bg-card">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-sm">{a.name}</span>
+                        {active && <Badge className="bg-green-600 hover:bg-green-600 text-white">ATIVO</Badge>}
+                      </div>
+                      <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{a.description}</p>
+                      <div className="text-[10px] text-muted-foreground mt-1">
+                        R$ {(a.price_cents / 100).toFixed(2).replace(".", ",")}/{a.billing_period}
+                        {a.monthly_quota ? ` · cota ${a.monthly_quota}` : ""}
+                        {active && a.user_addon?.expires_at ? ` · expira ${new Date(a.user_addon.expires_at).toLocaleDateString("pt-BR")}` : ""}
+                      </div>
+                    </div>
+                    <Switch checked={active} onCheckedChange={(v) => toggleAddon(a.slug, v)} />
+                  </div>
+                );
+              })}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setAddonsOpen(false)}>Fechar</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
