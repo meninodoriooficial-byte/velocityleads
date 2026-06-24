@@ -528,7 +528,7 @@ export default function Dashboard() {
 
             {activeTab === "admin" && isAdmin && (
               <Tabs defaultValue="users" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 md:grid-cols-7 h-auto p-1.5 bg-muted/60 border border-border/60 rounded-xl mb-6">
+                <TabsList className="grid w-full grid-cols-2 md:grid-cols-8 h-auto p-1.5 bg-muted/60 border border-border/60 rounded-xl mb-6">
                   <TabsTrigger value="users" className="gap-2 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg font-semibold">
                     <Users className="w-4 h-4" />
                     <span className="hidden sm:inline">Usuários</span>
@@ -548,6 +548,10 @@ export default function Dashboard() {
                   <TabsTrigger value="payments" className="gap-2 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg font-semibold">
                     <CreditCard className="w-4 h-4" />
                     <span className="hidden sm:inline">Pagamentos</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="whatsapp" className="gap-2 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg font-semibold">
+                    <MessageCircle className="w-4 h-4" />
+                    <span className="hidden sm:inline">WhatsApp</span>
                   </TabsTrigger>
                   <TabsTrigger value="history" className="gap-2 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg font-semibold">
                     <History className="w-4 h-4" />
