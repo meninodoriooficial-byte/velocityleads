@@ -85,13 +85,26 @@ export const EvolutionApiConfig = () => {
   };
 
   const sendTest = async () => {
+    const digits = testNumber.replace(/\D/g, "");
+    if (!testInstance.trim()) {
+      setSendResult({ ok: false, msg: "Informe o nome da instância" });
+      return;
+    }
+    if (digits.length < 12 || digits.length > 13) {
+      setSendResult({ ok: false, msg: "Número inválido. Use DDI+DDD+número, ex: 5511999999999" });
+      return;
+    }
+    if (!testMessage.trim()) {
+      setSendResult({ ok: false, msg: "Mensagem vazia" });
+      return;
+    }
     setSending(true);
     setSendResult(null);
     const { data, error } = await supabase.functions.invoke("evolution-test", {
       body: {
         action: "send",
         instance: testInstance,
-        number: testNumber,
+        number: digits,
         message: testMessage,
       },
     });
