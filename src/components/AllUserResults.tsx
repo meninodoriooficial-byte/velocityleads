@@ -88,6 +88,7 @@ export const AllUserResults = () => {
   const [hasEmail, setHasEmail] = useState(false);
   const [hasPhone, setHasPhone] = useState(false);
   const [hasWebsite, setHasWebsite] = useState(false);
+  const [noWebsite, setNoWebsite] = useState(false);
   const [enrichedOnly, setEnrichedOnly] = useState(false);
   const [minRating, setMinRating] = useState<string>("");
   const [dateFrom, setDateFrom] = useState<string>("");
@@ -208,6 +209,7 @@ export const AllUserResults = () => {
       if (hasEmail && !r.email) return false;
       if (hasPhone && !r.phone) return false;
       if (hasWebsite && !r.website) return false;
+      if (noWebsite && r.website) return false;
       if (enrichedOnly && !r.enriched_source) return false;
       if (minR !== null && (r.rating == null || Number(r.rating) < minR)) return false;
       if (fromTs && new Date(r.created_at).getTime() < fromTs) return false;
@@ -224,6 +226,7 @@ export const AllUserResults = () => {
     hasEmail,
     hasPhone,
     hasWebsite,
+    noWebsite,
     enrichedOnly,
     minRating,
     dateFrom,
@@ -239,6 +242,7 @@ export const AllUserResults = () => {
     setHasEmail(false);
     setHasPhone(false);
     setHasWebsite(false);
+    setNoWebsite(false);
     setEnrichedOnly(false);
     setMinRating("");
     setDateFrom("");
@@ -254,6 +258,7 @@ export const AllUserResults = () => {
     (hasEmail ? 1 : 0) +
     (hasPhone ? 1 : 0) +
     (hasWebsite ? 1 : 0) +
+    (noWebsite ? 1 : 0) +
     (enrichedOnly ? 1 : 0) +
     (minRating ? 1 : 0) +
     (dateFrom ? 1 : 0) +
@@ -427,6 +432,10 @@ export const AllUserResults = () => {
             <label className="flex items-center gap-2 text-xs cursor-pointer">
               <Checkbox checked={hasWebsite} onCheckedChange={(v) => setHasWebsite(!!v)} />
               Com website
+            </label>
+            <label className="flex items-center gap-2 text-xs cursor-pointer">
+              <Checkbox checked={noWebsite} onCheckedChange={(v) => setNoWebsite(!!v)} />
+              Sem website
             </label>
             <label className="flex items-center gap-2 text-xs cursor-pointer">
               <Checkbox checked={enrichedOnly} onCheckedChange={(v) => setEnrichedOnly(!!v)} />
