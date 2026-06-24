@@ -27,6 +27,7 @@ export type AddonCatalog = {
 
 export function useUserAddons() {
   const { user } = useAuth();
+  const userId = user?.id;
   const [catalog, setCatalog] = useState<AddonCatalog[]>([]);
   const [active, setActive] = useState<UserAddon[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,27 +36,29 @@ export function useUserAddons() {
     setLoading(true);
     const [catRes, userRes] = await Promise.all([
       supabase.from("addons").select("*").eq("is_active", true).order("sort_order"),
-      user
+      userId
         ? supabase
             .from("user_addons")
             .select("*")
-            .eq("user_id", user.id)
+            .eq("user_id", userId)
             .eq("status", "active")
         : Promise.resolve({ data: [], error: null } as any),
     ]);
     if (!catRes.error) setCatalog((catRes.data || []) as any);
     if (!userRes.error) setActive((userRes.data || []) as any);
     setLoading(false);
-  }, [user]);
+  }, [userId]);
 
   useEffect(() => {
     refresh();
-    if (!user) return;
+    if (!userId) return;
+
+    const channelName = `user_addons:${userId}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
     const channel = supabase
-      .channel(`user_addons:${user.id}`)
+      .channel(channelName)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "user_addons", filter: `user_id=eq.${user.id}` },
+        { event: "*", schema: "public", table: "user_addons", filter: `user_id=eq.${userId}` },
         () => refresh(),
       )
       .subscribe();
@@ -65,7 +68,7 @@ export function useUserAddons() {
       supabase.removeChannel(channel);
       window.removeEventListener("focus", onFocus);
     };
-  }, [user, refresh]);
+  }, [userId, refresh]);
 
   const isActive = (slug: string) =>
     active.some((a) => a.addon_slug === slug && a.status === "active");
