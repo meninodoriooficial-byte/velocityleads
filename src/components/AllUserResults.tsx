@@ -70,6 +70,7 @@ export const AllUserResults = () => {
   const [loading, setLoading] = useState(false);
   const [waLead, setWaLead] = useState<LeadRow | null>(null);
   const [responders, setResponders] = useState<Set<string>>(new Set());
+  const [contacted, setContacted] = useState<Set<string>>(new Set());
 
   // Filtros
   const [filter, setFilter] = useState("");
@@ -125,6 +126,18 @@ export const AllUserResults = () => {
       setResponders(new Set((convs || []).map((c: any) => normalizePhone(c.phone))));
     })();
   }, [user?.id]);
+
+  // Telefones já contatados via WhatsApp (status=sent)
+  const fetchContacted = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("message_history")
+      .select("phone")
+      .eq("user_id", user.id)
+      .eq("status", "sent");
+    setContacted(new Set((data || []).map((m: any) => normalizePhone(m.phone))));
+  };
+  useEffect(() => { fetchContacted(); }, [user?.id]);
 
   // Opções dinâmicas
   const uniqStates = useMemo(
@@ -442,8 +455,9 @@ export const AllUserResults = () => {
               <TableBody>
                 {filtered.map((r) => {
                   const responded = r.phone ? responders.has(normalizePhone(r.phone)) : false;
+                  const wasContacted = r.phone ? contacted.has(normalizePhone(r.phone)) : false;
                   return (
-                  <TableRow key={r.id}>
+                  <TableRow key={r.id} className={wasContacted ? "bg-amber-500/5 hover:bg-amber-500/10" : ""}>
                     <TableCell className="font-medium">{r.business_name}</TableCell>
                     <TableCell className="text-sm whitespace-nowrap">
                       {r.phone ? (
@@ -498,7 +512,7 @@ export const AllUserResults = () => {
                     </TableCell>
                     <TableCell className="text-center">
                       {r.phone ? (
-                        <Button variant="ghost" size="icon-sm" onClick={() => setWaLead(r)} title="Enviar WhatsApp">
+                        <Button variant="ghost" size="icon-sm" onClick={() => setWaLead(r)} title={wasContacted ? "Já contatado — enviar novamente" : "Enviar WhatsApp"}>
                           <MessageCircle className="size-4 text-green-600" />
                         </Button>
                       ) : <span className="text-muted-foreground text-xs">—</span>}
@@ -525,7 +539,7 @@ export const AllUserResults = () => {
       {waLead && (
         <SendWhatsAppDialog
           open={!!waLead}
-          onOpenChange={(o) => !o && setWaLead(null)}
+          onOpenChange={(o) => { if (!o) { setWaLead(null); fetchContacted(); } }}
           lead={{
             id: waLead.id,
             nome: waLead.business_name,
