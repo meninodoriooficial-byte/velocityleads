@@ -529,6 +529,107 @@ export type Database = {
           },
         ]
       }
+      email_accounts: {
+        Row: {
+          created_at: string
+          daily_limit: number
+          display_name: string | null
+          email: string
+          id: string
+          is_active: boolean
+          last_reset: string
+          oauth_access_token: string | null
+          oauth_expires_at: string | null
+          oauth_refresh_token: string | null
+          provider: string
+          send_order: number
+          sent_today: number
+          smtp_host: string | null
+          smtp_pass: string | null
+          smtp_port: number | null
+          smtp_secure: boolean
+          smtp_user: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          daily_limit?: number
+          display_name?: string | null
+          email: string
+          id?: string
+          is_active?: boolean
+          last_reset?: string
+          oauth_access_token?: string | null
+          oauth_expires_at?: string | null
+          oauth_refresh_token?: string | null
+          provider: string
+          send_order?: number
+          sent_today?: number
+          smtp_host?: string | null
+          smtp_pass?: string | null
+          smtp_port?: number | null
+          smtp_secure?: boolean
+          smtp_user?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          daily_limit?: number
+          display_name?: string | null
+          email?: string
+          id?: string
+          is_active?: boolean
+          last_reset?: string
+          oauth_access_token?: string | null
+          oauth_expires_at?: string | null
+          oauth_refresh_token?: string | null
+          provider?: string
+          send_order?: number
+          sent_today?: number
+          smtp_host?: string | null
+          smtp_pass?: string | null
+          smtp_port?: number | null
+          smtp_secure?: boolean
+          smtp_user?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      email_marketing_settings: {
+        Row: {
+          created_at: string
+          last_used_account_id: string | null
+          rotational: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          last_used_account_id?: string | null
+          rotational?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          last_used_account_id?: string | null
+          rotational?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_marketing_settings_last_used_account_id_fkey"
+            columns: ["last_used_account_id"]
+            isOneToOne: false
+            referencedRelation: "email_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_history: {
         Row: {
           created_at: string
