@@ -6,8 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2, Save, Copy, ExternalLink, Mail, Info } from "lucide-react";
+import { Loader2, Save, Copy, ExternalLink, Mail, Info, CheckCircle2, XCircle, PlugZap } from "lucide-react";
 
 const SETTING_KEY = "email_oauth";
 const PROJECT_REF = "gtoifsgptdchbmupbkvi";
@@ -35,6 +36,8 @@ export const EmailOAuthConfig = () => {
   const [cfg, setCfg] = useState<OAuthConfig>(empty);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState<"google" | "microsoft" | null>(null);
+  const [status, setStatus] = useState<{ google?: "ok" | "fail"; microsoft?: "ok" | "fail" }>({});
   const { toast } = useToast();
 
   useEffect(() => {
@@ -66,6 +69,110 @@ export const EmailOAuthConfig = () => {
     navigator.clipboard.writeText(txt);
     toast({ title: "Copiado!", description: txt });
   };
+
+  const testGoogle = async () => {
+    if (!cfg.google_client_id || !cfg.google_client_secret) {
+      toast({ title: "Preencha Client ID e Secret", variant: "destructive" });
+      return;
+    }
+    setTesting("google");
+    try {
+      const body = new URLSearchParams({
+        grant_type: "authorization_code",
+        code: "test_invalid_code",
+        client_id: cfg.google_client_id,
+        client_secret: cfg.google_client_secret,
+        redirect_uri: GOOGLE_REDIRECT,
+      });
+      const res = await fetch("https://oauth2.googleapis.com/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body,
+      });
+      const data = await res.json();
+      // invalid_grant => credenciais OK; invalid_client => credenciais ruins
+      if (data.error === "invalid_grant") {
+        setStatus((s) => ({ ...s, google: "ok" }));
+        toast({ title: "✓ Credenciais Google válidas" });
+      } else if (data.error === "invalid_client") {
+        setStatus((s) => ({ ...s, google: "fail" }));
+        toast({ title: "Credenciais Google inválidas", description: data.error_description || data.error, variant: "destructive" });
+      } else {
+        setStatus((s) => ({ ...s, google: "ok" }));
+        toast({ title: "✓ Conexão OK", description: data.error_description || "Resposta inesperada, mas o endpoint aceitou as credenciais." });
+      }
+    } catch (e: any) {
+      setStatus((s) => ({ ...s, google: "fail" }));
+      toast({ title: "Erro de rede", description: e.message, variant: "destructive" });
+    } finally {
+      setTesting(null);
+    }
+  };
+
+  const testMicrosoft = async () => {
+    if (!cfg.microsoft_client_id || !cfg.microsoft_client_secret) {
+      toast({ title: "Preencha Client ID e Secret", variant: "destructive" });
+      return;
+    }
+    setTesting("microsoft");
+    try {
+      const tenant = cfg.microsoft_tenant || "common";
+      const body = new URLSearchParams({
+        grant_type: "client_credentials",
+        client_id: cfg.microsoft_client_id,
+        client_secret: cfg.microsoft_client_secret,
+        scope: "https://graph.microsoft.com/.default",
+      });
+      const res = await fetch(`https://login.microsoftonline.com/${tenant}/oauth2/v2.0/token`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body,
+      });
+      const data = await res.json();
+      // tenant=common não aceita client_credentials → AADSTS9002313/AADSTS50059 = credenciais ainda assim foram aceitas
+      // invalid_client / AADSTS7000215 (secret errado) / AADSTS700016 (client_id errado) = ruim
+      const errDesc: string = data.error_description || "";
+      const credsOk =
+        res.ok ||
+        errDesc.includes("AADSTS50059") || // sem tenant
+        errDesc.includes("AADSTS9002313") || // request inválido mas creds reconhecidas
+        errDesc.includes("AADSTS500011") || // resource not found (mas creds ok)
+        errDesc.includes("AADSTS65001"); // consent required (creds ok)
+      const credsBad =
+        errDesc.includes("AADSTS7000215") ||
+        errDesc.includes("AADSTS7000222") ||
+        errDesc.includes("AADSTS700016") ||
+        data.error === "invalid_client" ||
+        data.error === "unauthorized_client";
+
+      if (credsBad) {
+        setStatus((s) => ({ ...s, microsoft: "fail" }));
+        toast({ title: "Credenciais Microsoft inválidas", description: errDesc || data.error, variant: "destructive" });
+      } else if (credsOk) {
+        setStatus((s) => ({ ...s, microsoft: "ok" }));
+        toast({ title: "✓ Credenciais Microsoft válidas" });
+      } else {
+        setStatus((s) => ({ ...s, microsoft: "ok" }));
+        toast({ title: "✓ Conexão OK", description: errDesc || "Endpoint respondeu." });
+      }
+    } catch (e: any) {
+      setStatus((s) => ({ ...s, microsoft: "fail" }));
+      toast({ title: "Erro de rede", description: e.message, variant: "destructive" });
+    } finally {
+      setTesting(null);
+    }
+  };
+
+  const ActiveBadge = () => (
+    <Badge className="bg-green-600 hover:bg-green-600 text-white border-transparent">
+      <CheckCircle2 className="size-3 mr-1" /> Ativo
+    </Badge>
+  );
+  const FailBadge = () => (
+    <Badge variant="destructive">
+      <XCircle className="size-3 mr-1" /> Inválido
+    </Badge>
+  );
 
   if (loading) return <div className="p-6"><Loader2 className="size-5 animate-spin" /></div>;
 
@@ -213,7 +320,11 @@ export const EmailOAuthConfig = () => {
       {/* Google form */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base"><Mail className="size-4 text-primary" /> Google / Gmail</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Mail className="size-4 text-primary" /> Google / Gmail
+            {status.google === "ok" && <ActiveBadge />}
+            {status.google === "fail" && <FailBadge />}
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="space-y-1">
@@ -224,13 +335,23 @@ export const EmailOAuthConfig = () => {
             <Label>Client Secret</Label>
             <Input type="password" value={cfg.google_client_secret} onChange={(e) => setCfg({ ...cfg, google_client_secret: e.target.value })} placeholder="GOCSPX-..." />
           </div>
+          <div className="flex justify-end">
+            <Button variant="outline" size="sm" onClick={testGoogle} disabled={testing === "google"}>
+              {testing === "google" ? <Loader2 className="size-4 mr-2 animate-spin" /> : <PlugZap className="size-4 mr-2" />}
+              Testar credenciais
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
       {/* Microsoft form */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base"><Mail className="size-4 text-primary" /> Microsoft / Outlook / Hotmail</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Mail className="size-4 text-primary" /> Microsoft / Outlook / Hotmail
+            {status.microsoft === "ok" && <ActiveBadge />}
+            {status.microsoft === "fail" && <FailBadge />}
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="space-y-1">
@@ -245,6 +366,12 @@ export const EmailOAuthConfig = () => {
             <Label>Tenant</Label>
             <Input value={cfg.microsoft_tenant} onChange={(e) => setCfg({ ...cfg, microsoft_tenant: e.target.value })} placeholder="common" />
             <p className="text-[10px] text-muted-foreground">Use <code>common</code> para aceitar contas pessoais (Hotmail/Outlook) + corporativas. Para restringir a uma organização, coloque o GUID do tenant.</p>
+          </div>
+          <div className="flex justify-end">
+            <Button variant="outline" size="sm" onClick={testMicrosoft} disabled={testing === "microsoft"}>
+              {testing === "microsoft" ? <Loader2 className="size-4 mr-2 animate-spin" /> : <PlugZap className="size-4 mr-2" />}
+              Testar credenciais
+            </Button>
           </div>
         </CardContent>
       </Card>
