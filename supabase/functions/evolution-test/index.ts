@@ -107,7 +107,15 @@ Deno.serve(async (req) => {
       let parsed: any = null;
       try { parsed = JSON.parse(text); } catch { /* noop */ }
       if (!r.ok) {
-        return json({ ok: false, status: r.status, error: parsed?.message || parsed?.response?.message || text.slice(0, 400) });
+        const errMsg = parsed?.message || parsed?.response?.message || text.slice(0, 400);
+        const notFound = r.status === 404 || /does not exist|not found/i.test(String(errMsg));
+        return json({
+          ok: false,
+          status: r.status,
+          error: notFound
+            ? `Instância "${instance}" não existe ou não está conectada. Clique em "Criar instância" e escaneie o QR Code primeiro.`
+            : errMsg,
+        });
       }
       return json({ ok: true, status: r.status, message: "Mensagem enviada", response: parsed });
     }
