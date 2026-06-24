@@ -17,3 +17,9 @@ verify_jwt = false
 
 [functions.crm-poll-messages]
 verify_jwt = false
+
+[functions.email-oauth-callback]
+verify_jwt = false
+
+[functions.email-oauth-start]
+verify_jwt = true
