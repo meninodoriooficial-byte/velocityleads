@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/components/ui/use-toast";
 import { SearchForm } from "@/components/SearchForm";
-import { TrendingUp, Users, Sparkles, CheckCircle2, KeyRound, History, AlertTriangle, Package, CreditCard, Zap, Target, ArrowUpRight, Bot, MessageCircle } from "lucide-react";
+import { TrendingUp, Users, Sparkles, CheckCircle2, KeyRound, History, AlertTriangle, Package, CreditCard, Zap, Target, ArrowUpRight, Bot, MessageCircle, Mail } from "lucide-react";
 import { ResultsSection } from "@/components/ResultsSection";
 import { ApiConfigManager } from "@/components/admin/ApiConfigManager";
 import { ApiErrorLogs } from "@/components/admin/ApiErrorLogs";
@@ -18,6 +18,7 @@ import { UserManager } from "@/components/admin/UserManager";
 import { PackagesManager } from "@/components/admin/PackagesManager";
 import { PaymentsConfig } from "@/components/admin/PaymentsConfig";
 import { EvolutionApiConfig } from "@/components/admin/EvolutionApiConfig";
+import { EmailOAuthConfig } from "@/components/admin/EmailOAuthConfig";
 import { PurchasesHistory } from "@/components/PurchasesHistory";
 import { AddonsMarketplace } from "@/components/addons/AddonsMarketplace";
 import { WhatsAppAddon } from "@/components/addons/WhatsAppAddon";
@@ -560,7 +561,7 @@ export default function Dashboard() {
 
             {activeTab === "admin" && isAdmin && (
               <Tabs defaultValue="users" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 md:grid-cols-8 h-auto p-1.5 bg-muted/60 border border-border/60 rounded-xl mb-6">
+                <TabsList className="grid w-full grid-cols-2 md:grid-cols-9 h-auto p-1.5 bg-muted/60 border border-border/60 rounded-xl mb-6">
                   <TabsTrigger value="users" className="gap-2 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg font-semibold">
                     <Users className="w-4 h-4" />
                     <span className="hidden sm:inline">Usuários</span>
@@ -584,6 +585,10 @@ export default function Dashboard() {
                   <TabsTrigger value="whatsapp" className="gap-2 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg font-semibold">
                     <MessageCircle className="w-4 h-4" />
                     <span className="hidden sm:inline">WhatsApp</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="email-oauth" className="gap-2 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg font-semibold">
+                    <Mail className="w-4 h-4" />
+                    <span className="hidden sm:inline">E-mail OAuth</span>
                   </TabsTrigger>
                   <TabsTrigger value="history" className="gap-2 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg font-semibold">
                     <History className="w-4 h-4" />
@@ -693,6 +698,23 @@ export default function Dashboard() {
                     </CardHeader>
                     <CardContent>
                       <EvolutionApiConfig />
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="email-oauth" className="mt-0">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Mail className="w-5 h-5" />
+                        Credenciais OAuth — Gmail e Microsoft
+                      </CardTitle>
+                      <CardDescription>
+                        Configure as credenciais que permitem aos clientes conectar suas contas Gmail e Outlook/Hotmail no add-on Email Marketing.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <EmailOAuthConfig />
                     </CardContent>
                   </Card>
                 </TabsContent>
