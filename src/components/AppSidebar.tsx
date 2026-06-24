@@ -11,11 +11,21 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Search, ListChecks, History, Package, ShieldCheck, Zap, LogOut, Receipt } from "lucide-react";
+import { Search, ListChecks, History, Package, ShieldCheck, Zap, LogOut, Receipt, Puzzle, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserAddons } from "@/hooks/useUserAddons";
+import { Badge } from "@/components/ui/badge";
 
-export type DashboardTab = "search" | "results" | "history" | "plans" | "purchases" | "admin";
+export type DashboardTab =
+  | "search"
+  | "results"
+  | "history"
+  | "plans"
+  | "purchases"
+  | "addons"
+  | "addon-whatsapp"
+  | "admin";
 
 interface AppSidebarProps {
   active: DashboardTab;
@@ -31,9 +41,14 @@ const navItems: { key: DashboardTab; label: string; icon: any; group: "main" | "
   { key: "purchases", label: "Minhas Compras", icon: Receipt, group: "manage" },
 ];
 
+const ADDON_META: Record<string, { label: string; icon: any; tab: DashboardTab }> = {
+  whatsapp: { label: "WhatsApp", icon: MessageCircle, tab: "addon-whatsapp" },
+};
+
 export function AppSidebar({ active, onChange, isAdmin }: AppSidebarProps) {
   const { state } = useSidebar();
   const { user, profile, signOut } = useAuth();
+  const { active: activeAddons } = useUserAddons();
   const collapsed = state === "collapsed";
 
   const main = navItems.filter((i) => i.group === "main");
@@ -80,6 +95,54 @@ export function AppSidebar({ active, onChange, isAdmin }: AppSidebarProps) {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Add-ons */}
+        <SidebarGroup className="mt-4">
+          {!collapsed && (
+            <SidebarGroupLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70 px-3">
+              Add-ons
+            </SidebarGroupLabel>
+          )}
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={active === "addons"}
+                  onClick={() => onChange("addons")}
+                  tooltip="Marketplace de Add-ons"
+                  className="font-medium data-[active=true]:bg-secondary data-[active=true]:text-foreground rounded-xl h-11"
+                >
+                  <Puzzle className="size-4" />
+                  <span>Marketplace</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              {activeAddons
+                .filter((a) => ADDON_META[a.addon_slug])
+                .map((a) => {
+                  const meta = ADDON_META[a.addon_slug];
+                  const Icon = meta.icon;
+                  return (
+                    <SidebarMenuItem key={a.addon_slug}>
+                      <SidebarMenuButton
+                        isActive={active === meta.tab}
+                        onClick={() => onChange(meta.tab)}
+                        tooltip={meta.label}
+                        className="font-medium data-[active=true]:bg-secondary data-[active=true]:text-foreground rounded-xl h-11"
+                      >
+                        <Icon className="size-4" />
+                        <span className="flex-1">{meta.label}</span>
+                        {!collapsed && (
+                          <Badge className="bg-green-600 hover:bg-green-600 text-white text-[9px] tracking-wider font-bold px-1.5 py-0">
+                            ATIVO
+                          </Badge>
+                        )}
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

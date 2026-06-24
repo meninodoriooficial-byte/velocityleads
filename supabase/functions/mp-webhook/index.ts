@@ -145,7 +145,67 @@ Deno.serve(async (req) => {
       .eq("id", order.id);
 
     if (newStatus === "approved" && !wasAlreadyApproved) {
-      // Buscar perfil e pacote
+      // ===== Add-on =====
+      if (order.order_kind === "addon" && order.addon_slug) {
+        const { data: addonDef } = await admin
+          .from("addons")
+          .select("*")
+          .eq("slug", order.addon_slug)
+          .maybeSingle();
+        const now = new Date();
+        const expires =
+          addonDef?.billing_period === "yearly"
+            ? new Date(now.getTime() + 365 * 24 * 3600 * 1000)
+            : addonDef?.billing_period === "monthly"
+              ? new Date(now.getTime() + 30 * 24 * 3600 * 1000)
+              : null;
+
+        // Renova ou cria
+        const { data: existing } = await admin
+          .from("user_addons")
+          .select("*")
+          .eq("user_id", order.user_id)
+          .eq("addon_slug", order.addon_slug)
+          .maybeSingle();
+
+        if (existing) {
+          await admin
+            .from("user_addons")
+            .update({
+              status: "active",
+              activated_at: now.toISOString(),
+              expires_at: expires?.toISOString() || null,
+              monthly_quota: addonDef?.monthly_quota ?? existing.monthly_quota,
+              monthly_used: 0,
+              quota_reset_at: new Date(
+                now.getFullYear(),
+                now.getMonth() + 1,
+                1,
+              ).toISOString(),
+              payment_order_id: order.id,
+            })
+            .eq("id", existing.id);
+        } else {
+          await admin.from("user_addons").insert({
+            user_id: order.user_id,
+            addon_slug: order.addon_slug,
+            status: "active",
+            activated_at: now.toISOString(),
+            expires_at: expires?.toISOString() || null,
+            monthly_quota: addonDef?.monthly_quota ?? null,
+            monthly_used: 0,
+            payment_order_id: order.id,
+          });
+        }
+        console.log("Add-on ativado", { user: order.user_id, slug: order.addon_slug });
+
+        return new Response(JSON.stringify({ ok: true, status: newStatus, kind: "addon" }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // ===== Pacote de buscas (fluxo original) =====
       const { data: profile } = await admin
         .from("profiles")
         .select("*")

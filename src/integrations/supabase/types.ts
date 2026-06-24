@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      addons: {
+        Row: {
+          billing_period: string
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          is_active: boolean
+          monthly_quota: number | null
+          name: string
+          price_cents: number
+          slug: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          billing_period?: string
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          monthly_quota?: number | null
+          name: string
+          price_cents?: number
+          slug: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          billing_period?: string
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          monthly_quota?: number | null
+          name?: string
+          price_cents?: number
+          slug?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       api_configs: {
         Row: {
           api_key_encrypted: string | null
@@ -92,48 +137,129 @@ export type Database = {
         }
         Relationships: []
       }
+      message_history: {
+        Row: {
+          created_at: string
+          error: string | null
+          evolution_response: Json | null
+          id: string
+          instance_name: string | null
+          lead_id: string | null
+          phone: string
+          rendered_message: string
+          status: string
+          template_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          evolution_response?: Json | null
+          id?: string
+          instance_name?: string | null
+          lead_id?: string | null
+          phone: string
+          rendered_message: string
+          status?: string
+          template_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          evolution_response?: Json | null
+          id?: string
+          instance_name?: string | null
+          lead_id?: string | null
+          phone?: string
+          rendered_message?: string
+          status?: string
+          template_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      message_templates: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          tags_used: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          tags_used?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          tags_used?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       payment_orders: {
         Row: {
+          addon_slug: string | null
           amount: number
           created_at: string
           environment: string
           id: string
-          package_id: string
+          order_kind: string
+          package_id: string | null
           payment_id: string | null
           preference_id: string | null
           provider: string
           raw_response: Json | null
-          searches_credited: number
+          searches_credited: number | null
           status: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          addon_slug?: string | null
           amount?: number
           created_at?: string
           environment?: string
           id?: string
-          package_id: string
+          order_kind?: string
+          package_id?: string | null
           payment_id?: string | null
           preference_id?: string | null
           provider?: string
           raw_response?: Json | null
-          searches_credited?: number
+          searches_credited?: number | null
           status?: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          addon_slug?: string | null
           amount?: number
           created_at?: string
           environment?: string
           id?: string
-          package_id?: string
+          order_kind?: string
+          package_id?: string | null
           payment_id?: string | null
           preference_id?: string | null
           provider?: string
           raw_response?: Json | null
-          searches_credited?: number
+          searches_credited?: number | null
           status?: string
           updated_at?: string
           user_id?: string
@@ -355,6 +481,51 @@ export type Database = {
         }
         Relationships: []
       }
+      user_addons: {
+        Row: {
+          activated_at: string
+          addon_slug: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          monthly_quota: number | null
+          monthly_used: number
+          payment_order_id: string | null
+          quota_reset_at: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          activated_at?: string
+          addon_slug: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          monthly_quota?: number | null
+          monthly_used?: number
+          payment_order_id?: string | null
+          quota_reset_at?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          activated_at?: string
+          addon_slug?: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          monthly_quota?: number | null
+          monthly_used?: number
+          payment_order_id?: string | null
+          quota_reset_at?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -369,6 +540,39 @@ export type Database = {
         Update: {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_whatsapp_instances: {
+        Row: {
+          connected_at: string | null
+          connection_state: string
+          created_at: string
+          id: string
+          instance_name: string
+          last_qr_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          connected_at?: string | null
+          connection_state?: string
+          created_at?: string
+          id?: string
+          instance_name: string
+          last_qr_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          connected_at?: string | null
+          connection_state?: string
+          created_at?: string
+          id?: string
+          instance_name?: string
+          last_qr_at?: string | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
