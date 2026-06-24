@@ -46,6 +46,15 @@ export default function Dashboard() {
     }
   }, [user]);
 
+  useEffect(() => {
+    const h = (e: Event) => {
+      const tab = (e as CustomEvent).detail as DashboardTab;
+      if (tab) setActiveTab(tab);
+    };
+    window.addEventListener("dashboard:tab", h);
+    return () => window.removeEventListener("dashboard:tab", h);
+  }, []);
+
   const fetchUserSearches = async () => {
     try {
       const { data, error } = await supabase
