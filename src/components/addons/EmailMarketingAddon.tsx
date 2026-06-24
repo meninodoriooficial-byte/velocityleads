@@ -139,11 +139,30 @@ export const EmailMarketingAddon = () => {
     load();
   };
 
-  const oauthSoon = (p: "gmail" | "outlook") => {
-    toast({
-      title: `Conectar ${p === "gmail" ? "Gmail" : "Outlook"}`,
-      description: "OAuth está em ativação. Por enquanto use a opção SMTP (Gmail aceita senha de app; Outlook também).",
-    });
+  const startOAuth = async (p: "gmail" | "outlook") => {
+    if (accounts.length >= MAX_ACCOUNTS) {
+      toast({ title: "Limite atingido", description: `Máximo de ${MAX_ACCOUNTS} contas.`, variant: "destructive" });
+      return;
+    }
+    const provider = p === "gmail" ? "google" : "microsoft";
+    const { data, error } = await supabase.functions.invoke("email-oauth-start", { body: { provider } });
+    if (error || !data?.url) {
+      toast({ title: "Não foi possível iniciar OAuth", description: error?.message || data?.error || "Verifique se o admin configurou as credenciais.", variant: "destructive" });
+      return;
+    }
+    const win = window.open(data.url, "oauth", "width=560,height=720");
+    if (!win) {
+      toast({ title: "Popup bloqueado", description: "Permita popups e tente novamente.", variant: "destructive" });
+      return;
+    }
+    const onMsg = (ev: MessageEvent) => {
+      if (ev.data?.type === "email-oauth-done") {
+        window.removeEventListener("message", onMsg);
+        toast({ title: "✓ Conta conectada" });
+        load();
+      }
+    };
+    window.addEventListener("message", onMsg);
   };
 
   const openTplNew = () => {
@@ -310,8 +329,8 @@ export const EmailMarketingAddon = () => {
           <DialogHeader><DialogTitle>Nova conta de e-mail</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="grid grid-cols-3 gap-2">
-              <Button variant={form.provider === "gmail" ? "default" : "outline"} onClick={() => oauthSoon("gmail")}>Gmail</Button>
-              <Button variant={form.provider === "outlook" ? "default" : "outline"} onClick={() => oauthSoon("outlook")}>Outlook</Button>
+              <Button variant={form.provider === "gmail" ? "default" : "outline"} onClick={() => startOAuth("gmail")}>Gmail</Button>
+              <Button variant={form.provider === "outlook" ? "default" : "outline"} onClick={() => startOAuth("outlook")}>Outlook</Button>
               <Button variant={form.provider === "smtp" ? "default" : "outline"} onClick={() => setForm({ ...form, provider: "smtp" })}>SMTP</Button>
             </div>
             <div className="space-y-1">
