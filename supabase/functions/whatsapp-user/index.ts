@@ -75,11 +75,28 @@ Deno.serve(async (req) => {
       const t = await r.text();
       let p: any = null; try { p = JSON.parse(t); } catch {}
       const state = p?.instance?.state || p?.state || (r.status === 404 ? "not_found" : "unknown");
+
+      let profile: any = null;
+      if (state === "open") {
+        try {
+          const fr = await fetch(`${baseUrl}/instance/fetchInstances?instanceName=${encodeURIComponent(inst.instance_name)}`, { headers });
+          const ft = await fr.text();
+          let fp: any = null; try { fp = JSON.parse(ft); } catch {}
+          const item = Array.isArray(fp) ? fp[0] : (fp?.instance || fp);
+          const raw = item?.instance || item || {};
+          profile = {
+            name: raw.profileName || raw.profile_name || raw.ownerName || null,
+            picture: raw.profilePictureUrl || raw.profilePicUrl || raw.profile_pic_url || null,
+            number: (raw.owner || raw.ownerJid || raw.wuid || "").toString().split("@")[0] || null,
+          };
+        } catch (e) { console.error("fetchInstances failed", e); }
+      }
+
       await admin
         .from("user_whatsapp_instances")
         .update({ connection_state: state, connected_at: state === "open" ? new Date().toISOString() : inst.connected_at })
         .eq("id", inst.id);
-      return json({ ok: true, instance: inst, state, connected: state === "open" });
+      return json({ ok: true, instance: inst, state, connected: state === "open", profile });
     }
 
     if (action === "create") {
