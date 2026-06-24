@@ -145,6 +145,58 @@ Deno.serve(async (req) => {
         return json({ ok: true });
       }
 
+      case "list_user_addons": {
+        const { user_id } = payload;
+        const [catRes, userRes] = await Promise.all([
+          admin.from("addons").select("*").eq("is_active", true).order("sort_order"),
+          admin.from("user_addons").select("*").eq("user_id", user_id),
+        ]);
+        const byslug: Record<string, any> = {};
+        (userRes.data || []).forEach((r: any) => { byslug[r.addon_slug] = r; });
+        const items = (catRes.data || []).map((c: any) => ({
+          ...c,
+          user_addon: byslug[c.slug] || null,
+        }));
+        return json({ items });
+      }
+
+      case "toggle_addon": {
+        const { user_id, addon_slug, activate, months } = payload;
+        if (!user_id || !addon_slug) return json({ error: "user_id e addon_slug obrigatórios" }, 400);
+        const { data: catalog } = await admin.from("addons").select("*").eq("slug", addon_slug).maybeSingle();
+        if (!catalog) return json({ error: "Add-on não encontrado" }, 404);
+        const { data: existing } = await admin.from("user_addons").select("*").eq("user_id", user_id).eq("addon_slug", addon_slug).maybeSingle();
+        if (activate) {
+          const dur = Math.max(1, Number(months || 1));
+          const expires = new Date(); expires.setMonth(expires.getMonth() + dur);
+          if (existing) {
+            await admin.from("user_addons").update({
+              status: "active",
+              activated_at: existing.activated_at || new Date().toISOString(),
+              expires_at: expires.toISOString(),
+              monthly_quota: catalog.monthly_quota,
+              monthly_used: 0,
+            }).eq("id", existing.id);
+          } else {
+            await admin.from("user_addons").insert({
+              user_id, addon_slug,
+              status: "active",
+              activated_at: new Date().toISOString(),
+              expires_at: expires.toISOString(),
+              monthly_quota: catalog.monthly_quota,
+              monthly_used: 0,
+            });
+          }
+          // Seed pipeline padrão para CRM
+          if (addon_slug === "whatsapp_crm") {
+            try { await admin.rpc("crm_seed_default_pipeline", { _user_id: user_id }); } catch (e) { console.error(e); }
+          }
+        } else if (existing) {
+          await admin.from("user_addons").update({ status: "inactive" }).eq("id", existing.id);
+        }
+        return json({ ok: true });
+      }
+
       default:
         return json({ error: "Unknown action" }, 400);
     }
