@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.crm-flow-run]
 verify_jwt = false
+
+[functions.crm-poll-messages]
+verify_jwt = false
