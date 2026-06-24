@@ -50,10 +50,10 @@ export const ResultsSection = ({ searchData }: ResultsSectionProps) => {
           .order('created_at', { ascending: false });
 
         if (existingError) throw existingError;
-        
+
         if (existingData && existingData.length > 0) {
           setAllResults(existingData);
-          setHasMore(false); // Se já tem resultados, não tem mais para carregar
+          setHasMore(true); // permite "capturar mais 100"
           setLoading(false);
           return;
         }
@@ -87,17 +87,20 @@ export const ResultsSection = ({ searchData }: ResultsSectionProps) => {
 
       if (fetchError) throw fetchError;
 
-      if (isNewSearch) {
-        setAllResults(newResults || []);
-      } else {
-        // Adicionar apenas os novos resultados (evitar duplicatas)
-        const existingIds = new Set(allResults.map((r: any) => r.id));
-        const uniqueNewResults = (newResults || []).filter((r: any) => !existingIds.has(r.id));
-        setAllResults(prev => [...prev, ...uniqueNewResults]);
-      }
+      setAllResults(newResults || []);
 
-      // Paginação é feita no cliente (10 por página) sobre os resultados desta busca
-      setHasMore(false);
+      // hasMore vem da edge function (respeita limite do plano)
+      const more = !!(functionData && (functionData as any).hasMore);
+      setHasMore(more);
+      if ((functionData as any)?.planReached) {
+        toast.info("Limite do plano atingido", {
+          description: `Você capturou ${(functionData as any).totalCount} de ${(functionData as any).planLimit} leads do seu plano.`,
+        });
+      } else if (!isNewSearch && (functionData as any)?.resultsCount === 0) {
+        toast.info("Sem novos resultados", {
+          description: "Não encontramos novos leads para este lote.",
+        });
+      }
       
     } catch (error) {
       console.error('Error fetching results:', error);

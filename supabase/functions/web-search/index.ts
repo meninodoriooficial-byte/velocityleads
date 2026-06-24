@@ -24,8 +24,63 @@ serve(async (req) => {
     );
 
     const { searchId, category, state, city, neighborhood, page = 1 } = await req.json();
-    
+
     console.log('Starting web search for:', { category, state, city, neighborhood, page });
+
+    // Buscar dados da busca (para descobrir o user) e o plano do usuário
+    const { data: searchRow } = await supabaseClient
+      .from('searches')
+      .select('user_id')
+      .eq('id', searchId)
+      .maybeSingle();
+
+    let planLimit = 100;
+    if (searchRow?.user_id) {
+      const { data: profile } = await supabaseClient
+        .from('profiles')
+        .select('plan_searches_limit')
+        .eq('user_id', searchRow.user_id)
+        .maybeSingle();
+      if (profile?.plan_searches_limit && profile.plan_searches_limit > 0) {
+        planLimit = profile.plan_searches_limit;
+      }
+    }
+
+    // Place_ids já capturados nesta busca — para não duplicar entre lotes
+    const { data: existingRows } = await supabaseClient
+      .from('search_results')
+      .select('additional_data')
+      .eq('search_id', searchId);
+
+    const existingPlaceIds = new Set<string>();
+    for (const row of existingRows || []) {
+      const pid = (row as any)?.additional_data?.place_id;
+      if (pid) existingPlaceIds.add(pid);
+    }
+
+    const alreadyCaptured = existingPlaceIds.size;
+    const remainingByPlan = Math.max(0, planLimit - alreadyCaptured);
+    const BATCH = 100;
+    const targetThisBatch = Math.min(BATCH, remainingByPlan);
+
+    if (targetThisBatch === 0) {
+      await supabaseClient
+        .from('searches')
+        .update({ status: 'completed', results_count: alreadyCaptured })
+        .eq('id', searchId);
+      return new Response(
+        JSON.stringify({
+          success: true,
+          resultsCount: 0,
+          totalCount: alreadyCaptured,
+          hasMore: false,
+          planLimit,
+          planReached: true,
+          warning: `Limite do plano atingido (${planLimit} capturas).`,
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      );
+    }
 
     // Atualizar status da busca
     await supabaseClient
@@ -39,7 +94,8 @@ serve(async (req) => {
 
     // Executar busca tentando cada chave em sequência (sem fallback simulado)
     const { results: searchResults, warning } = await performWebSearch(
-      category, city, state, neighborhood, page, apiKeys, supabaseClient
+      category, city, state, neighborhood, page, apiKeys, supabaseClient,
+      existingPlaceIds, targetThisBatch
     );
     
     // Salvar resultados no banco
@@ -75,12 +131,17 @@ serve(async (req) => {
 
     console.log(`Search completed: ${searchResults.length} new results found, ${totalCount} total${warning ? ` (warning: ${warning})` : ''}`);
 
+    const total = totalCount || 0;
+    const hasMore = searchResults.length >= targetThisBatch && total < planLimit;
+
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         resultsCount: searchResults.length,
-        totalCount: totalCount || 0,
-        hasMore: searchResults.length >= 100,
+        totalCount: total,
+        hasMore,
+        planLimit,
+        planReached: total >= planLimit,
         warning: warning ?? null,
       }),
       { 
@@ -144,7 +205,9 @@ async function performWebSearch(
   neighborhood: string | undefined,
   page: number,
   apiKeys: Array<{ id: string | null; key: string; label: string }>,
-  supabaseClient: any
+  supabaseClient: any,
+  excludePlaceIds: Set<string> = new Set(),
+  target: number = 100
 ): Promise<{ results: any[]; warning: string | null }> {
   console.log(`Performing search for ${category} in ${city}, ${state} - Page ${page} — ${apiKeys.length} chave(s) disponível(is)`);
 
@@ -167,7 +230,7 @@ async function performWebSearch(
     const isLast = i === apiKeys.length - 1;
     try {
       console.log(`Tentativa ${i + 1}/${apiKeys.length} usando "${label}" (${key.substring(0, 8)}...)`);
-      const results = await callGooglePlaces(category, city, state, neighborhood, key);
+      const results = await callGooglePlaces(category, city, state, neighborhood, key, page, excludePlaceIds, target);
 
       if (results.success) {
         const warning =
@@ -212,22 +275,34 @@ async function callGooglePlaces(
   city: string,
   state: string,
   neighborhood: string | undefined,
-  apiKey: string
+  apiKey: string,
+  page: number = 1,
+  excludePlaceIds: Set<string> = new Set(),
+  target: number = 100
 ): Promise<{ success: true; data: any[] } | { success: false; errorStatus: string; errorMessage: string; httpStatus?: number }> {
-  const TARGET = 100;
+  const TARGET = target;
 
-  // Monta variações de query para tentar atingir 100 resultados (Google limita ~60 por query)
-  const queries: string[] = [];
+  // Monta variações de query (Google limita ~60 por query). Cada lote (page) usa um conjunto diferente.
+  const baseQueries: string[] = [];
   if (neighborhood) {
-    queries.push(`${category} ${neighborhood}, ${city}, ${state}`);
-    queries.push(`${category} ${neighborhood} ${city}`);
+    baseQueries.push(`${category} ${neighborhood}, ${city}, ${state}`);
+    baseQueries.push(`${category} ${neighborhood} ${city}`);
   }
-  queries.push(`${category} ${city}, ${state}`);
-  queries.push(`${category} em ${city} ${state}`);
-  queries.push(`${category} próximo a ${city} ${state}`);
+  baseQueries.push(`${category} ${city}, ${state}`);
+  baseQueries.push(`${category} em ${city} ${state}`);
+  baseQueries.push(`${category} próximo a ${city} ${state}`);
+  baseQueries.push(`melhores ${category} ${city} ${state}`);
+  baseQueries.push(`${category} centro ${city}`);
+  baseQueries.push(`${category} região ${city} ${state}`);
+  baseQueries.push(`empresas de ${category} ${city} ${state}`);
+  baseQueries.push(`lojas de ${category} ${city} ${state}`);
+  baseQueries.push(`serviços de ${category} ${city} ${state}`);
+  // Rotaciona o conjunto de queries conforme o lote para diversificar resultados
+  const offset = Math.max(0, (page - 1)) % baseQueries.length;
+  const queries = [...baseQueries.slice(offset), ...baseQueries.slice(0, offset)];
 
   const collected: any[] = [];
-  const seenPlaceIds = new Set<string>();
+  const seenPlaceIds = new Set<string>(excludePlaceIds);
   let firstError: { errorStatus: string; errorMessage: string; httpStatus?: number } | null = null;
   let anySuccess = false;
 
