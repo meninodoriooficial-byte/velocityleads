@@ -162,19 +162,23 @@ Deno.serve(async (req) => {
       if (phone.length < 10) return json({ ok: false, error: "Número inválido" }, 400);
       if (!message) return json({ ok: false, error: "Mensagem vazia" }, 400);
 
+      // Garante DDI Brasil (55) se número vier sem código de país
+      const fullPhone = (phone.length === 10 || phone.length === 11) ? `55${phone}` : phone;
+
       const r = await fetch(`${baseUrl}/message/sendText/${encodeURIComponent(inst.instance_name)}`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ number: phone, text: message }),
+        body: JSON.stringify({ number: fullPhone, text: message }),
       });
       const t = await r.text();
       let p: any = null; try { p = JSON.parse(t); } catch {}
       const okSend = r.ok;
+      if (!okSend) console.error("sendText failed", r.status, t.slice(0, 400));
 
       await admin.from("message_history").insert({
         user_id: user.id,
         instance_name: inst.instance_name,
-        phone,
+        phone: fullPhone,
         lead_id: body.lead_id || null,
         template_id: body.template_id || null,
         rendered_message: message,
