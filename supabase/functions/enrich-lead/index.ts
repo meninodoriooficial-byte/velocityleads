@@ -215,6 +215,8 @@ function buildResultUpdate(
   sourceUsed: string
 ) {
   const cdd = enrichment.casadosdados as any;
+  const brasil = enrichment.brasilapi as any;
+  const scraped = enrichment.scraped as any;
   const ai = enrichment.ai as any;
   const update: Record<string, any> = {
     enriched_data: enrichment,
@@ -236,6 +238,30 @@ function buildResultUpdate(
       socialChanged = true;
     }
     if (socialChanged) update.social_media = social;
+  }
+  if (brasil) {
+    if (!update.phone && !result.phone && brasil.telefone) update.phone = brasil.telefone;
+    if (!update.email && !result.email && brasil.email) update.email = brasil.email;
+    if (!update.owner_name && !result.owner_name && brasil.proprietario) {
+      update.owner_name = brasil.proprietario;
+    }
+  }
+  if (scraped) {
+    if (!update.email && !result.email && scraped.emails?.[0]) {
+      update.email = scraped.emails[0];
+    }
+    if (!update.phone && !result.phone && scraped.phones?.[0]) {
+      update.phone = scraped.phones[0];
+    }
+    const social = { ...(update.social_media || result.social_media || {}) };
+    let changed = false;
+    for (const k of ["instagram", "facebook", "linkedin", "youtube", "tiktok"] as const) {
+      if (!social[k] && (scraped as any)[k]) {
+        social[k] = (scraped as any)[k];
+        changed = true;
+      }
+    }
+    if (changed) update.social_media = social;
   }
   if (ai) {
     if (!update.email && !result.email && Array.isArray(ai.emails) && ai.emails[0]) {
