@@ -78,6 +78,20 @@ const getOverlay = (r: any, enr: any) => {
   const ai = data.ai || {};
   const scraped = data.scraped || {};
   const cnpj = formatCnpjStr(cdd.cnpj || brasil.cnpj || ai.cnpj);
+  const situacaoRaw =
+    brasil.descricao_situacao_cadastral ||
+    brasil.situacao_cadastral ||
+    cdd.situacao_cadastral ||
+    cdd.situacao ||
+    ai.situacao_cadastral ||
+    ai.situacao ||
+    null;
+  let status: { label: string; active: boolean } | null = null;
+  if (cnpj && situacaoRaw) {
+    const s = String(situacaoRaw).trim();
+    const active = /ativ/i.test(s);
+    status = { label: s, active };
+  }
   const email =
     r.email ||
     cdd.email ||
@@ -153,7 +167,7 @@ const getOverlay = (r: any, enr: any) => {
     tiktok:
       r.social_media?.tiktok || scraped.tiktok || aiSocials.tiktok || null,
   };
-  return { cnpj, email, phone, website, socios, social };
+  return { cnpj, email, phone, website, socios, social, status };
 };
 
 export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
@@ -575,6 +589,13 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
                         <Building2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                         <span className="text-xs font-mono font-semibold">{ov.cnpj}</span>
                         <Badge variant="outline" className="text-[10px]">CNPJ</Badge>
+                        {ov.status && (
+                          <Badge
+                            className={`text-[10px] ${ov.status.active ? "bg-emerald-600 hover:bg-emerald-600 text-white border-transparent" : "bg-red-600 hover:bg-red-600 text-white border-transparent"}`}
+                          >
+                            {ov.status.active ? "Ativa" : ov.status.label}
+                          </Badge>
+                        )}
                       </div>
                     )}
                     {r.business_type && (
@@ -758,6 +779,13 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
                     </div>
                     <span className="text-xs font-mono font-semibold">{ov.cnpj}</span>
                     <Badge variant="outline" className="text-[10px] ml-auto">CNPJ</Badge>
+                    {ov.status && (
+                      <Badge
+                        className={`text-[10px] ${ov.status.active ? "bg-emerald-600 hover:bg-emerald-600 text-white border-transparent" : "bg-red-600 hover:bg-red-600 text-white border-transparent"}`}
+                      >
+                        {ov.status.active ? "Ativa" : ov.status.label}
+                      </Badge>
+                    )}
                   </div>
                 )}
                 {r.address && (
