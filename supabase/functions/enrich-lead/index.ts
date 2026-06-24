@@ -725,3 +725,66 @@ Faça a varredura conforme suas instruções e devolva os dados estruturados via
     return null;
   }
 }
+
+/**
+ * Scraping da busca pública do casadosdados.com.br para descobrir o CNPJ
+ * a partir do nome do estabelecimento + cidade. Não requer API key.
+ * Retorna apenas o CNPJ (14 dígitos formatados) ou null.
+ */
+async function scrapeCasaDosDadosPublic(
+  name: string,
+  address?: string | null
+): Promise<string | null> {
+  try {
+    const cleanName = (name || "").trim();
+    if (!cleanName) return null;
+
+    // Extrai cidade/UF do endereço quando possível ("..., Cidade - UF, ...")
+    let cidade: string | null = null;
+    let uf: string | null = null;
+    if (address) {
+      const ufMatch = address.match(/\b([A-Z]{2})\b/);
+      if (ufMatch) uf = ufMatch[1];
+      const cidadeMatch = address.match(/,\s*([^,\-]+?)\s*-\s*[A-Z]{2}/);
+      if (cidadeMatch) cidade = cidadeMatch[1].trim();
+    }
+
+    const q = encodeURIComponent(
+      [cleanName, cidade, uf].filter(Boolean).join(" ")
+    );
+    const url = `https://casadosdados.com.br/solucao/cnpj/buscar?q=${q}`;
+
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 8000);
+    const resp = await fetch(url, {
+      signal: ctrl.signal,
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (compatible; LeadFinderBot/1.0; +https://lovable.dev)",
+        Accept: "text/html",
+      },
+      redirect: "follow",
+    }).finally(() => clearTimeout(timer));
+
+    if (!resp.ok) {
+      console.log("CDD scrape HTTP", resp.status);
+      return null;
+    }
+    const html = (await resp.text()).slice(0, 500_000);
+
+    // Captura o primeiro CNPJ formatado (xx.xxx.xxx/xxxx-xx) da página
+    const m = html.match(/\b\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}\b/);
+    if (m) return m[0];
+
+    // Fallback: 14 dígitos seguidos
+    const m2 = html.match(/\b\d{14}\b/);
+    if (m2) {
+      const d = m2[0];
+      return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`;
+    }
+    return null;
+  } catch (e) {
+    console.log("scrapeCasaDosDadosPublic throw", e);
+    return null;
+  }
+}
