@@ -294,23 +294,25 @@ out tags;`;
                     <Select
                       value={neighborhood || "__all__"}
                       onValueChange={(v) => setNeighborhood(v === "__all__" ? "" : v)}
-                      disabled={!city || loadingNeighborhoods}
+                      disabled={!city}
                     >
                       <SelectTrigger className="h-12 bg-secondary/40 border-2 border-transparent hover:border-border focus:bg-card focus:border-primary rounded-xl font-medium px-4">
                         <SelectValue
                           placeholder={
-                            !city
-                              ? "Selecione a cidade"
-                              : loadingNeighborhoods
-                              ? "Carregando bairros..."
-                              : neighborhoods.length === 0
-                              ? "Nenhum bairro encontrado"
-                              : "Todos os bairros"
+                            !city ? "Selecione a cidade" : "Todos os bairros"
                           }
                         />
                       </SelectTrigger>
                       <SelectContent className="max-h-72">
-                        <SelectItem value="__all__">Todos os bairros</SelectItem>
+                        <SelectItem value="__all__">
+                          Todos os bairros{neighborhoods.length > 0 ? ` (${neighborhoods.length})` : ""}
+                        </SelectItem>
+                        {loadingNeighborhoods && (
+                          <div className="px-2 py-1.5 text-xs text-muted-foreground flex items-center gap-2">
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            Carregando bairros...
+                          </div>
+                        )}
                         {neighborhoods.map((n) => (
                           <SelectItem key={n} value={n}>
                             {n}
