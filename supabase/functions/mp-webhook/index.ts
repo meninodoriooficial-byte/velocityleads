@@ -199,6 +199,13 @@ Deno.serve(async (req) => {
         }
         console.log("Add-on ativado", { user: order.user_id, slug: order.addon_slug });
 
+        // Hooks de ativação por slug
+        if (order.addon_slug === "whatsapp_crm") {
+          try {
+            await admin.rpc("crm_seed_default_pipeline", { _user_id: order.user_id });
+          } catch (e) { console.error("crm seed failed", e); }
+        }
+
         return new Response(JSON.stringify({ ok: true, status: newStatus, kind: "addon" }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
