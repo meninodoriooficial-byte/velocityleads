@@ -1,103 +1,184 @@
-# Add-ons / Marketplace de Recursos
+# Add-on: WhatsApp CRM (Kanban + Inbox + Flows)
 
-Criar um sistema de **add-ons** que o usuário compra e ativa por conta. O primeiro add-on é o **WhatsApp (Evolution API)**, que reaproveita a infra de Evolution já configurada no superadmin. A arquitetura fica pronta para novos add-ons (Email, CRM, Disparos em massa, IA de copy, etc.).
+Novo add-on **"WhatsApp CRM"** que se ativa em cima do add-on WhatsApp já existente. Quando um lead responde uma mensagem enviada pelo usuário, automaticamente abre uma conversa em um pipeline estilo Kanban, com inbox tipo WhatsApp Web, banco de respostas rápidas, mídias, botões e fluxos automáticos.
 
-## 1. Menu lateral
-
-Adicionar item **"Add-ons"** no `AppSidebar`. Quando o usuário tem um add-on ativo, aparece um submenu por add-on (ex: "WhatsApp") com um **badge verde "Ativo"** (texto branco) ao lado. Clicar no submenu abre a tela de configuração daquele add-on.
+## 1. Visão geral
 
 ```text
-Add-ons
- ├─ WhatsApp   [Ativo]   ← badge verde
- └─ ...
+Lead responde ───► Webhook Evolution ───► Conversa criada/atualizada
+                                              │
+                                              ▼
+                          ┌──────────── Inbox + Kanban ────────────┐
+                          │ • Conversas no estágio "Novo"          │
+                          │ • Drag-and-drop entre estágios         │
+                          │ • Respostas rápidas (snippets)         │
+                          │ • Mídias, áudio, botões interativos    │
+                          │ • Fluxos: gatilho → passos automáticos │
+                          └────────────────────────────────────────┘
 ```
 
-## 2. Página "Marketplace de Add-ons"
-
-Grid de cards:
-- Ícone, nome, descrição curta, preço (mensal ou one-shot), botão **"Ativar"** ou **"Gerenciar"** se já ativo.
-- Card do add-on ativo mostra o mesmo badge verde "Ativo".
-- Clicar em "Ativar" cria um `payment_order` (reusando o fluxo Mercado Pago já existente). Quando o webhook confirma, marca o add-on como ativo para o usuário.
-
-## 3. Página "Configurar Add-on: WhatsApp"
-
-Três abas:
-
-### Aba 1 — Conexão
-- Campo "Nome da instância" (auto-gerado: `user_<id>` editável).
-- Botão **Criar/Conectar** → mostra QR Code (reusa as actions `create`/`connect`/`state` da edge function `evolution-test`).
-- Indicador de status (Desconectado / Conectando / **Conectado**) com polling.
-- Botão "Desconectar" / "Gerar novo QR".
-
-### Aba 2 — Templates de mensagem
-- CRUD de templates com nome + corpo.
-- Toolbar de **tags de personalização** que insere no cursor:
-  - `{{nome}}` — nome do lead/empresa
-  - `{{nome_socio}}` — sócio principal
-  - `{{cidade}}` `{{estado}}` `{{bairro}}` `{{ramo}}`
-  - `{{telefone}}` `{{email}}` `{{site}}`
-  - `{{primeiro_nome_socio}}`
-- Preview ao vivo com um lead de exemplo.
-- Validação: avisa tags inexistentes.
-
-### Aba 3 — Disparos (melhoria proposta — ver §6)
-
-## 4. Backend — tabelas novas
+## 2. Modelo de dados (novas tabelas)
 
 ```text
-addons                  catálogo (admin gerencia preços/ativação)
-  id, slug, name, description, price_cents, billing_period, icon, is_active
+crm_pipelines          pipelines (Kanban) por usuário
+  id, user_id, name, is_default
 
-user_addons             qual user tem qual add-on ativo
-  id, user_id, addon_slug, status (active|expired|canceled),
-  activated_at, expires_at, payment_order_id
+crm_stages             colunas do Kanban
+  id, pipeline_id, name, color, sort_order, is_won, is_lost
 
-user_whatsapp_instances  config WhatsApp por usuário
-  id, user_id, instance_name, connection_state, last_qr_at, connected_at
+crm_conversations      uma conversa = um lead falando com o usuário
+  id, user_id, pipeline_id, stage_id, phone, contact_name,
+  lead_id (search_results), assigned_to, last_message_at,
+  unread_count, tags[], status (open|closed|snoozed),
+  snoozed_until, created_at
 
-message_templates        templates do usuário
-  id, user_id, name, body, tags_used[], created_at, updated_at
+crm_messages           timeline de cada conversa
+  id, conversation_id, user_id, direction (in|out),
+  type (text|image|audio|video|document|button|template|note),
+  body, media_url, media_mime, media_filename, duration_ms,
+  buttons jsonb, status (queued|sent|delivered|read|failed),
+  evolution_message_id, replied_to_id, created_at
+
+crm_quick_replies      banco de respostas rápidas
+  id, user_id, shortcut (/preco), title, body, attachments jsonb,
+  tags_used[], sort_order
+
+crm_flows              fluxos automáticos
+  id, user_id, name, is_active, trigger jsonb,
+  steps jsonb  -- array de passos
+  -- gatilhos: first_inbound, keyword, stage_changed, no_reply_after
+  -- passos: send_message | wait | move_stage | add_tag | end |
+  --         send_media | send_buttons | branch_on_reply
+
+crm_flow_runs          execuções em andamento
+  id, flow_id, conversation_id, current_step_index,
+  status (running|completed|paused|failed), next_run_at,
+  context jsonb
+
+crm_contacts           ficha do lead (enriquecimento próprio)
+  id, user_id, phone, name, email, company, notes,
+  custom_fields jsonb, lead_id
+
+addons                 NOVO registro: slug='whatsapp_crm', R$ 99/mês
 ```
 
-Todas com RLS por `auth.uid()` e GRANTs padrão.
+RLS: tudo por `auth.uid()`. GRANTs padrão. Índices em `(user_id, last_message_at desc)` e `(conversation_id, created_at)`.
 
-## 5. Edge functions
+Realtime habilitado em `crm_conversations` e `crm_messages` para atualização ao vivo.
 
-- `addon-purchase` — cria `payment_order` para o add-on (reusa `mp-create-preference`).
-- `mp-webhook` — ao confirmar pagamento de um add-on, insere/renova `user_addons`.
-- `whatsapp-user` — versão por usuário das ações `create | connect | state | send` (substitui o uso direto de `evolution-test` que é admin-only).
-- `render-template` — recebe `template_id` + `lead_id` e devolve mensagem com tags substituídas.
+## 3. Edge functions
 
-## 6. Melhorias para prospecção (proposto)
+| Função | Papel |
+|---|---|
+| `evolution-webhook` | Receptor público (`verify_jwt=false`). Recebe eventos `messages.upsert`/`connection.update` da Evolution, identifica o usuário pela instância, cria/atualiza conversa, salva mensagem inbound, decrementa nada da cota, dispara fluxos com gatilho `first_inbound` ou `keyword`. |
+| `crm-send` | Envia text/image/audio/document/buttons usando a Evolution (`/message/sendText`, `/sendMedia`, `/sendWhatsAppAudio`, `/sendButtons`). Faz upload da mídia para o bucket `crm-media` e devolve a URL. Decrementa cota. |
+| `crm-flow-run` | Executor de fluxo: lê o próximo passo, executa (envia msg, aguarda, move stage, etc.), agenda próximo passo via cron. |
+| `crm-cron` (pg_cron 1min) | Lê `crm_flow_runs` com `next_run_at <= now()` e chama `crm-flow-run` para cada um. Também processa `snoozed_until` em conversas. |
+| `whatsapp-user` (existente) | Estendido para configurar webhook da Evolution apontando para `evolution-webhook` durante o `create`. |
 
-Recursos que tornam o add-on realmente útil para prospectar:
+## 4. Storage
 
-1. **Disparo a partir dos resultados de busca** — selecionar leads na lista e enviar template em fila (rate-limit configurável, ex: 1 msg / 8s) para evitar bloqueio do WhatsApp.
-2. **Sequências (follow-up)** — se o lead não responder em N dias, enviar template 2, depois template 3.
-3. **Detecção de resposta** — webhook da Evolution marca lead como "respondeu" e pausa a sequência.
-4. **Variações A/B** — múltiplas versões do mesmo template, escolha aleatória para evitar padrão repetitivo (também reduz bloqueio).
-5. **Spintax leve** — `{Olá|Oi|Bom dia}` para variar a saudação automaticamente.
-6. **Agendamento** — escolher dia/hora do disparo, respeitar horário comercial por fuso do estado do lead.
-7. **Blacklist / opt-out** — número que responder "PARAR" entra em lista que bloqueia futuros disparos.
-8. **Histórico por lead** — timeline de mensagens enviadas/recebidas por lead.
-9. **Limites de plano** — cada add-on tem cota mensal (ex: 1.000 disparos), exibida no header da aba.
-10. **Score de qualidade** — alerta se a taxa de resposta cair muito (indica que o número pode estar sendo penalizado).
+Bucket privado **`crm-media`** com path `{user_id}/{conversation_id}/{uuid}.{ext}`. RLS permite o dono ler/escrever; arquivos enviados aos leads viram URL pública assinada de curta duração antes da entrega para a Evolution.
 
-Implementar nesta primeira entrega: 1, 4, 8 e 9 (alto impacto, baixo custo). Os demais ficam como evolução.
+## 5. Telas (sidebar: "WhatsApp CRM" abaixo de WhatsApp)
 
-## 7. Ordem de implementação
+### 5.1 Inbox + Kanban (rota `addon-crm`)
 
-1. Migration (tabelas + RLS + GRANT) e seed do add-on "whatsapp".
-2. Página Marketplace + item no sidebar (sem badge ainda).
-3. Edge function `addon-purchase` + hook no `mp-webhook` para ativar.
-4. Página de configuração WhatsApp, aba Conexão (refator de `evolution-test` para `whatsapp-user`).
-5. Submenu dinâmico no sidebar com badge verde "Ativo".
-6. CRUD de templates + preview com tags.
-7. Disparo a partir da lista de resultados + histórico + cota.
+Layout em três colunas:
 
-## 8. Pontos a confirmar antes de iniciar
+```text
+┌────────────┬─────────────────────────┬─────────────────┐
+│ Conversas  │   Conversa selecionada  │ Painel do lead  │
+│ (filtros,  │   timeline + composer   │ (ficha, tags,   │
+│ unread,    │                         │ histórico,      │
+│ etiquetas) │                         │ campos custom)  │
+└────────────┴─────────────────────────┴─────────────────┘
+```
 
-- Preço e periodicidade do add-on WhatsApp (ex: R$ 49/mês? R$ 199 vitalício?).
-- Cota mensal de disparos por usuário.
-- Quais tags adicionais você quer além das listadas em §3.
-- Posso usar o Mercado Pago já configurado no projeto para cobrar os add-ons?
+Toggle no topo: **Inbox** (vista lista) ⇄ **Kanban** (vista colunas com cards arrastáveis entre estágios via `@dnd-kit`).
+
+### 5.2 Composer
+
+Composer tipo WhatsApp:
+- Texto + emoji.
+- Botão **anexar** → imagem, documento (pdf/docx/xlsx), áudio.
+- Botão **gravar áudio** (MediaRecorder → webm/ogg) com waveform.
+- Botão **respostas rápidas** (`/` abre o picker, busca por shortcut/título).
+- Botão **botões interativos** (até 3 — texto e ID).
+- Botão **template** (insere template do add-on WhatsApp e renderiza tags).
+- Botão **agendar envio** (envio com delay).
+- Botão **nota interna** (não envia, só fica visível no time).
+
+### 5.3 Kanban
+
+- Estágios padrão criados na ativação: **Novo · Em qualificação · Proposta · Negociação · Ganho · Perdido**.
+- Drag-and-drop entre colunas atualiza `stage_id`.
+- Cada card mostra: nome, snippet da última mensagem, tempo, badge unread, tags.
+- Estágios configuráveis (criar/renomear/ordenar/cor).
+
+### 5.4 Respostas rápidas (tab)
+
+CRUD com shortcut `/preco`, título, corpo (com tags `{{nome}}` etc.), anexos opcionais. Atalho `/` no composer filtra pelo shortcut.
+
+### 5.5 Fluxos (tab)
+
+Construtor visual simples (lista de passos, não DAG):
+- **Gatilho**: primeira resposta · palavra-chave · entrada em estágio · sem resposta há X horas.
+- **Passos**: enviar mensagem · enviar mídia · enviar botões · aguardar (h/d) · mover para estágio · adicionar tag · ramificar se cliente responder X · encerrar.
+- Toggle ativo/inativo. Histórico de execuções por conversa.
+
+### 5.6 Configurações do CRM
+
+- Pipelines: criar/renomear, definir padrão.
+- Estágios: cores e ordem.
+- Webhook: status (verde se Evolution está enviando eventos).
+- Horário comercial: pausa fluxos fora do horário.
+- Opt-out: palavra-chave (ex: "PARAR") encerra conversa e bloqueia disparos.
+
+## 6. Melhorias incluídas além do pedido
+
+1. **Atalho `/`** para respostas rápidas no composer.
+2. **Tags de personalização** funcionam em respostas rápidas e fluxos (reuso de `templateTags.ts`).
+3. **Notas internas** para coordenar com a equipe sem o lead ver.
+4. **Atribuição** de conversa a um membro (`assigned_to`).
+5. **SLA visual**: badge vermelho se a conversa está parada há > X horas.
+6. **Snooze** ("voltar amanhã às 9h").
+7. **Sinal de digitando + lido** quando a Evolution reporta `presence`/`read`.
+8. **Detecção de áudio recebido** com player no histórico (download + reproduzir).
+9. **Preview de PDF/imagem** inline.
+10. **Opt-out automático** ao receber "PARAR" / "SAIR".
+11. **Métricas**: conversas por estágio, tempo médio de resposta, taxa de fechamento, top respostas rápidas usadas — em um mini dashboard no topo da tela.
+12. **IA — Sugerir resposta** (botão no composer): usa Lovable AI para sugerir uma resposta com base no histórico da conversa e dados do lead. Toggle pode ser desligado.
+13. **IA — Resumo da conversa**: gera bullet points do que foi conversado para handoff entre membros.
+14. **Cota separada** do add-on CRM (ex: 5000 mensagens/mês) somada à do WhatsApp.
+
+## 7. Catálogo / preço
+
+Novo `addon`:
+- slug: `whatsapp_crm`
+- nome: **WhatsApp CRM Pro**
+- preço: **R$ 99/mês**
+- cota: 5.000 mensagens/mês
+- depende do add-on `whatsapp` ativo (validação no `addon-purchase` e na UI).
+
+## 8. Ordem de implementação
+
+1. Migration (tabelas + RLS + GRANT + realtime + bucket `crm-media` + seed do add-on + estágios padrão criados via trigger na primeira ativação).
+2. Edge function `evolution-webhook` + estender `whatsapp-user create` para registrar o webhook na instância.
+3. Edge function `crm-send` (text + mídia + áudio + botões).
+4. UI: rota `addon-crm`, layout 3 colunas, lista de conversas + timeline + composer básico (texto). Realtime nas conversas.
+5. Respostas rápidas (CRUD + atalho `/`).
+6. Mídias no composer (upload, gravação áudio, botões).
+7. Kanban (toggle) com `@dnd-kit`.
+8. Fluxos (CRUD + executor + cron).
+9. IA — sugerir resposta + resumo.
+10. Métricas no topo.
+
+## 9. Pontos a confirmar antes de iniciar
+
+- Preço sugerido **R$ 99/mês** e cota **5.000 msg/mês** OK?
+- Quer que o CRM **dependa** do add-on WhatsApp (mais barato + complementar) ou **inclua** o WhatsApp no preço (substitui o anterior)?
+- Os fluxos no MVP podem ser **lista de passos** (sequência) — construtor visual estilo grafo (DAG) fica como evolução. OK?
+- Sugerir resposta com IA: deixar **opt-in por usuário** ou ligado por padrão? (Consome créditos de IA.)
+
+Confirme essas 4 perguntas e implemento na ordem do §8.

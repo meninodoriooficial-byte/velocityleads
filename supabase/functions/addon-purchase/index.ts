@@ -38,6 +38,13 @@ Deno.serve(async (req) => {
     const { data: addon } = await admin.from("addons").select("*").eq("slug", slug).eq("is_active", true).maybeSingle();
     if (!addon) return j({ error: "addon_not_found" }, 404);
 
+    // Dependência: whatsapp_crm exige whatsapp ativo
+    if (slug === "whatsapp_crm") {
+      const { data: wa } = await admin
+        .from("user_addons").select("id").eq("user_id", user.id).eq("addon_slug", "whatsapp").eq("status", "active").maybeSingle();
+      if (!wa) return j({ error: "missing_dependency", message: "Ative primeiro o add-on WhatsApp." }, 400);
+    }
+
     const token = await getMpToken(admin, mode);
     if (!token) return j({ error: "mp_token_missing", message: `Configure o Access Token de ${mode === "live" ? "produção" : "teste"} no painel admin.` }, 400);
 

@@ -137,6 +137,398 @@ export type Database = {
         }
         Relationships: []
       }
+      crm_contacts: {
+        Row: {
+          company: string | null
+          created_at: string
+          custom_fields: Json
+          email: string | null
+          id: string
+          lead_id: string | null
+          name: string | null
+          notes: string | null
+          phone: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          custom_fields?: Json
+          email?: string | null
+          id?: string
+          lead_id?: string | null
+          name?: string | null
+          notes?: string | null
+          phone: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          custom_fields?: Json
+          email?: string | null
+          id?: string
+          lead_id?: string | null
+          name?: string | null
+          notes?: string | null
+          phone?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      crm_conversations: {
+        Row: {
+          assigned_to: string | null
+          contact_name: string | null
+          created_at: string
+          id: string
+          last_message_at: string
+          last_message_preview: string | null
+          lead_id: string | null
+          opted_out: boolean
+          phone: string
+          pipeline_id: string | null
+          snoozed_until: string | null
+          stage_id: string | null
+          status: string
+          tags: string[]
+          unread_count: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          contact_name?: string | null
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          last_message_preview?: string | null
+          lead_id?: string | null
+          opted_out?: boolean
+          phone: string
+          pipeline_id?: string | null
+          snoozed_until?: string | null
+          stage_id?: string | null
+          status?: string
+          tags?: string[]
+          unread_count?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assigned_to?: string | null
+          contact_name?: string | null
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          last_message_preview?: string | null
+          lead_id?: string | null
+          opted_out?: boolean
+          phone?: string
+          pipeline_id?: string | null
+          snoozed_until?: string | null
+          stage_id?: string | null
+          status?: string
+          tags?: string[]
+          unread_count?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_conversations_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipelines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_conversations_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "crm_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_flow_runs: {
+        Row: {
+          context: Json
+          conversation_id: string
+          created_at: string
+          current_step_index: number
+          error: string | null
+          flow_id: string
+          id: string
+          next_run_at: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          context?: Json
+          conversation_id: string
+          created_at?: string
+          current_step_index?: number
+          error?: string | null
+          flow_id: string
+          id?: string
+          next_run_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          context?: Json
+          conversation_id?: string
+          created_at?: string
+          current_step_index?: number
+          error?: string | null
+          flow_id?: string
+          id?: string
+          next_run_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_flow_runs_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "crm_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_flow_runs_flow_id_fkey"
+            columns: ["flow_id"]
+            isOneToOne: false
+            referencedRelation: "crm_flows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_flows: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          steps: Json
+          trigger: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          steps?: Json
+          trigger: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          steps?: Json
+          trigger?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      crm_messages: {
+        Row: {
+          body: string | null
+          buttons: Json | null
+          conversation_id: string
+          created_at: string
+          direction: string
+          duration_ms: number | null
+          error: string | null
+          evolution_message_id: string | null
+          id: string
+          media_filename: string | null
+          media_mime: string | null
+          media_url: string | null
+          replied_to_id: string | null
+          sender_user_id: string | null
+          status: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          buttons?: Json | null
+          conversation_id: string
+          created_at?: string
+          direction: string
+          duration_ms?: number | null
+          error?: string | null
+          evolution_message_id?: string | null
+          id?: string
+          media_filename?: string | null
+          media_mime?: string | null
+          media_url?: string | null
+          replied_to_id?: string | null
+          sender_user_id?: string | null
+          status?: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          buttons?: Json | null
+          conversation_id?: string
+          created_at?: string
+          direction?: string
+          duration_ms?: number | null
+          error?: string | null
+          evolution_message_id?: string | null
+          id?: string
+          media_filename?: string | null
+          media_mime?: string | null
+          media_url?: string | null
+          replied_to_id?: string | null
+          sender_user_id?: string | null
+          status?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "crm_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_messages_replied_to_id_fkey"
+            columns: ["replied_to_id"]
+            isOneToOne: false
+            referencedRelation: "crm_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_pipelines: {
+        Row: {
+          created_at: string
+          id: string
+          is_default: boolean
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      crm_quick_replies: {
+        Row: {
+          attachments: Json | null
+          body: string
+          created_at: string
+          id: string
+          shortcut: string
+          sort_order: number
+          tags_used: string[]
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attachments?: Json | null
+          body: string
+          created_at?: string
+          id?: string
+          shortcut: string
+          sort_order?: number
+          tags_used?: string[]
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attachments?: Json | null
+          body?: string
+          created_at?: string
+          id?: string
+          shortcut?: string
+          sort_order?: number
+          tags_used?: string[]
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      crm_stages: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          is_lost: boolean
+          is_won: boolean
+          name: string
+          pipeline_id: string
+          sort_order: number
+          user_id: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          is_lost?: boolean
+          is_won?: boolean
+          name: string
+          pipeline_id: string
+          sort_order?: number
+          user_id: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          is_lost?: boolean
+          is_won?: boolean
+          name?: string
+          pipeline_id?: string
+          sort_order?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_stages_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipelines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_history: {
         Row: {
           created_at: string
@@ -669,6 +1061,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      crm_seed_default_pipeline: { Args: { _user_id: string }; Returns: string }
       get_api_key_decrypted: { Args: { _key_name: string }; Returns: string }
       get_provider_keys_decrypted: {
         Args: { _provider: string }

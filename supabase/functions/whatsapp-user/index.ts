@@ -102,6 +102,24 @@ Deno.serve(async (req) => {
         .from("user_whatsapp_instances")
         .update({ last_qr_at: qr ? new Date().toISOString() : null, connection_state: "connecting" })
         .eq("user_id", user.id);
+
+      // Registrar webhook do CRM (idempotente)
+      try {
+        const webhookUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/evolution-webhook`;
+        await fetch(`${baseUrl}/webhook/set/${encodeURIComponent(name)}`, {
+          method: "POST", headers,
+          body: JSON.stringify({
+            webhook: {
+              enabled: true,
+              url: webhookUrl,
+              webhookByEvents: false,
+              webhookBase64: false,
+              events: ["MESSAGES_UPSERT", "CONNECTION_UPDATE"],
+            },
+          }),
+        });
+      } catch (e) { console.error("webhook register failed", e); }
+
       return json({ ok: true, instance_name: name, already_exists: exists, qr });
     }
 
