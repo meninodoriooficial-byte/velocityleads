@@ -589,6 +589,13 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
                         <Building2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                         <span className="text-xs font-mono font-semibold">{ov.cnpj}</span>
                         <Badge variant="outline" className="text-[10px]">CNPJ</Badge>
+                        {ov.status && (
+                          <Badge
+                            className={`text-[10px] ${ov.status.active ? "bg-emerald-600 hover:bg-emerald-600 text-white border-transparent" : "bg-red-600 hover:bg-red-600 text-white border-transparent"}`}
+                          >
+                            {ov.status.active ? "Ativa" : ov.status.label}
+                          </Badge>
+                        )}
                       </div>
                     )}
                     {r.business_type && (
@@ -772,6 +779,13 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
                     </div>
                     <span className="text-xs font-mono font-semibold">{ov.cnpj}</span>
                     <Badge variant="outline" className="text-[10px] ml-auto">CNPJ</Badge>
+                    {ov.status && (
+                      <Badge
+                        className={`text-[10px] ${ov.status.active ? "bg-emerald-600 hover:bg-emerald-600 text-white border-transparent" : "bg-red-600 hover:bg-red-600 text-white border-transparent"}`}
+                      >
+                        {ov.status.active ? "Ativa" : ov.status.label}
+                      </Badge>
+                    )}
                   </div>
                 )}
                 {r.address && (
