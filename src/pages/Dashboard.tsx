@@ -31,12 +31,14 @@ export default function Dashboard() {
   const [selectedSearch, setSelectedSearch] = useState(null);
   const [purchasingId, setPurchasingId] = useState<string | null>(null);
   const [paymentMode, setPaymentMode] = useState<"test" | "live">("test");
+  const [leadsStats, setLeadsStats] = useState<{ total: number; enriched: number }>({ total: 0, enriched: 0 });
   const { toast } = useToast();
 
   useEffect(() => {
     if (user) {
       fetchUserSearches();
       fetchPackages();
+      fetchLeadsStats();
     }
   }, [user]);
 
@@ -65,6 +67,29 @@ export default function Dashboard() {
       setPackages(data || []);
     } catch (error) {
       console.error('Error fetching packages:', error);
+    }
+  };
+
+  const fetchLeadsStats = async () => {
+    if (!user?.id) return;
+    try {
+      // IDs das buscas do usuário
+      const { data: userSearches } = await supabase
+        .from('searches')
+        .select('id')
+        .eq('user_id', user.id);
+      const ids = (userSearches || []).map((s: any) => s.id);
+      if (ids.length === 0) {
+        setLeadsStats({ total: 0, enriched: 0 });
+        return;
+      }
+      const [{ count: total }, { count: enriched }] = await Promise.all([
+        supabase.from('search_results').select('*', { count: 'exact', head: true }).in('search_id', ids),
+        supabase.from('search_results').select('*', { count: 'exact', head: true }).in('search_id', ids).not('enriched_at', 'is', null),
+      ]);
+      setLeadsStats({ total: total || 0, enriched: enriched || 0 });
+    } catch (e) {
+      console.error('fetchLeadsStats error', e);
     }
   };
 
@@ -230,6 +255,17 @@ export default function Dashboard() {
                       <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Pace</span>
                       <span className="text-sm font-bold tabular-nums">{profile?.searches_used || 0} buscas</span>
                     </div>
+                    <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground border border-primary/30 backdrop-blur">
+                      <Zap className="size-3.5 text-accent" fill="currentColor" />
+                      <span className="text-xs font-semibold uppercase tracking-wider text-primary-foreground/70">Plano</span>
+                      <span className="text-sm font-bold capitalize text-accent">{profile?.plan || "Basic"}</span>
+                      <button
+                        onClick={() => setActiveTab("plans")}
+                        className="text-[11px] font-semibold text-accent hover:underline inline-flex items-center gap-0.5"
+                      >
+                        Upgrade <ArrowUpRight className="size-3" />
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -237,7 +273,7 @@ export default function Dashboard() {
 
             {/* Stats */}
             {activeTab === "search" && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
                 <div className="stat-tile">
                   <div className="flex justify-between items-start">
                     <div className="flex items-center gap-2">
@@ -282,36 +318,52 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                <div className="relative overflow-hidden bg-primary text-primary-foreground p-5 rounded-2xl shadow-card flex flex-col justify-between min-h-[160px]">
-                  <div className="absolute -right-8 -top-8 size-40 border-[10px] border-accent/25 rounded-full" />
-                  <div className="absolute -right-12 -bottom-12 size-40 border-[10px] border-accent/10 rounded-full" />
-                  <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-accent/10" />
-                  <div className="relative z-10 flex justify-between items-start">
+                <div className="stat-tile">
+                  <div className="flex justify-between items-start">
                     <div className="flex items-center gap-2">
-                      <div className="size-9 rounded-xl bg-accent/20 text-accent flex items-center justify-center">
-                        <Zap className="size-4" fill="currentColor" />
+                      <div className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                        <Users className="size-4" />
                       </div>
-                      <span className="text-sm font-medium text-primary-foreground/70">Plano Atual</span>
+                      <span className="text-sm font-semibold text-muted-foreground">Leads Capturados</span>
                     </div>
-                    <span className="size-2 bg-accent rounded-full animate-pulse" />
+                    <Badge variant="secondary" className="text-[10px] font-bold">TOTAL</Badge>
                   </div>
-                  <div className="relative z-10">
-                    <div className="text-2xl font-bold text-accent capitalize tracking-tight mb-1">
-                      {profile?.plan || "Basic"}
+                  <div>
+                    <div className="text-4xl font-bold tabular-nums tracking-tight">
+                      {leadsStats.total.toLocaleString("pt-BR")}
                     </div>
-                    <div className="text-sm font-medium text-primary-foreground/70">
-                      {remaining} buscas restantes
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setActiveTab("plans")}
-                      className="mt-3 h-7 px-2 text-xs text-accent hover:text-accent hover:bg-accent/10 -ml-2"
-                    >
-                      Fazer upgrade <ArrowUpRight className="size-3 ml-1" />
-                    </Button>
+                    <div className="text-sm font-medium text-muted-foreground mt-1">empresas encontradas</div>
                   </div>
                 </div>
+
+                <div className="stat-tile">
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-2">
+                      <div className="size-9 rounded-xl bg-success/10 text-success flex items-center justify-center">
+                        <Sparkles className="size-4" />
+                      </div>
+                      <span className="text-sm font-semibold text-muted-foreground">Enriquecidos (IA)</span>
+                    </div>
+                    <span className="text-xs font-bold text-success bg-success/10 px-2 py-1 rounded-md">
+                      {leadsStats.total > 0
+                        ? `${Math.round((leadsStats.enriched / leadsStats.total) * 100)}%`
+                        : "0%"}
+                    </span>
+                  </div>
+                  <div>
+                    <div className="text-4xl font-bold tabular-nums tracking-tight text-success">
+                      {leadsStats.enriched.toLocaleString("pt-BR")}
+                    </div>
+                    <Progress
+                      value={leadsStats.total > 0 ? (leadsStats.enriched / leadsStats.total) * 100 : 0}
+                      className="h-2 mt-3"
+                    />
+                    <div className="text-[11px] font-semibold text-muted-foreground mt-2 uppercase tracking-wider">
+                      CNPJ + e-mail + redes
+                    </div>
+                  </div>
+                </div>
+
               </div>
             )}
 
