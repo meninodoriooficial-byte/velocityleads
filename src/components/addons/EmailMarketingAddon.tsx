@@ -9,8 +9,10 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
-import { Mail, Plus, Trash2, ArrowUp, ArrowDown, Loader2, Shuffle } from "lucide-react";
+import { Mail, Plus, Trash2, ArrowUp, ArrowDown, Loader2, Shuffle, FileText, Pencil, Eye } from "lucide-react";
 
 type Account = {
   id: string;
@@ -30,6 +32,17 @@ type Account = {
 
 const MAX_ACCOUNTS = 5;
 
+type EmailTemplate = {
+  id: string;
+  name: string;
+  subject: string;
+  body_html: string;
+  body_text: string;
+  is_active: boolean;
+};
+
+const TEMPLATE_VARS = ["{{nome}}", "{{empresa}}", "{{email}}", "{{telefone}}", "{{cidade}}", "{{ramo}}", "{{website}}"];
+
 export const EmailMarketingAddon = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -45,15 +58,24 @@ export const EmailMarketingAddon = () => {
     daily_limit: 50,
   });
 
+  // templates
+  const [templates, setTemplates] = useState<EmailTemplate[]>([]);
+  const [tplDlg, setTplDlg] = useState(false);
+  const [tplPreview, setTplPreview] = useState<EmailTemplate | null>(null);
+  const [tplSaving, setTplSaving] = useState(false);
+  const [tplForm, setTplForm] = useState<Partial<EmailTemplate>>({ is_active: true });
+
   const load = async () => {
     if (!user) return;
     setLoading(true);
-    const [a, s] = await Promise.all([
+    const [a, s, t] = await Promise.all([
       supabase.from("email_accounts").select("*").eq("user_id", user.id).order("send_order"),
       supabase.from("email_marketing_settings").select("*").eq("user_id", user.id).maybeSingle(),
+      supabase.from("email_templates").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
     ]);
     setAccounts(((a.data as any) || []) as Account[]);
     setRotational(s.data?.rotational ?? true);
+    setTemplates(((t.data as any) || []) as EmailTemplate[]);
     setLoading(false);
   };
   useEffect(() => { load(); }, [user?.id]);
@@ -124,11 +146,60 @@ export const EmailMarketingAddon = () => {
     });
   };
 
+  const openTplNew = () => {
+    setTplForm({ name: "", subject: "", body_html: "", body_text: "", is_active: true });
+    setTplDlg(true);
+  };
+  const openTplEdit = (t: EmailTemplate) => {
+    setTplForm(t);
+    setTplDlg(true);
+  };
+  const saveTpl = async () => {
+    if (!user) return;
+    if (!tplForm.name?.trim() || !tplForm.subject?.trim()) {
+      toast({ title: "Preencha nome e assunto", variant: "destructive" }); return;
+    }
+    if (!tplForm.body_html?.trim() && !tplForm.body_text?.trim()) {
+      toast({ title: "Preencha o corpo HTML ou texto", variant: "destructive" }); return;
+    }
+    setTplSaving(true);
+    const payload = {
+      user_id: user.id,
+      name: tplForm.name!,
+      subject: tplForm.subject!,
+      body_html: tplForm.body_html || "",
+      body_text: tplForm.body_text || "",
+      is_active: tplForm.is_active ?? true,
+    };
+    const { error } = tplForm.id
+      ? await supabase.from("email_templates").update(payload).eq("id", tplForm.id)
+      : await supabase.from("email_templates").insert(payload);
+    setTplSaving(false);
+    if (error) { toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" }); return; }
+    toast({ title: tplForm.id ? "✓ Template atualizado" : "✓ Template criado" });
+    setTplDlg(false);
+    load();
+  };
+  const removeTpl = async (id: string) => {
+    await supabase.from("email_templates").delete().eq("id", id);
+    load();
+  };
+  const insertVar = (v: string) => {
+    setTplForm((f) => ({ ...f, body_html: (f.body_html || "") + " " + v }));
+  };
+
   if (loading) return <Card><CardContent className="p-6"><Loader2 className="size-5 animate-spin" /></CardContent></Card>;
 
   return (
     <div className="space-y-6">
-      <Card>
+      <Tabs defaultValue="accounts" className="w-full">
+        <TabsList>
+          <TabsTrigger value="accounts"><Mail className="size-4 mr-2" />Contas e envio</TabsTrigger>
+          <TabsTrigger value="templates"><FileText className="size-4 mr-2" />Templates</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="accounts" className="mt-4">
+        <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Mail className="size-5 text-primary" /> Email Marketing — Contas de envio
@@ -194,6 +265,45 @@ export const EmailMarketingAddon = () => {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="templates" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="size-5 text-primary" /> Templates de e-mail
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">{templates.length} template(s)</p>
+                <Button onClick={openTplNew}><Plus className="size-4 mr-2" /> Novo template</Button>
+              </div>
+              {templates.length === 0 ? (
+                <div className="text-center p-8 border-2 border-dashed border-border/60 rounded-xl">
+                  <FileText className="size-10 mx-auto text-muted-foreground mb-3" />
+                  <p className="text-sm text-muted-foreground">Nenhum template criado ainda.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {templates.map((t) => (
+                    <div key={t.id} className="flex items-center gap-3 p-3 rounded-lg border border-border/60 bg-card">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold truncate">{t.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{t.subject}</p>
+                      </div>
+                      <Badge variant={t.is_active ? "default" : "outline"}>{t.is_active ? "Ativo" : "Inativo"}</Badge>
+                      <Button size="icon-sm" variant="ghost" onClick={() => setTplPreview(t)} title="Pré-visualizar"><Eye className="size-4" /></Button>
+                      <Button size="icon-sm" variant="ghost" onClick={() => openTplEdit(t)} title="Editar"><Pencil className="size-4" /></Button>
+                      <Button size="icon-sm" variant="ghost" onClick={() => removeTpl(t.id)} title="Remover"><Trash2 className="size-4 text-destructive" /></Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       <Dialog open={dlgOpen} onOpenChange={setDlgOpen}>
         <DialogContent className="sm:max-w-md">
@@ -256,6 +366,67 @@ export const EmailMarketingAddon = () => {
               {saving ? <Loader2 className="size-4 mr-2 animate-spin" /> : null} Salvar
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={tplDlg} onOpenChange={setTplDlg}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>{tplForm.id ? "Editar template" : "Novo template"}</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label>Nome *</Label>
+              <Input value={tplForm.name || ""} onChange={(e) => setTplForm({ ...tplForm, name: e.target.value })} placeholder="Ex: Apresentação inicial" />
+            </div>
+            <div className="space-y-1">
+              <Label>Assunto *</Label>
+              <Input value={tplForm.subject || ""} onChange={(e) => setTplForm({ ...tplForm, subject: e.target.value })} placeholder="Olá {{nome}}, podemos ajudar a {{empresa}}?" />
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <Label>Variáveis disponíveis</Label>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {TEMPLATE_VARS.map((v) => (
+                  <Button key={v} type="button" size="sm" variant="outline" onClick={() => insertVar(v)} className="h-7 text-xs font-mono">{v}</Button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label>Corpo HTML</Label>
+              <Textarea rows={8} value={tplForm.body_html || ""} onChange={(e) => setTplForm({ ...tplForm, body_html: e.target.value })} placeholder="<p>Olá {{nome}},</p><p>...</p>" className="font-mono text-xs" />
+            </div>
+            <div className="space-y-1">
+              <Label>Versão texto (fallback)</Label>
+              <Textarea rows={4} value={tplForm.body_text || ""} onChange={(e) => setTplForm({ ...tplForm, body_text: e.target.value })} placeholder="Versão em texto puro para clientes de e-mail antigos" />
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch checked={tplForm.is_active ?? true} onCheckedChange={(v) => setTplForm({ ...tplForm, is_active: v })} />
+              <Label className="cursor-pointer">Template ativo</Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTplDlg(false)} disabled={tplSaving}>Cancelar</Button>
+            <Button onClick={saveTpl} disabled={tplSaving}>
+              {tplSaving ? <Loader2 className="size-4 mr-2 animate-spin" /> : null} Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!tplPreview} onOpenChange={(o) => !o && setTplPreview(null)}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{tplPreview?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <p className="text-xs text-muted-foreground">Assunto</p>
+              <p className="font-medium">{tplPreview?.subject}</p>
+            </div>
+            <div className="border border-border/60 rounded-lg p-4 bg-card">
+              <div dangerouslySetInnerHTML={{ __html: tplPreview?.body_html || `<pre style="white-space:pre-wrap">${tplPreview?.body_text || ""}</pre>` }} />
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
