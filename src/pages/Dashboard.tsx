@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/components/ui/use-toast";
 import { SearchForm } from "@/components/SearchForm";
-import { TrendingUp, Users, Sparkles, CheckCircle2, KeyRound, History, AlertTriangle, Package, CreditCard, Zap, Target, ArrowUpRight, Bot } from "lucide-react";
+import { TrendingUp, Users, Sparkles, CheckCircle2, KeyRound, History, AlertTriangle, Package, CreditCard, Zap, Target, ArrowUpRight, Bot, MessageCircle } from "lucide-react";
 import { ResultsSection } from "@/components/ResultsSection";
 import { ApiConfigManager } from "@/components/admin/ApiConfigManager";
 import { ApiErrorLogs } from "@/components/admin/ApiErrorLogs";
@@ -17,6 +17,7 @@ import { AllUserResults } from "@/components/AllUserResults";
 import { UserManager } from "@/components/admin/UserManager";
 import { PackagesManager } from "@/components/admin/PackagesManager";
 import { PaymentsConfig } from "@/components/admin/PaymentsConfig";
+import { EvolutionApiConfig } from "@/components/admin/EvolutionApiConfig";
 import { PurchasesHistory } from "@/components/PurchasesHistory";
 import { explainEdgeError } from "@/lib/edgeFunction";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -527,7 +528,7 @@ export default function Dashboard() {
 
             {activeTab === "admin" && isAdmin && (
               <Tabs defaultValue="users" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 md:grid-cols-7 h-auto p-1.5 bg-muted/60 border border-border/60 rounded-xl mb-6">
+                <TabsList className="grid w-full grid-cols-2 md:grid-cols-8 h-auto p-1.5 bg-muted/60 border border-border/60 rounded-xl mb-6">
                   <TabsTrigger value="users" className="gap-2 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg font-semibold">
                     <Users className="w-4 h-4" />
                     <span className="hidden sm:inline">Usuários</span>
@@ -547,6 +548,10 @@ export default function Dashboard() {
                   <TabsTrigger value="payments" className="gap-2 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg font-semibold">
                     <CreditCard className="w-4 h-4" />
                     <span className="hidden sm:inline">Pagamentos</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="whatsapp" className="gap-2 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg font-semibold">
+                    <MessageCircle className="w-4 h-4" />
+                    <span className="hidden sm:inline">WhatsApp</span>
                   </TabsTrigger>
                   <TabsTrigger value="history" className="gap-2 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg font-semibold">
                     <History className="w-4 h-4" />
@@ -639,6 +644,23 @@ export default function Dashboard() {
                     </CardHeader>
                     <CardContent>
                       <PaymentsConfig />
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="whatsapp" className="mt-0">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <MessageCircle className="w-5 h-5" />
+                        Evolution API (WhatsApp)
+                      </CardTitle>
+                      <CardDescription>
+                        Configure o servidor da Evolution API usado pelo módulo de envio de WhatsApp.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <EvolutionApiConfig />
                     </CardContent>
                   </Card>
                 </TabsContent>
