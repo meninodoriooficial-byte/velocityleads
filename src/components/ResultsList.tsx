@@ -807,8 +807,25 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
             if (!enr) return null;
             const cdd = enr.data?.casadosdados;
             const ai = enr.data?.ai;
+            const brasil = enr.data?.brasilapi;
+            const formatCnpj = (raw: any): string | null => {
+              if (!raw) return null;
+              const d = String(raw).replace(/\D/g, "");
+              if (d.length !== 14) return String(raw);
+              return `${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5,8)}/${d.slice(8,12)}-${d.slice(12)}`;
+            };
+            const cnpj =
+              formatCnpj(cdd?.cnpj) ||
+              formatCnpj(brasil?.cnpj) ||
+              formatCnpj(ai?.cnpj);
             return (
               <div className="space-y-4 text-sm">
+                {cnpj && (
+                  <div className="border rounded-md p-3 bg-primary/5 border-primary/30">
+                    <h4 className="font-semibold mb-1">CNPJ</h4>
+                    <p className="font-mono text-base">{cnpj}</p>
+                  </div>
+                )}
                 {cdd && (
                   <div className="border rounded-md p-3 bg-muted/30">
                     <h4 className="font-semibold mb-2">Casa dos Dados (CNPJ)</h4>
