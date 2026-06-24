@@ -77,6 +77,7 @@ export const AllUserResults = () => {
   const [confirmLead, setConfirmLead] = useState<LeadRow | null>(null);
   const [responders, setResponders] = useState<Set<string>>(new Set());
   const [contacted, setContacted] = useState<Set<string>>(new Set());
+  const [notWhats, setNotWhats] = useState<Set<string>>(new Set());
 
   // Filtros
   const [filter, setFilter] = useState("");
@@ -138,10 +139,20 @@ export const AllUserResults = () => {
     if (!user) return;
     const { data } = await supabase
       .from("message_history")
-      .select("phone")
-      .eq("user_id", user.id)
-      .eq("status", "sent");
-    setContacted(new Set((data || []).map((m: any) => normalizePhone(m.phone))));
+      .select("phone,status,error")
+      .eq("user_id", user.id);
+    const sent = new Set<string>();
+    const nw = new Set<string>();
+    (data || []).forEach((m: any) => {
+      const p = normalizePhone(m.phone);
+      if (m.status === "sent") sent.add(p);
+      const errStr = typeof m.error === "string" ? m.error : JSON.stringify(m.error || "");
+      if (m.status === "failed" && /"exists"\s*:\s*false/.test(errStr)) nw.add(p);
+    });
+    // sent overrides not-whats (caso tenha funcionado depois)
+    nw.forEach((p) => { if (sent.has(p)) nw.delete(p); });
+    setContacted(sent);
+    setNotWhats(nw);
   };
   useEffect(() => { fetchContacted(); }, [user?.id]);
 
@@ -459,12 +470,28 @@ export const AllUserResults = () => {
                 {filtered.map((r) => {
                   const responded = r.phone ? responders.has(normalizePhone(r.phone)) : false;
                   const wasContacted = r.phone ? contacted.has(normalizePhone(r.phone)) : false;
+                  const notWhatsapp = r.phone ? notWhats.has(normalizePhone(r.phone)) : false;
                   return (
                   <TableRow
                     key={r.id}
-                    className={wasContacted ? "bg-green-500/10 hover:bg-green-500/20 border-l-4 border-l-green-500" : ""}
+                    className={
+                      notWhatsapp
+                        ? "bg-red-500/10 hover:bg-red-500/20 border-l-4 border-l-red-500"
+                        : wasContacted
+                        ? "bg-green-500/10 hover:bg-green-500/20 border-l-4 border-l-green-500"
+                        : ""
+                    }
                   >
-                    <TableCell className="font-medium">{r.business_name}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <span>{r.business_name}</span>
+                        {notWhatsapp && (
+                          <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                            Número não é Whats
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell className="text-sm whitespace-nowrap">
                       {r.phone ? (
                         <a href={`tel:${r.phone}`} className="text-primary hover:underline">{r.phone}</a>
@@ -507,12 +534,14 @@ export const AllUserResults = () => {
                         <Button
                           variant="ghost"
                           size="icon-sm"
+                          disabled={notWhatsapp}
                           onClick={() => wasContacted ? setConfirmLead(r) : setWaLead(r)}
-                          title={wasContacted ? "Já contatado — clique para reenviar" : "Enviar WhatsApp"}
+                          title={notWhatsapp ? "Número não é WhatsApp" : wasContacted ? "Já contatado — clique para reenviar" : "Enviar WhatsApp"}
+                          className={notWhatsapp ? "opacity-40 cursor-not-allowed" : ""}
                         >
                           <MessageCircle
-                            className={wasContacted ? "size-4 text-white" : "size-4 text-green-600"}
-                            fill={wasContacted ? "#16a34a" : "none"}
+                            className={notWhatsapp ? "size-4 text-red-500" : wasContacted ? "size-4 text-white" : "size-4 text-green-600"}
+                            fill={wasContacted && !notWhatsapp ? "#16a34a" : "none"}
                           />
                         </Button>
                       ) : <span className="text-muted-foreground text-xs">—</span>}
