@@ -245,6 +245,40 @@ export const ResultsSection = ({ searchData }: ResultsSectionProps) => {
             </div>
           </div>
         )}
+
+        {(isFetchingBatch || planLimit) && (
+          <div className="mt-4 rounded-xl border border-border bg-muted/30 p-3">
+            <div className="flex items-center justify-between gap-2 mb-2 text-sm">
+              <div className="flex items-center gap-2 font-medium">
+                {isFetchingBatch ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                    <span>Capturando lote #{batchNumber} (até 100 novos leads)...</span>
+                  </>
+                ) : (
+                  <span>Progresso de captura</span>
+                )}
+              </div>
+              <span className="text-xs text-muted-foreground tabular-nums">
+                {allResults.length}
+                {planLimit ? ` / ${planLimit}` : ""} leads
+              </span>
+            </div>
+            <Progress
+              value={planLimit ? Math.min(100, (allResults.length / planLimit) * 100) : (isFetchingBatch ? 30 : 100)}
+              className="h-2"
+            />
+            <p className="text-xs text-muted-foreground mt-2">
+              {isFetchingBatch
+                ? "Buscando novos resultados — isso pode levar alguns segundos."
+                : hasMore
+                  ? "Clique em \"Carregar mais\" para capturar os próximos 100 leads (sem repetir)."
+                  : planLimit && allResults.length >= planLimit
+                    ? "Limite do seu plano atingido."
+                    : "Não há mais resultados disponíveis para esta busca."}
+            </p>
+          </div>
+        )}
       </div>
 
       <ResultsList
