@@ -285,18 +285,34 @@ async function callGooglePlaces(
   // Monta variações de query (Google limita ~60 por query). Cada lote (page) usa um conjunto diferente.
   const baseQueries: string[] = [];
   if (neighborhood) {
+    // Quando o bairro é informado, restringimos TODAS as queries ao bairro.
     baseQueries.push(`${category} ${neighborhood}, ${city}, ${state}`);
-    baseQueries.push(`${category} ${neighborhood} ${city}`);
+    baseQueries.push(`${category} no bairro ${neighborhood}, ${city}`);
+    baseQueries.push(`${category} ${neighborhood} ${city} ${state}`);
+    baseQueries.push(`melhores ${category} ${neighborhood} ${city}`);
+    baseQueries.push(`empresas de ${category} ${neighborhood} ${city}`);
+    baseQueries.push(`lojas de ${category} ${neighborhood} ${city}`);
+    baseQueries.push(`serviços de ${category} ${neighborhood} ${city}`);
+  } else {
+    baseQueries.push(`${category} ${city}, ${state}`);
+    baseQueries.push(`${category} em ${city} ${state}`);
+    baseQueries.push(`${category} próximo a ${city} ${state}`);
+    baseQueries.push(`melhores ${category} ${city} ${state}`);
+    baseQueries.push(`${category} centro ${city}`);
+    baseQueries.push(`${category} região ${city} ${state}`);
+    baseQueries.push(`empresas de ${category} ${city} ${state}`);
+    baseQueries.push(`lojas de ${category} ${city} ${state}`);
+    baseQueries.push(`serviços de ${category} ${city} ${state}`);
   }
-  baseQueries.push(`${category} ${city}, ${state}`);
-  baseQueries.push(`${category} em ${city} ${state}`);
-  baseQueries.push(`${category} próximo a ${city} ${state}`);
-  baseQueries.push(`melhores ${category} ${city} ${state}`);
-  baseQueries.push(`${category} centro ${city}`);
-  baseQueries.push(`${category} região ${city} ${state}`);
-  baseQueries.push(`empresas de ${category} ${city} ${state}`);
-  baseQueries.push(`lojas de ${category} ${city} ${state}`);
-  baseQueries.push(`serviços de ${category} ${city} ${state}`);
+
+  // Helper para normalizar (sem acentos, minúsculo) — usado no filtro por bairro
+  const norm = (s: string) =>
+    (s || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+  const neighborhoodNorm = neighborhood ? norm(neighborhood) : "";
   // Rotaciona o conjunto de queries conforme o lote para diversificar resultados
   const offset = Math.max(0, (page - 1)) % baseQueries.length;
   const queries = [...baseQueries.slice(offset), ...baseQueries.slice(0, offset)];
@@ -355,6 +371,15 @@ async function callGooglePlaces(
         if (collected.length >= TARGET) break;
         const pid = place.place_id;
         if (pid && seenPlaceIds.has(pid)) continue;
+        // Quando há bairro selecionado, descartar resultados cujo endereço
+        // não contém o nome do bairro (evita poluir com a cidade inteira).
+        if (neighborhoodNorm) {
+          const addr = norm(place.formatted_address || place.vicinity || "");
+          if (!addr.includes(neighborhoodNorm)) {
+            if (pid) seenPlaceIds.add(pid);
+            continue;
+          }
+        }
         if (pid) seenPlaceIds.add(pid);
         collected.push(processGooglePlaceResult(place, category, collected.length + 1));
       }
