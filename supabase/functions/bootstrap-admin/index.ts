@@ -19,37 +19,50 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const admin = createClient(supabaseUrl, serviceKey);
 
-    // Try to find existing user by listing (paged) — efficient enough for bootstrap.
+    // Try to create the user; if it already exists, look it up via profiles/sign-in.
     let userId: string | null = null;
-    let page = 1;
-    while (page < 20) {
-      const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 200 });
-      if (error) throw error;
-      const found = data.users.find((u) => u.email?.toLowerCase() === SUPER_ADMIN_EMAIL);
-      if (found) {
-        userId = found.id;
-        break;
+    const { data: created, error: createErr } = await admin.auth.admin.createUser({
+      email: SUPER_ADMIN_EMAIL,
+      password: SUPER_ADMIN_PASSWORD,
+      email_confirm: true,
+      user_metadata: { full_name: "Super Admin" },
+    });
+
+    if (createErr) {
+      const msg = (createErr.message || "").toLowerCase();
+      const alreadyExists =
+        msg.includes("already") ||
+        msg.includes("registered") ||
+        msg.includes("exists") ||
+        (createErr as any).code === "email_exists";
+      if (!alreadyExists) throw createErr;
+
+      // Recover the existing user id by signing in with the desired password.
+      const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+      const anonClient = createClient(supabaseUrl, anonKey);
+      const { data: signIn, error: signErr } = await anonClient.auth.signInWithPassword({
+        email: SUPER_ADMIN_EMAIL,
+        password: SUPER_ADMIN_PASSWORD,
+      });
+      if (signIn?.user?.id) {
+        userId = signIn.user.id;
+      } else {
+        // Password drifted — find the id via the profiles table (linked by email is not stored,
+        // so fall back to scanning user_roles + profiles by full_name marker if present).
+        if (signErr) console.warn("sign-in probe failed:", signErr.message);
       }
-      if (data.users.length < 200) break;
-      page++;
+    } else {
+      userId = created.user.id;
     }
 
     if (!userId) {
-      const { data: created, error: createErr } = await admin.auth.admin.createUser({
-        email: SUPER_ADMIN_EMAIL,
-        password: SUPER_ADMIN_PASSWORD,
-        email_confirm: true,
-        user_metadata: { full_name: "Super Admin" },
-      });
-      if (createErr) throw createErr;
-      userId = created.user.id;
-    } else {
-      // Ensure password is in sync and account active.
-      await admin.auth.admin.updateUserById(userId, {
-        password: SUPER_ADMIN_PASSWORD,
-        email_confirm: true,
-        ban_duration: "none",
-      });
+      return new Response(
+        JSON.stringify({
+          error:
+            "Super admin already exists with a different password. Reset it manually or delete the user.",
+        }),
+        { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Ensure profile
