@@ -49,7 +49,20 @@ export function SendWhatsAppDialog({ open, onOpenChange, lead }: Props) {
     });
     setSending(false);
     if (error || !data?.ok) {
-      toast({ title: "Falha ao enviar", description: data?.error || error?.message, variant: "destructive" });
+      const errStr = String(data?.error || error?.message || "");
+      const notWhats = /"exists"\s*:\s*false/i.test(errStr);
+      if (notWhats) {
+        toast({
+          title: "Esse número não é WhatsApp",
+          description: lead.email
+            ? `Recomendamos enviar e-mail para ${lead.email}. Ative o add-on Email Marketing para disparar pelo app.`
+            : "Esse lead não tem e-mail cadastrado. Habilite o add-on Email Marketing e use outra forma de contato.",
+          variant: "destructive",
+        });
+        onOpenChange(false);
+        return;
+      }
+      toast({ title: "Falha ao enviar", description: errStr, variant: "destructive" });
       return;
     }
     toast({ title: "✓ Mensagem enviada" });
