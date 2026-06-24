@@ -597,10 +597,32 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
                         </a>
                       </div>
                     )}
+                    {ov.socios && ov.socios.length > 0 && (
+                      <div className="rounded-md border border-border/60 bg-background/60 p-2">
+                        <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+                          Sócios ({ov.socios.length})
+                        </div>
+                        <ul className="space-y-0.5">
+                          {ov.socios.slice(0, 5).map((s: any, i: number) => (
+                            <li key={i} className="text-xs">
+                              <span className="font-medium">{s.nome}</span>
+                              {s.qualificacao && (
+                                <span className="text-muted-foreground"> • {s.qualificacao}</span>
+                              )}
+                            </li>
+                          ))}
+                          {ov.socios.length > 5 && (
+                            <li className="text-[11px] text-muted-foreground">
+                              +{ov.socios.length - 5} outro(s)
+                            </li>
+                          )}
+                        </ul>
+                      </div>
+                    )}
                     <div className="flex flex-wrap gap-3 pt-1">
-                      {r.social_media?.instagram && (
+                      {ov.social.instagram && (
                         <a
-                          href={instagramUrl(r.social_media.instagram)}
+                          href={instagramUrl(ov.social.instagram)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-xs text-primary hover:underline inline-flex items-center gap-1"
@@ -608,9 +630,9 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
                           <Instagram className="w-3 h-3" /> Instagram
                         </a>
                       )}
-                      {r.social_media?.facebook && (
+                      {ov.social.facebook && (
                         <a
-                          href={facebookUrl(r.social_media.facebook)}
+                          href={facebookUrl(ov.social.facebook)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-xs text-primary hover:underline inline-flex items-center gap-1"
