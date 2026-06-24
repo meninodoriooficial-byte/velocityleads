@@ -205,7 +205,9 @@ async function performWebSearch(
   neighborhood: string | undefined,
   page: number,
   apiKeys: Array<{ id: string | null; key: string; label: string }>,
-  supabaseClient: any
+  supabaseClient: any,
+  excludePlaceIds: Set<string> = new Set(),
+  target: number = 100
 ): Promise<{ results: any[]; warning: string | null }> {
   console.log(`Performing search for ${category} in ${city}, ${state} - Page ${page} — ${apiKeys.length} chave(s) disponível(is)`);
 
@@ -228,7 +230,7 @@ async function performWebSearch(
     const isLast = i === apiKeys.length - 1;
     try {
       console.log(`Tentativa ${i + 1}/${apiKeys.length} usando "${label}" (${key.substring(0, 8)}...)`);
-      const results = await callGooglePlaces(category, city, state, neighborhood, key);
+      const results = await callGooglePlaces(category, city, state, neighborhood, key, page, excludePlaceIds, target);
 
       if (results.success) {
         const warning =
@@ -273,22 +275,34 @@ async function callGooglePlaces(
   city: string,
   state: string,
   neighborhood: string | undefined,
-  apiKey: string
+  apiKey: string,
+  page: number = 1,
+  excludePlaceIds: Set<string> = new Set(),
+  target: number = 100
 ): Promise<{ success: true; data: any[] } | { success: false; errorStatus: string; errorMessage: string; httpStatus?: number }> {
-  const TARGET = 100;
+  const TARGET = target;
 
-  // Monta variações de query para tentar atingir 100 resultados (Google limita ~60 por query)
-  const queries: string[] = [];
+  // Monta variações de query (Google limita ~60 por query). Cada lote (page) usa um conjunto diferente.
+  const baseQueries: string[] = [];
   if (neighborhood) {
-    queries.push(`${category} ${neighborhood}, ${city}, ${state}`);
-    queries.push(`${category} ${neighborhood} ${city}`);
+    baseQueries.push(`${category} ${neighborhood}, ${city}, ${state}`);
+    baseQueries.push(`${category} ${neighborhood} ${city}`);
   }
-  queries.push(`${category} ${city}, ${state}`);
-  queries.push(`${category} em ${city} ${state}`);
-  queries.push(`${category} próximo a ${city} ${state}`);
+  baseQueries.push(`${category} ${city}, ${state}`);
+  baseQueries.push(`${category} em ${city} ${state}`);
+  baseQueries.push(`${category} próximo a ${city} ${state}`);
+  baseQueries.push(`melhores ${category} ${city} ${state}`);
+  baseQueries.push(`${category} centro ${city}`);
+  baseQueries.push(`${category} região ${city} ${state}`);
+  baseQueries.push(`empresas de ${category} ${city} ${state}`);
+  baseQueries.push(`lojas de ${category} ${city} ${state}`);
+  baseQueries.push(`serviços de ${category} ${city} ${state}`);
+  // Rotaciona o conjunto de queries conforme o lote para diversificar resultados
+  const offset = Math.max(0, (page - 1)) % baseQueries.length;
+  const queries = [...baseQueries.slice(offset), ...baseQueries.slice(0, offset)];
 
   const collected: any[] = [];
-  const seenPlaceIds = new Set<string>();
+  const seenPlaceIds = new Set<string>(excludePlaceIds);
   let firstError: { errorStatus: string; errorMessage: string; httpStatus?: number } | null = null;
   let anySuccess = false;
 
