@@ -9,6 +9,7 @@ import { ConversationView } from "./crm/ConversationView";
 import { KanbanBoard } from "./crm/KanbanBoard";
 import { QuickRepliesManager } from "./crm/QuickRepliesManager";
 import { FlowsManager } from "./crm/FlowsManager";
+import { CrmMetrics } from "./crm/CrmMetrics";
 
 export function WhatsAppCrmAddon() {
   const { active } = useUserAddons();
@@ -53,7 +54,8 @@ export function WhatsAppCrmAddon() {
         </TabsList>
 
         <TabsContent value="inbox" className="mt-4">
-          <div className="grid grid-cols-[320px_1fr] h-[calc(100vh-300px)] min-h-[500px] border border-border/60 rounded-xl overflow-hidden bg-card">
+          <CrmMetrics />
+          <div className="mt-4 grid grid-cols-[320px_1fr] h-[calc(100vh-360px)] min-h-[500px] border border-border/60 rounded-xl overflow-hidden bg-card">
             <div className="border-r border-border/60">
               <ConversationList selectedId={selected?.id} onSelect={setSelected} />
             </div>
