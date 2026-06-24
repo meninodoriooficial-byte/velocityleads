@@ -353,36 +353,6 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                <div className="relative overflow-hidden bg-primary text-primary-foreground p-5 rounded-2xl shadow-card flex flex-col justify-between min-h-[160px]">
-                  <div className="absolute -right-8 -top-8 size-40 border-[10px] border-accent/25 rounded-full" />
-                  <div className="absolute -right-12 -bottom-12 size-40 border-[10px] border-accent/10 rounded-full" />
-                  <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-accent/10" />
-                  <div className="relative z-10 flex justify-between items-start">
-                    <div className="flex items-center gap-2">
-                      <div className="size-9 rounded-xl bg-accent/20 text-accent flex items-center justify-center">
-                        <Zap className="size-4" fill="currentColor" />
-                      </div>
-                      <span className="text-sm font-medium text-primary-foreground/70">Plano Atual</span>
-                    </div>
-                    <span className="size-2 bg-accent rounded-full animate-pulse" />
-                  </div>
-                  <div className="relative z-10">
-                    <div className="text-2xl font-bold text-accent capitalize tracking-tight mb-1">
-                      {profile?.plan || "Basic"}
-                    </div>
-                    <div className="text-sm font-medium text-primary-foreground/70">
-                      {remaining} buscas restantes
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setActiveTab("plans")}
-                      className="mt-3 h-7 px-2 text-xs text-accent hover:text-accent hover:bg-accent/10 -ml-2"
-                    >
-                      Fazer upgrade <ArrowUpRight className="size-3 ml-1" />
-                    </Button>
-                  </div>
-                </div>
               </div>
             )}
 
