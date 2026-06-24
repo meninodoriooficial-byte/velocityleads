@@ -666,6 +666,15 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
                 </div>
               </CardHeader>
               <CardContent className="space-y-2.5 text-sm">
+                {ov.cnpj && (
+                  <div className="flex items-center gap-2 p-2 rounded-md bg-primary/5 border border-primary/20">
+                    <div className="size-6 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                      <Building2 className="w-3.5 h-3.5" />
+                    </div>
+                    <span className="text-xs font-mono font-semibold">{ov.cnpj}</span>
+                    <Badge variant="outline" className="text-[10px] ml-auto">CNPJ</Badge>
+                  </div>
+                )}
                 {r.address && (
                   <div className="flex items-start gap-2 text-muted-foreground">
                     <div className="size-6 rounded-md bg-muted flex items-center justify-center shrink-0 mt-0.5">
@@ -674,38 +683,38 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
                     <span className="text-xs leading-snug pt-1">{r.address}</span>
                   </div>
                 )}
-                {r.phone && (
+                {ov.phone && (
                   <div className="flex items-center gap-2">
                     <div className="size-6 rounded-md bg-muted text-muted-foreground flex items-center justify-center shrink-0">
                       <Phone className="w-3.5 h-3.5" />
                     </div>
-                    <a href={`tel:${r.phone}`} className="text-xs font-medium text-foreground hover:text-primary hover:underline truncate">
-                      {r.phone}
+                    <a href={`tel:${ov.phone}`} className="text-xs font-medium text-foreground hover:text-primary hover:underline truncate">
+                      {ov.phone}
                     </a>
                   </div>
                 )}
-                {r.email && (
+                {ov.email && (
                   <div className="flex items-center gap-2">
                     <div className="size-6 rounded-md bg-muted text-muted-foreground flex items-center justify-center shrink-0">
                       <Mail className="w-3.5 h-3.5" />
                     </div>
-                    <a href={`mailto:${r.email}`} className="text-xs font-medium text-foreground hover:text-primary hover:underline truncate">
-                      {r.email}
+                    <a href={`mailto:${ov.email}`} className="text-xs font-medium text-foreground hover:text-primary hover:underline truncate">
+                      {ov.email}
                     </a>
                   </div>
                 )}
-                {r.website && (
+                {ov.website && (
                   <div className="flex items-center gap-2">
                     <div className="size-6 rounded-md bg-muted text-muted-foreground flex items-center justify-center shrink-0">
                       <Globe className="w-3.5 h-3.5" />
                     </div>
                     <a
-                      href={r.website}
+                      href={ov.website}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-xs font-medium text-foreground hover:text-primary hover:underline truncate"
                     >
-                      {r.website}
+                      {ov.website}
                     </a>
                   </div>
                 )}
