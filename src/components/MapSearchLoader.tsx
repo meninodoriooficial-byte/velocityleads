@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { MapPin, Search, Database, Sparkles, CheckCircle2 } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 
 interface MapSearchLoaderProps {
   category?: string;
@@ -13,7 +14,7 @@ interface MapSearchLoaderProps {
 const STEPS = [
   { icon: MapPin, label: "Localizando região no mapa" },
   { icon: Search, label: "Consultando Google Maps" },
-  { icon: Database, label: "Cruzando com Casa dos Dados" },
+  { icon: Database, label: "Cruzando bases públicas" },
   { icon: Sparkles, label: "Enriquecendo leads" },
 ];
 
@@ -25,11 +26,26 @@ export function MapSearchLoader({
   overlay = true,
 }: MapSearchLoaderProps) {
   const [step, setStep] = useState(0);
+  const [progress, setProgress] = useState(0);
 
   useEffect(() => {
     const id = setInterval(() => {
       setStep((s) => (s + 1) % STEPS.length);
     }, 1400);
+    return () => clearInterval(id);
+  }, []);
+
+  // Barra de progresso progressiva: avança rápido no início e desacelera,
+  // aproximando-se de 95% até a busca concluir (quando o componente desmonta).
+  useEffect(() => {
+    const id = setInterval(() => {
+      setProgress((p) => {
+        if (p >= 95) return 95;
+        const remaining = 95 - p;
+        const inc = Math.max(0.4, remaining * 0.04);
+        return Math.min(95, p + inc);
+      });
+    }, 200);
     return () => clearInterval(id);
   }, []);
 
@@ -54,8 +70,14 @@ export function MapSearchLoader({
         {where ? <> em <span className="font-medium">{where}</span></> : null}
       </p>
 
-      {/* Sweep bar */}
-      <div className="sweep-bar mt-5" />
+      {/* Barra de progresso real */}
+      <div className="mt-5 space-y-1.5">
+        <Progress value={progress} className="h-2" />
+        <div className="flex justify-between text-xs text-muted-foreground font-medium">
+          <span>Capturando dados…</span>
+          <span>{Math.round(progress)}%</span>
+        </div>
+      </div>
 
       {/* Steps */}
       <ul className="mt-5 space-y-2 text-left">
