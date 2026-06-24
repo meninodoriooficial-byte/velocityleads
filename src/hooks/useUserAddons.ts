@@ -50,9 +50,6 @@ export function useUserAddons() {
 
   useEffect(() => {
     refresh();
-  }, [refresh]);
-
-  useEffect(() => {
     if (!user) return;
     const channel = supabase
       .channel(`user_addons:${user.id}`)
