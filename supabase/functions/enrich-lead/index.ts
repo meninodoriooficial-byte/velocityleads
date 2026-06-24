@@ -94,6 +94,27 @@ serve(async (req) => {
       }
     }
 
+    // 1b) Fallback: scraping público do casadosdados.com.br para descobrir CNPJ
+    //     quando a API não retornou nada (ou não há chave configurada).
+    if (!(enrichment.casadosdados as any)?.cnpj) {
+      try {
+        const scrapedCnpj = await scrapeCasaDosDadosPublic(
+          result.business_name,
+          result.address
+        );
+        if (scrapedCnpj) {
+          enrichment.casadosdados = {
+            ...(enrichment.casadosdados as any || {}),
+            cnpj: scrapedCnpj,
+            fonte: "scrape_publico",
+          };
+          sourceUsed = sourceUsed ? `${sourceUsed}+cdd_scrape` : "cdd_scrape";
+        }
+      } catch (e) {
+        console.error("CDD scrape fallback error:", e);
+      }
+    }
+
     // 2) BrasilAPI (grátis) — usa o CNPJ obtido em (1) para puxar quadro societário,
     //     situação cadastral, CNAEs secundários, capital, e-mail/telefone oficial da Receita.
     const cnpjFromCdd = ((enrichment.casadosdados as any)?.cnpj || "")
