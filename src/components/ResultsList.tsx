@@ -472,12 +472,12 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
                         {r.reviews_count ? <span className="text-muted-foreground font-normal">({r.reviews_count})</span> : null}
                       </span>
                     ) : null}
-                    {r.phone && (
+                    {ov.phone && (
                       <a
-                        href={`tel:${r.phone}`}
+                        href={`tel:${ov.phone}`}
                         className="hidden md:inline-flex items-center gap-1.5 text-xs font-medium text-foreground/80 hover:text-primary truncate max-w-[160px] px-2 py-1 rounded-md hover:bg-secondary transition-colors"
                       >
-                        <Phone className="w-3 h-3 text-muted-foreground" /> {r.phone}
+                        <Phone className="w-3 h-3 text-muted-foreground" /> {ov.phone}
                       </a>
                     )}
                     {r.address && (
@@ -507,6 +507,13 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
                 </div>
                 {isExpanded && (
                   <CardContent className="space-y-2.5 text-sm pt-4 border-t border-border/60 bg-muted/20 rounded-b-2xl">
+                    {ov.cnpj && (
+                      <div className="flex items-center gap-2">
+                        <Building2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                        <span className="text-xs font-mono font-semibold">{ov.cnpj}</span>
+                        <Badge variant="outline" className="text-[10px]">CNPJ</Badge>
+                      </div>
+                    )}
                     {r.business_type && (
                       <Badge variant="secondary" className="text-[10px]">
                         <Building2 className="w-3 h-3 mr-1" />
@@ -519,32 +526,32 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
                         <span className="text-xs leading-snug">{r.address}</span>
                       </div>
                     )}
-                    {r.phone && (
+                    {ov.phone && (
                       <div className="flex items-center gap-2">
                         <Phone className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                        <a href={`tel:${r.phone}`} className="text-xs text-primary hover:underline truncate">
-                          {r.phone}
+                        <a href={`tel:${ov.phone}`} className="text-xs text-primary hover:underline truncate">
+                          {ov.phone}
                         </a>
                       </div>
                     )}
-                    {r.email && (
+                    {ov.email && (
                       <div className="flex items-center gap-2">
                         <Mail className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                        <a href={`mailto:${r.email}`} className="text-xs text-primary hover:underline truncate">
-                          {r.email}
+                        <a href={`mailto:${ov.email}`} className="text-xs text-primary hover:underline truncate">
+                          {ov.email}
                         </a>
                       </div>
                     )}
-                    {r.website && (
+                    {ov.website && (
                       <div className="flex items-center gap-2">
                         <Globe className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                         <a
-                          href={r.website}
+                          href={ov.website}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-xs text-primary hover:underline truncate"
                         >
-                          {r.website}
+                          {ov.website}
                         </a>
                       </div>
                     )}
