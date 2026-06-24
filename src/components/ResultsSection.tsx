@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Download, AlertTriangle, Loader2 } from "lucide-react";
+import { RefreshCw, Download, AlertTriangle, Loader2, Sparkles } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { ResultsList } from "./ResultsList";
 import { toast } from "sonner";
@@ -20,6 +20,7 @@ export const ResultsSection = ({ searchData }: ResultsSectionProps) => {
   const [planLimit, setPlanLimit] = useState<number | null>(null);
   const [batchNumber, setBatchNumber] = useState(0);
   const [isFetchingBatch, setIsFetchingBatch] = useState(false);
+  const [enriching, setEnriching] = useState(false);
 
   useEffect(() => {
     if (searchData?.id) {
@@ -194,6 +195,42 @@ export const ResultsSection = ({ searchData }: ResultsSectionProps) => {
     fetchResults(true);
   };
 
+  const enrichAll = async () => {
+    if (!searchData?.id || enriching) return;
+    const missing = allResults.filter((r: any) => !r.enriched_at).length;
+    if (missing === 0) {
+      toast.info("Todos já enriquecidos", { description: "Nenhum lead pendente neste lote." });
+      return;
+    }
+    setEnriching(true);
+    toast.info("Enriquecendo leads...", {
+      description: `Buscando CNPJ, e-mails e dados extras de ${missing} lead(s). Isso pode levar alguns minutos.`,
+    });
+    try {
+      const { data, error } = await supabase.functions.invoke("enrich-batch", {
+        body: { searchId: searchData.id, onlyMissing: true, limit: 100 },
+      });
+      if (error) throw error;
+      const enriched = (data as any)?.enriched ?? 0;
+      const failed = (data as any)?.failed ?? 0;
+      toast.success("Enriquecimento concluído", {
+        description: `${enriched} lead(s) enriquecido(s)${failed ? `, ${failed} falha(s)` : ""}.`,
+      });
+      // Recarrega resultados do banco para mostrar os campos atualizados
+      const { data: refreshed } = await supabase
+        .from("search_results")
+        .select("*")
+        .eq("search_id", searchData.id)
+        .order("created_at", { ascending: false });
+      if (refreshed) setAllResults(refreshed);
+    } catch (e: any) {
+      console.error("enrich-batch error", e);
+      toast.error("Falha ao enriquecer", { description: e?.message || "Tente novamente." });
+    } finally {
+      setEnriching(false);
+    }
+  };
+
   if (!searchData) return null;
 
   const searchStatus = allResults.length > 0 ? 'completed' : (searchData.status || 'pending');
@@ -228,6 +265,16 @@ export const ResultsSection = ({ searchData }: ResultsSectionProps) => {
               <RefreshCw className="w-4 h-4 mr-2" />
               Atualizar
             </Button>
+            {allResults.length > 0 && (
+              <Button onClick={enrichAll} size="sm" variant="outline" disabled={enriching}>
+                {enriching ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Sparkles className="w-4 h-4 mr-2" />
+                )}
+                {enriching ? "Enriquecendo..." : `Enriquecer todos (${allResults.filter((r: any) => !r.enriched_at).length})`}
+              </Button>
+            )}
             {allResults.length > 0 && (
               <Button onClick={exportToCSV} size="sm" className="btn-volt">
                 <Download className="w-4 h-4 mr-2" />
