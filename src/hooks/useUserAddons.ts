@@ -52,6 +52,24 @@ export function useUserAddons() {
     refresh();
   }, [refresh]);
 
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel(`user_addons:${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "user_addons", filter: `user_id=eq.${user.id}` },
+        () => refresh(),
+      )
+      .subscribe();
+    const onFocus = () => refresh();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      supabase.removeChannel(channel);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [user, refresh]);
+
   const isActive = (slug: string) =>
     active.some((a) => a.addon_slug === slug && a.status === "active");
 
