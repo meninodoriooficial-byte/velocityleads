@@ -119,6 +119,25 @@ serve(async (req) => {
       return jsonResponse(result);
     }
 
+    if (keyName === 'OPENAI_API_KEY' || keyName === 'LOVABLE_API_KEY') {
+      const result = await testOpenAI(apiKey);
+      if (!result.ok) {
+        try {
+          await supabase.from('api_error_logs').insert({
+            key_name: keyName,
+            source: 'test-api',
+            error_status: (result as any).status || 'ERROR',
+            error_message: result.message,
+            http_status: (result as any).http ?? null,
+            context: { triggered_by: 'admin_test', user_id: userId },
+          });
+        } catch (e) {
+          console.error('Failed to persist test error', e);
+        }
+      }
+      return jsonResponse(result);
+    }
+
     return jsonResponse({
       ok: false,
       status: 'unsupported',
@@ -184,6 +203,52 @@ function jsonResponse(body: any, status = 200) {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     status,
   });
+}
+
+async function testOpenAI(apiKey: string) {
+  const start = Date.now();
+  try {
+    const res = await fetch('https://api.openai.com/v1/models', {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    const elapsed = Date.now() - start;
+    const data = await res.json().catch(() => ({}));
+
+    if (res.ok) {
+      const count = Array.isArray((data as any).data) ? (data as any).data.length : 0;
+      return {
+        ok: true,
+        status: 'success',
+        message: `Conexão OK — chave OpenAI válida (${count} modelos disponíveis em ${elapsed}ms).`,
+        elapsed_ms: elapsed,
+        models_count: count,
+      };
+    }
+
+    const apiMsg = (data as any)?.error?.message || `HTTP ${res.status}`;
+    const code = (data as any)?.error?.code || (data as any)?.error?.type;
+    const messages: Record<number, string> = {
+      401: 'Chave inválida ou revogada. Gere uma nova em platform.openai.com/api-keys.',
+      403: 'Chave sem permissão para acessar este recurso (verifique escopo/projeto).',
+      429: 'Cota excedida ou rate limit atingido. Verifique billing em platform.openai.com.',
+      500: 'Erro temporário do servidor OpenAI. Tente novamente em instantes.',
+    };
+    return {
+      ok: false,
+      status: 'api_error',
+      http: res.status,
+      message: messages[res.status] || `OpenAI retornou: ${apiMsg}`,
+      openai_error: apiMsg,
+      openai_code: code,
+      elapsed_ms: elapsed,
+    };
+  } catch (e: any) {
+    return { ok: false, status: 'network_error', message: `Erro de rede: ${e.message}` };
+  }
 }
 
 async function testCasaDosDados(apiKey: string) {
