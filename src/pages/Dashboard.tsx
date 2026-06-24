@@ -703,6 +703,26 @@ export default function Dashboard() {
                 </TabsContent>
 
                 <TabsContent value="history" className="mt-0">
+                </TabsContent>
+
+                <TabsContent value="email-oauth" className="mt-0">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Mail className="w-5 h-5" />
+                        Credenciais OAuth — Gmail e Microsoft
+                      </CardTitle>
+                      <CardDescription>
+                        Configure as credenciais que permitem aos clientes conectar suas contas Gmail e Outlook/Hotmail no add-on Email Marketing.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <EmailOAuthConfig />
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="history-old-placeholder" className="mt-0 hidden">
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
