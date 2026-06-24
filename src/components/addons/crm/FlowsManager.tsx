@@ -4,19 +4,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
 import { Plus, Trash2, Save, Zap } from "lucide-react";
+import { FlowBuilder, type FlowGraph } from "./flow/FlowBuilder";
 
 type Flow = { id: string; name: string; is_active: boolean; trigger: any; steps: any[] };
-
-const STEP_TEMPLATE = `[
-  { "type": "send_message", "text": "Olá {{nome}}, recebi sua mensagem 👋" },
-  { "type": "wait", "minutes": 5 },
-  { "type": "send_message", "text": "Posso te ligar agora ou prefere mais tarde?" }
-]`;
 
 export function FlowsManager() {
   const { user } = useAuth();
@@ -25,9 +18,9 @@ export function FlowsManager() {
   const [sel, setSel] = useState<Flow | null>(null);
   const [name, setName] = useState("");
   const [active, setActive] = useState(true);
-  const [trigType, setTrigType] = useState("first_inbound");
-  const [trigKeyword, setTrigKeyword] = useState("");
-  const [stepsJson, setStepsJson] = useState(STEP_TEMPLATE);
+  const [graph, setGraph] = useState<FlowGraph | undefined>(undefined);
+  const [compiled, setCompiled] = useState<{ trigger: any; steps: any[] }>({ trigger: { type: "first_inbound" }, steps: [] });
+  const [builderKey, setBuilderKey] = useState(0);
 
   const load = async () => {
     if (!user) return;
@@ -37,25 +30,30 @@ export function FlowsManager() {
   useEffect(() => { load(); }, [user]);
 
   const startNew = () => {
-    setSel(null); setName(""); setActive(true); setTrigType("first_inbound"); setTrigKeyword(""); setStepsJson(STEP_TEMPLATE);
+    setSel(null); setName(""); setActive(true);
+    setGraph(undefined);
+    setCompiled({ trigger: { type: "first_inbound" }, steps: [] });
+    setBuilderKey((k) => k + 1);
   };
   const startEdit = (f: Flow) => {
     setSel(f); setName(f.name); setActive(f.is_active);
-    setTrigType(f.trigger?.type || "first_inbound");
-    setTrigKeyword(f.trigger?.keyword || "");
-    setStepsJson(JSON.stringify(f.steps || [], null, 2));
+    setGraph(f.trigger?.graph);
+    setCompiled({
+      trigger: { type: f.trigger?.type || "first_inbound", ...(f.trigger?.keyword ? { keyword: f.trigger.keyword } : {}) },
+      steps: f.steps || [],
+    });
+    setBuilderKey((k) => k + 1);
   };
 
   const save = async () => {
     if (!user || !name.trim()) { toast({ title: "Dê um nome ao fluxo", variant: "destructive" }); return; }
-    let steps: any[] = [];
-    try { steps = JSON.parse(stepsJson); } catch { toast({ title: "JSON dos passos inválido", variant: "destructive" }); return; }
-    const trigger: any = { type: trigType };
-    if (trigType === "keyword") trigger.keyword = trigKeyword.trim();
-    const payload = { user_id: user.id, name: name.trim(), is_active: active, trigger, steps };
-    const res = sel ? await supabase.from("crm_flows").update(payload).eq("id", sel.id) : await supabase.from("crm_flows").insert(payload);
+    const trigger: any = { ...compiled.trigger, graph };
+    const payload = { user_id: user.id, name: name.trim(), is_active: active, trigger, steps: compiled.steps };
+    const res = sel
+      ? await supabase.from("crm_flows").update(payload).eq("id", sel.id)
+      : await supabase.from("crm_flows").insert(payload);
     if (res.error) { toast({ title: "Erro", description: res.error.message, variant: "destructive" }); return; }
-    toast({ title: "✓ Fluxo salvo" });
+    toast({ title: "✓ Fluxo salvo", description: `${compiled.steps.length} passo(s) compilado(s)` });
     await load(); startNew();
   };
 
@@ -67,7 +65,7 @@ export function FlowsManager() {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4">
+    <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4">
       <div className="space-y-2">
         <Button onClick={startNew} variant="outline" className="w-full"><Plus className="size-4 mr-2" /> Novo fluxo</Button>
         {items.length === 0 && <p className="text-xs text-muted-foreground p-3">Nenhum fluxo configurado.</p>}
@@ -83,31 +81,15 @@ export function FlowsManager() {
         ))}
       </div>
       <div className="space-y-3">
-        <div className="flex items-center gap-3">
+        <div className="flex items-end gap-3">
           <div className="flex-1 space-y-1"><Label>Nome</Label><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Boas-vindas" /></div>
-          <div className="space-y-1"><Label>Ativo</Label><Switch checked={active} onCheckedChange={setActive} /></div>
+          <div className="space-y-1"><Label>Ativo</Label><div className="h-10 flex items-center"><Switch checked={active} onCheckedChange={setActive} /></div></div>
+          <Button onClick={save}><Save className="size-4 mr-2" /> {sel ? "Salvar" : "Criar fluxo"}</Button>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <Label>Gatilho</Label>
-            <Select value={trigType} onValueChange={setTrigType}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="first_inbound">Primeira resposta do lead</SelectItem>
-                <SelectItem value="keyword">Palavra-chave</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          {trigType === "keyword" && (
-            <div className="space-y-1"><Label>Palavra-chave</Label><Input value={trigKeyword} onChange={(e) => setTrigKeyword(e.target.value)} placeholder="preço" /></div>
-          )}
-        </div>
-        <div className="space-y-1">
-          <Label>Passos (JSON)</Label>
-          <Textarea rows={10} className="font-mono text-xs" value={stepsJson} onChange={(e) => setStepsJson(e.target.value)} />
-          <p className="text-xs text-muted-foreground">Tipos: <code>send_message</code>, <code>wait</code> (minutes), <code>move_stage</code>, <code>add_tag</code>, <code>end</code>. Suporta tags como {"{{nome}}"}.</p>
-        </div>
-        <Button onClick={save}><Save className="size-4 mr-2" /> {sel ? "Salvar" : "Criar fluxo"}</Button>
+        <FlowBuilder key={builderKey} value={graph} onChange={(g, c) => { setGraph(g); setCompiled(c); }} />
+        <p className="text-xs text-muted-foreground">
+          {compiled.steps.length} passo(s) compilado(s) · Arraste das alças (●) para conectar blocos · Variáveis: {"{{nome}}"}, {"{{telefone}}"}
+        </p>
       </div>
     </div>
   );
