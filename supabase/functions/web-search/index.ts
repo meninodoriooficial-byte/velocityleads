@@ -24,8 +24,63 @@ serve(async (req) => {
     );
 
     const { searchId, category, state, city, neighborhood, page = 1 } = await req.json();
-    
+
     console.log('Starting web search for:', { category, state, city, neighborhood, page });
+
+    // Buscar dados da busca (para descobrir o user) e o plano do usuário
+    const { data: searchRow } = await supabaseClient
+      .from('searches')
+      .select('user_id')
+      .eq('id', searchId)
+      .maybeSingle();
+
+    let planLimit = 100;
+    if (searchRow?.user_id) {
+      const { data: profile } = await supabaseClient
+        .from('profiles')
+        .select('plan_searches_limit')
+        .eq('user_id', searchRow.user_id)
+        .maybeSingle();
+      if (profile?.plan_searches_limit && profile.plan_searches_limit > 0) {
+        planLimit = profile.plan_searches_limit;
+      }
+    }
+
+    // Place_ids já capturados nesta busca — para não duplicar entre lotes
+    const { data: existingRows } = await supabaseClient
+      .from('search_results')
+      .select('additional_data')
+      .eq('search_id', searchId);
+
+    const existingPlaceIds = new Set<string>();
+    for (const row of existingRows || []) {
+      const pid = (row as any)?.additional_data?.place_id;
+      if (pid) existingPlaceIds.add(pid);
+    }
+
+    const alreadyCaptured = existingPlaceIds.size;
+    const remainingByPlan = Math.max(0, planLimit - alreadyCaptured);
+    const BATCH = 100;
+    const targetThisBatch = Math.min(BATCH, remainingByPlan);
+
+    if (targetThisBatch === 0) {
+      await supabaseClient
+        .from('searches')
+        .update({ status: 'completed', results_count: alreadyCaptured })
+        .eq('id', searchId);
+      return new Response(
+        JSON.stringify({
+          success: true,
+          resultsCount: 0,
+          totalCount: alreadyCaptured,
+          hasMore: false,
+          planLimit,
+          planReached: true,
+          warning: `Limite do plano atingido (${planLimit} capturas).`,
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      );
+    }
 
     // Atualizar status da busca
     await supabaseClient
@@ -39,7 +94,8 @@ serve(async (req) => {
 
     // Executar busca tentando cada chave em sequência (sem fallback simulado)
     const { results: searchResults, warning } = await performWebSearch(
-      category, city, state, neighborhood, page, apiKeys, supabaseClient
+      category, city, state, neighborhood, page, apiKeys, supabaseClient,
+      existingPlaceIds, targetThisBatch
     );
     
     // Salvar resultados no banco
@@ -75,12 +131,17 @@ serve(async (req) => {
 
     console.log(`Search completed: ${searchResults.length} new results found, ${totalCount} total${warning ? ` (warning: ${warning})` : ''}`);
 
+    const total = totalCount || 0;
+    const hasMore = searchResults.length >= targetThisBatch && total < planLimit;
+
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         resultsCount: searchResults.length,
-        totalCount: totalCount || 0,
-        hasMore: searchResults.length >= 100,
+        totalCount: total,
+        hasMore,
+        planLimit,
+        planReached: total >= planLimit,
         warning: warning ?? null,
       }),
       { 
