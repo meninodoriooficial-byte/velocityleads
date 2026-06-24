@@ -648,6 +648,23 @@ export default function Dashboard() {
                   </Card>
                 </TabsContent>
 
+                <TabsContent value="whatsapp" className="mt-0">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <MessageCircle className="w-5 h-5" />
+                        Evolution API (WhatsApp)
+                      </CardTitle>
+                      <CardDescription>
+                        Configure o servidor da Evolution API usado pelo módulo de envio de WhatsApp.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <EvolutionApiConfig />
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
                 <TabsContent value="history" className="mt-0">
                   <Card>
                     <CardHeader>
