@@ -78,34 +78,65 @@
   }
 
   .dark {
-    --background: 230 25% 7%;
-    --foreground: 230 15% 96%;
-    --card: 230 22% 11%;
-    --card-foreground: 230 15% 96%;
-    --popover: 230 22% 11%;
-    --popover-foreground: 230 15% 96%;
-    --primary: 245 80% 68%;
-    --primary-foreground: 230 25% 7%;
-    --primary-soft: 245 40% 18%;
-    --accent: 70 100% 55%;
-    --accent-foreground: 230 25% 11%;
-    --secondary: 230 18% 16%;
-    --secondary-foreground: 230 15% 96%;
-    --muted: 230 18% 16%;
-    --muted-foreground: 230 12% 65%;
-    --destructive: 0 70% 55%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 230 15% 20%;
-    --input: 230 18% 16%;
-    --ring: 245 80% 68%;
-    --sidebar-background: 230 25% 9%;
-    --sidebar-foreground: 230 12% 65%;
-    --sidebar-primary: 245 80% 68%;
-    --sidebar-primary-foreground: 230 25% 7%;
-    --sidebar-accent: 230 18% 16%;
-    --sidebar-accent-foreground: 230 15% 96%;
-    --sidebar-border: 230 15% 20%;
-    --sidebar-ring: 245 80% 68%;
+    /* Surfaces — deep, slightly cool ink */
+    --background: 230 30% 5%;
+    --foreground: 230 20% 98%;
+    --card: 230 24% 9%;
+    --card-foreground: 230 20% 98%;
+    --popover: 230 26% 8%;
+    --popover-foreground: 230 20% 98%;
+
+    /* Primary — brighter indigo for AA contrast on dark */
+    --primary: 245 95% 72%;
+    --primary-foreground: 230 30% 6%;
+    --primary-soft: 245 50% 16%;
+
+    /* Accent — volt, slightly hotter on dark */
+    --accent: 70 100% 58%;
+    --accent-foreground: 230 30% 6%;
+    --accent-dim: 70 70% 30%;
+
+    --secondary: 230 20% 14%;
+    --secondary-foreground: 230 20% 98%;
+    --muted: 230 20% 13%;
+    --muted-foreground: 230 15% 75%;
+
+    --destructive: 0 80% 62%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 158 70% 48%;
+    --success-foreground: 230 30% 6%;
+    --warning: 38 95% 60%;
+    --warning-foreground: 230 30% 6%;
+
+    --border: 230 18% 22%;
+    --input: 230 20% 16%;
+    --ring: 245 95% 72%;
+
+    /* Dark gradients & shadows */
+    --gradient-primary: linear-gradient(135deg, hsl(245 95% 72%), hsl(265 90% 70%));
+    --gradient-card: linear-gradient(180deg, hsl(230 24% 11%), hsl(230 26% 8%));
+    --gradient-mesh:
+      radial-gradient(800px 400px at 0% 0%, hsl(245 95% 72% / 0.18), transparent 60%),
+      radial-gradient(600px 300px at 100% 0%, hsl(70 100% 58% / 0.12), transparent 60%);
+
+    --shadow-soft: 0 1px 2px hsl(0 0% 0% / 0.4), 0 2px 8px -3px hsl(0 0% 0% / 0.5);
+    --shadow-card: 0 1px 2px hsl(0 0% 0% / 0.4), 0 12px 32px -16px hsl(0 0% 0% / 0.6);
+    --shadow-elevated: 0 1px 2px hsl(0 0% 0% / 0.5), 0 24px 56px -24px hsl(0 0% 0% / 0.8);
+
+    --sidebar-background: 230 28% 7%;
+    --sidebar-foreground: 230 15% 78%;
+    --sidebar-primary: 245 95% 72%;
+    --sidebar-primary-foreground: 230 30% 6%;
+    --sidebar-accent: 230 20% 14%;
+    --sidebar-accent-foreground: 230 20% 98%;
+    --sidebar-border: 230 18% 20%;
+    --sidebar-ring: 245 95% 72%;
+  }
+
+  /* Dark-mode surface highlight tweak (override light inner-highlight) */
+  .dark .surface-raised {
+    background-image: linear-gradient(180deg, hsl(230 30% 100% / 0.04), hsl(0 0% 0% / 0));
+    box-shadow: 0 1px 0 hsl(230 30% 100% / 0.04) inset, var(--shadow-card);
   }
 }
 
