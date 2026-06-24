@@ -113,25 +113,17 @@ export const AllUserResults = () => {
   // Carrega telefones que já responderam (têm mensagem inbound no CRM)
   useEffect(() => {
     if (!user) return;
-    supabase
-      .from("crm_conversations")
-      .select("phone")
-      .eq("user_id", user.id)
-      .gt("inbound_count", 0)
-      .then(({ data, error }) => {
-        if (error || !data) {
-          // fallback: distinct via crm_messages
-          supabase.from("crm_messages").select("conversation_id, direction").eq("user_id", user.id).eq("direction", "in")
-            .then(async ({ data: msgs }) => {
-              if (!msgs?.length) return;
-              const ids = Array.from(new Set(msgs.map((m: any) => m.conversation_id)));
-              const { data: convs } = await supabase.from("crm_conversations").select("phone").in("id", ids);
-              setResponders(new Set((convs || []).map((c: any) => normalizePhone(c.phone))));
-            });
-          return;
-        }
-        setResponders(new Set(data.map((c: any) => normalizePhone(c.phone))));
-      });
+    (async () => {
+      const { data: msgs } = await supabase
+        .from("crm_messages")
+        .select("conversation_id")
+        .eq("user_id", user.id)
+        .eq("direction", "in");
+      if (!msgs?.length) return;
+      const ids = Array.from(new Set(msgs.map((m: any) => m.conversation_id)));
+      const { data: convs } = await supabase.from("crm_conversations").select("phone").in("id", ids);
+      setResponders(new Set((convs || []).map((c: any) => normalizePhone(c.phone))));
+    })();
   }, [user?.id]);
 
   // Opções dinâmicas
