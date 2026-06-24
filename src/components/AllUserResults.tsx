@@ -29,6 +29,11 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { SendWhatsAppDialog } from "@/components/SendWhatsAppDialog";
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { ShieldAlert } from "lucide-react";
+import {
   Table,
   TableBody,
   TableCell,
@@ -69,6 +74,7 @@ export const AllUserResults = () => {
   const [rows, setRows] = useState<LeadRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [waLead, setWaLead] = useState<LeadRow | null>(null);
+  const [confirmLead, setConfirmLead] = useState<LeadRow | null>(null);
   const [responders, setResponders] = useState<Set<string>>(new Set());
   const [contacted, setContacted] = useState<Set<string>>(new Set());
 
@@ -454,7 +460,10 @@ export const AllUserResults = () => {
                   const responded = r.phone ? responders.has(normalizePhone(r.phone)) : false;
                   const wasContacted = r.phone ? contacted.has(normalizePhone(r.phone)) : false;
                   return (
-                  <TableRow key={r.id} className={wasContacted ? "bg-amber-500/5 hover:bg-amber-500/10" : ""}>
+                  <TableRow
+                    key={r.id}
+                    className={wasContacted ? "bg-green-500/10 hover:bg-green-500/20 border-l-4 border-l-green-500" : ""}
+                  >
                     <TableCell className="font-medium">{r.business_name}</TableCell>
                     <TableCell className="text-sm whitespace-nowrap">
                       {r.phone ? (
@@ -495,8 +504,16 @@ export const AllUserResults = () => {
                     </TableCell>
                     <TableCell className="text-center">
                       {r.phone ? (
-                        <Button variant="ghost" size="icon-sm" onClick={() => setWaLead(r)} title={wasContacted ? "Já contatado — enviar novamente" : "Enviar WhatsApp"}>
-                          <MessageCircle className="size-4 text-green-600" />
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => wasContacted ? setConfirmLead(r) : setWaLead(r)}
+                          title={wasContacted ? "Já contatado — clique para reenviar" : "Enviar WhatsApp"}
+                        >
+                          <MessageCircle
+                            className={wasContacted ? "size-4 text-white" : "size-4 text-green-600"}
+                            fill={wasContacted ? "#16a34a" : "none"}
+                          />
                         </Button>
                       ) : <span className="text-muted-foreground text-xs">—</span>}
                     </TableCell>
@@ -536,6 +553,35 @@ export const AllUserResults = () => {
           }}
         />
       )}
+
+      <AlertDialog open={!!confirmLead} onOpenChange={(o) => !o && setConfirmLead(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <ShieldAlert className="size-5 text-amber-500" /> Lead já contatado
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">
+                Você já enviou uma mensagem para <b>{confirmLead?.business_name}</b> anteriormente.
+              </span>
+              <span className="block">
+                Reenviar mensagens pouco tempo depois pode ser interpretado como <b>spam</b> pelo WhatsApp,
+                prejudicar a reputação do seu número e até causar bloqueios.
+              </span>
+              <span className="block">Tem certeza que deseja enviar uma nova mensagem?</span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-green-600 hover:bg-green-700 text-white"
+              onClick={() => { setWaLead(confirmLead); setConfirmLead(null); }}
+            >
+              Enviar novamente
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };
