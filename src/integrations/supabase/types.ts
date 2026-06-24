@@ -1080,6 +1080,7 @@ export type Database = {
           created_at: string
           id: string
           instance_name: string
+          last_poll_at: string | null
           last_qr_at: string | null
           updated_at: string
           user_id: string
@@ -1090,6 +1091,7 @@ export type Database = {
           created_at?: string
           id?: string
           instance_name: string
+          last_poll_at?: string | null
           last_qr_at?: string | null
           updated_at?: string
           user_id: string
@@ -1100,6 +1102,7 @@ export type Database = {
           created_at?: string
           id?: string
           instance_name?: string
+          last_poll_at?: string | null
           last_qr_at?: string | null
           updated_at?: string
           user_id?: string
