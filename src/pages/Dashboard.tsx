@@ -255,6 +255,17 @@ export default function Dashboard() {
                       <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Pace</span>
                       <span className="text-sm font-bold tabular-nums">{profile?.searches_used || 0} buscas</span>
                     </div>
+                    <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground border border-primary/30 backdrop-blur">
+                      <Zap className="size-3.5 text-accent" fill="currentColor" />
+                      <span className="text-xs font-semibold uppercase tracking-wider text-primary-foreground/70">Plano</span>
+                      <span className="text-sm font-bold capitalize text-accent">{profile?.plan || "Basic"}</span>
+                      <button
+                        onClick={() => setActiveTab("plans")}
+                        className="text-[11px] font-semibold text-accent hover:underline inline-flex items-center gap-0.5"
+                      >
+                        Upgrade <ArrowUpRight className="size-3" />
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
