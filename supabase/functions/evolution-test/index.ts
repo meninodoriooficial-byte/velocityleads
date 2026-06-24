@@ -104,6 +104,20 @@ Deno.serve(async (req) => {
       return json({ ok: true, status: r.status, qr, pairingCode: parsed?.pairingCode || null, response: parsed });
     }
 
+    if (action === "state") {
+      const instance = String(body.instance || "").trim();
+      if (!instance) return json({ ok: false, error: "Informe o nome da instância" }, 400);
+      const r = await fetch(`${baseUrl}/instance/connectionState/${encodeURIComponent(instance)}`, { headers });
+      const text = await r.text();
+      let parsed: any = null;
+      try { parsed = JSON.parse(text); } catch { /* noop */ }
+      if (!r.ok) {
+        return json({ ok: false, status: r.status, error: parsed?.message || parsed?.response?.message || text.slice(0, 400) });
+      }
+      const state = parsed?.instance?.state || parsed?.state || parsed?.instance?.status || null;
+      return json({ ok: true, status: r.status, state, connected: state === "open", response: parsed });
+    }
+
     if (action === "send") {
       const instance = String(body.instance || "").trim();
       const number = String(body.number || "").replace(/\D/g, "");

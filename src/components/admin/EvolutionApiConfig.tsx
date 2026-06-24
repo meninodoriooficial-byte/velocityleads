@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,7 +25,39 @@ export const EvolutionApiConfig = () => {
   const [creating, setCreating] = useState(false);
   const [createResult, setCreateResult] = useState<{ ok: boolean; msg: string; qr?: string | null } | null>(null);
   const [reconnecting, setReconnecting] = useState(false);
+  const pollRef = useRef<number | null>(null);
+  const [connected, setConnected] = useState(false);
   const { toast } = useToast();
+
+  const stopPolling = () => {
+    if (pollRef.current !== null) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  };
+
+  const startPollingConnection = (instance: string) => {
+    stopPolling();
+    setConnected(false);
+    const startedAt = Date.now();
+    pollRef.current = window.setInterval(async () => {
+      // 3 minutos de janela
+      if (Date.now() - startedAt > 3 * 60 * 1000) {
+        stopPolling();
+        return;
+      }
+      const { data } = await supabase.functions.invoke("evolution-test", {
+        body: { action: "state", instance },
+      });
+      if (data?.connected) {
+        stopPolling();
+        setConnected(true);
+        toast({ title: "✅ Conectado com sucesso", description: `Instância "${instance}" conectada ao WhatsApp.` });
+      }
+    }, 3000);
+  };
+
+  useEffect(() => () => stopPolling(), []);
 
   useEffect(() => {
     (async () => {
@@ -139,6 +171,7 @@ export const EvolutionApiConfig = () => {
         : data?.error || "Falha ao criar instância",
       qr: data?.qr || null,
     });
+    if (data?.ok) startPollingConnection(testInstance.trim());
   };
 
   const reconnectInstance = async () => {
@@ -160,6 +193,7 @@ export const EvolutionApiConfig = () => {
         : data?.error || "Falha ao gerar QR Code",
       qr: data?.qr || null,
     });
+    if (data?.ok) startPollingConnection(testInstance.trim());
   };
 
   if (loading) {
