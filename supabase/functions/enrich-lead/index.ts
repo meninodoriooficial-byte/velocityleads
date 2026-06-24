@@ -94,7 +94,41 @@ serve(async (req) => {
       }
     }
 
-    // 2) Complementar/Fallback com Lovable AI
+    // 2) BrasilAPI (grátis) — usa o CNPJ obtido em (1) para puxar quadro societário,
+    //     situação cadastral, CNAEs secundários, capital, e-mail/telefone oficial da Receita.
+    const cnpjFromCdd = ((enrichment.casadosdados as any)?.cnpj || "")
+      .toString()
+      .replace(/\D/g, "");
+    if (cnpjFromCdd && cnpjFromCdd.length === 14) {
+      try {
+        const brasil = await fetchBrasilApi(cnpjFromCdd);
+        if (brasil) {
+          enrichment.brasilapi = brasil;
+          sourceUsed = sourceUsed ? `${sourceUsed}+brasilapi` : "brasilapi";
+        }
+      } catch (e) {
+        console.error("BrasilAPI error:", e);
+      }
+    }
+
+    // 3) Scraper aprimorado do site — visita páginas de contato e extrai e-mails / redes
+    const siteUrl =
+      result.website ||
+      (enrichment.casadosdados as any)?.site ||
+      null;
+    if (siteUrl) {
+      try {
+        const scraped = await scrapeSiteDeep(siteUrl);
+        if (scraped && (scraped.emails?.length || scraped.phones?.length || scraped.instagram || scraped.facebook || scraped.linkedin)) {
+          enrichment.scraped = scraped;
+          sourceUsed = sourceUsed ? `${sourceUsed}+scrape` : "scrape";
+        }
+      } catch (e) {
+        console.error("scrape error:", e);
+      }
+    }
+
+    // 4) Complementar/Fallback com Lovable AI
     const lovableKey = Deno.env.get("LOVABLE_API_KEY");
     if (lovableKey) {
       try {
