@@ -19,6 +19,8 @@ import { PackagesManager } from "@/components/admin/PackagesManager";
 import { PaymentsConfig } from "@/components/admin/PaymentsConfig";
 import { EvolutionApiConfig } from "@/components/admin/EvolutionApiConfig";
 import { PurchasesHistory } from "@/components/PurchasesHistory";
+import { AddonsMarketplace } from "@/components/addons/AddonsMarketplace";
+import { WhatsAppAddon } from "@/components/addons/WhatsAppAddon";
 import { explainEdgeError } from "@/lib/edgeFunction";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar, type DashboardTab } from "@/components/AppSidebar";
@@ -213,6 +215,8 @@ export default function Dashboard() {
     history: { title: "Histórico de prospecções", subtitle: "Revise tudo o que você já buscou." },
     plans: { title: "Escolha sua velocidade", subtitle: "Faça upgrade para ampliar seus limites mensais." },
     purchases: { title: "Minhas compras", subtitle: "Acompanhe o status dos seus pacotes adquiridos." },
+    addons: { title: "Marketplace de Add-ons", subtitle: "Amplie o sistema com recursos para acelerar sua prospecção." },
+    "addon-whatsapp": { title: "WhatsApp Prospect", subtitle: "Conecte seu número, crie templates e dispare mensagens personalizadas para seus leads." },
     admin: { title: "Painel administrativo", subtitle: "Gerencie usuários, APIs e configurações." },
   };
   const head = headlines[activeTab];
@@ -525,6 +529,17 @@ export default function Dashboard() {
             )}
 
             {activeTab === "purchases" && <PurchasesHistory />}
+
+            {activeTab === "addons" && (
+              <AddonsMarketplace
+                paymentMode={paymentMode}
+                onOpenAddon={(slug) => {
+                  if (slug === "whatsapp") setActiveTab("addon-whatsapp");
+                }}
+              />
+            )}
+
+            {activeTab === "addon-whatsapp" && <WhatsAppAddon />}
 
             {activeTab === "admin" && isAdmin && (
               <Tabs defaultValue="users" className="w-full">
