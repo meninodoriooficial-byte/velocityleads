@@ -59,6 +59,37 @@ Deno.serve(async (req) => {
       return json({ ok: true, status: r.status, elapsed_ms: elapsed, instances_count: count, message: "Conexão OK" });
     }
 
+    if (action === "create") {
+      const instance = String(body.instance || "").trim();
+      if (!instance) return json({ ok: false, error: "Informe o nome da instância" }, 400);
+      const r = await fetch(`${baseUrl}/instance/create`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          instanceName: instance,
+          integration: "WHATSAPP-BAILEYS",
+          qrcode: true,
+        }),
+      });
+      const text = await r.text();
+      let parsed: any = null;
+      try { parsed = JSON.parse(text); } catch { /* noop */ }
+      // 403/409 quando já existe — tratamos como sucesso idempotente
+      const alreadyExists = (r.status === 403 || r.status === 409) ||
+        /already in use|already exists/i.test(text);
+      if (!r.ok && !alreadyExists) {
+        return json({ ok: false, status: r.status, error: parsed?.message || parsed?.response?.message || text.slice(0, 400) });
+      }
+      return json({
+        ok: true,
+        status: r.status,
+        already_exists: alreadyExists,
+        message: alreadyExists ? "Instância já existia" : "Instância criada",
+        qr: parsed?.qrcode?.base64 || parsed?.qrcode || null,
+        response: parsed,
+      });
+    }
+
     if (action === "send") {
       const instance = String(body.instance || "").trim();
       const number = String(body.number || "").replace(/\D/g, "");

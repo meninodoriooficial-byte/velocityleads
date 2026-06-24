@@ -19,9 +19,11 @@ export const EvolutionApiConfig = () => {
   const [sending, setSending] = useState(false);
   const [pingResult, setPingResult] = useState<{ ok: boolean; msg: string } | null>(null);
   const [sendResult, setSendResult] = useState<{ ok: boolean; msg: string } | null>(null);
-  const [testInstance, setTestInstance] = useState("");
+  const [testInstance, setTestInstance] = useState("velocityleads");
   const [testNumber, setTestNumber] = useState("");
   const [testMessage, setTestMessage] = useState("Mensagem de teste do Velocity Leads ✅");
+  const [creating, setCreating] = useState(false);
+  const [createResult, setCreateResult] = useState<{ ok: boolean; msg: string; qr?: string | null } | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -104,6 +106,27 @@ export const EvolutionApiConfig = () => {
     });
   };
 
+  const createInstance = async () => {
+    if (!testInstance.trim()) return;
+    setCreating(true);
+    setCreateResult(null);
+    const { data, error } = await supabase.functions.invoke("evolution-test", {
+      body: { action: "create", instance: testInstance.trim() },
+    });
+    setCreating(false);
+    if (error) {
+      setCreateResult({ ok: false, msg: error.message });
+      return;
+    }
+    setCreateResult({
+      ok: !!data?.ok,
+      msg: data?.ok
+        ? (data.already_exists ? "Instância já existia ✓" : "Instância criada ✓ — escaneie o QR na Evolution")
+        : data?.error || "Falha ao criar instância",
+      qr: data?.qr || null,
+    });
+  };
+
   if (loading) {
     return (
       <p className="text-sm text-muted-foreground flex items-center gap-2">
@@ -183,6 +206,27 @@ export const EvolutionApiConfig = () => {
               <Label className="text-xs">Número (DDI+DDD+nº)</Label>
               <Input value={testNumber} onChange={(e) => setTestNumber(e.target.value)} placeholder="5511999999999" />
             </div>
+          </div>
+          <div>
+            <Button variant="outline" size="sm" onClick={createInstance} disabled={creating || !testInstance.trim()}>
+              {creating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <MessageCircle className="w-4 h-4 mr-2" />}
+              Criar instância "{testInstance || "..."}"
+            </Button>
+            {createResult && (
+              <div className={`mt-2 text-xs rounded-md p-2 flex items-start gap-2 ${createResult.ok ? "bg-green-500/10 text-green-700 dark:text-green-400" : "bg-destructive/10 text-destructive"}`}>
+                {createResult.ok ? <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" /> : <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />}
+                <div className="space-y-2">
+                  <span>{createResult.msg}</span>
+                  {createResult.qr && (
+                    <img
+                      src={createResult.qr.startsWith("data:") ? createResult.qr : `data:image/png;base64,${createResult.qr}`}
+                      alt="QR Code"
+                      className="w-48 h-48 rounded bg-white p-2"
+                    />
+                  )}
+                </div>
+              </div>
+            )}
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Mensagem</Label>
