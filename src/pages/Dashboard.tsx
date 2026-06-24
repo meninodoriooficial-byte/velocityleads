@@ -702,9 +702,6 @@ export default function Dashboard() {
                   </Card>
                 </TabsContent>
 
-                <TabsContent value="history" className="mt-0">
-                </TabsContent>
-
                 <TabsContent value="email-oauth" className="mt-0">
                   <Card>
                     <CardHeader>
@@ -722,7 +719,7 @@ export default function Dashboard() {
                   </Card>
                 </TabsContent>
 
-                <TabsContent value="history-old-placeholder" className="mt-0 hidden">
+                <TabsContent value="history" className="mt-0">
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
