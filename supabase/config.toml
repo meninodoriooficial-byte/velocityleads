@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.evolution-webhook]
 verify_jwt = false
+
+[functions.crm-flow-run]
+verify_jwt = false
