@@ -31,12 +31,14 @@ export default function Dashboard() {
   const [selectedSearch, setSelectedSearch] = useState(null);
   const [purchasingId, setPurchasingId] = useState<string | null>(null);
   const [paymentMode, setPaymentMode] = useState<"test" | "live">("test");
+  const [leadsStats, setLeadsStats] = useState<{ total: number; enriched: number }>({ total: 0, enriched: 0 });
   const { toast } = useToast();
 
   useEffect(() => {
     if (user) {
       fetchUserSearches();
       fetchPackages();
+      fetchLeadsStats();
     }
   }, [user]);
 
@@ -65,6 +67,29 @@ export default function Dashboard() {
       setPackages(data || []);
     } catch (error) {
       console.error('Error fetching packages:', error);
+    }
+  };
+
+  const fetchLeadsStats = async () => {
+    if (!user?.id) return;
+    try {
+      // IDs das buscas do usuário
+      const { data: userSearches } = await supabase
+        .from('searches')
+        .select('id')
+        .eq('user_id', user.id);
+      const ids = (userSearches || []).map((s: any) => s.id);
+      if (ids.length === 0) {
+        setLeadsStats({ total: 0, enriched: 0 });
+        return;
+      }
+      const [{ count: total }, { count: enriched }] = await Promise.all([
+        supabase.from('search_results').select('*', { count: 'exact', head: true }).in('search_id', ids),
+        supabase.from('search_results').select('*', { count: 'exact', head: true }).in('search_id', ids).not('enriched_at', 'is', null),
+      ]);
+      setLeadsStats({ total: total || 0, enriched: enriched || 0 });
+    } catch (e) {
+      console.error('fetchLeadsStats error', e);
     }
   };
 
