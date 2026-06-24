@@ -75,10 +75,19 @@ export const SearchForm = ({ onSearch, selectedSearch }: SearchFormProps) => {
     fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${selectedState}/municipios`)
       .then((r) => r.json())
       .then((data: any[]) => {
-        const names = (data || []).map((m) => m.nome).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+        const sorted = (data || [])
+          .map((m) => m.nome)
+          .sort((a: string, b: string) => a.localeCompare(b, 'pt-BR'));
+        // Para SP, colocar "São Paulo" como primeira da lista
+        const names =
+          selectedState === "SP" && sorted.includes("São Paulo")
+            ? ["São Paulo", ...sorted.filter((n: string) => n !== "São Paulo")]
+            : sorted;
         setCities(names);
         if (pendingCity && names.includes(pendingCity)) {
           setCity(pendingCity);
+        } else if (selectedState === "SP" && names.includes("São Paulo")) {
+          setCity("São Paulo");
         } else {
           setCity("");
         }
