@@ -20,7 +20,14 @@ import {
   Sparkles,
   Filter,
   X,
+  Globe,
+  MapPin,
+  MessageCircle,
+  Kanban,
 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { SendWhatsAppDialog } from "@/components/SendWhatsAppDialog";
 import {
   Table,
   TableBody,
@@ -61,6 +68,8 @@ export const AllUserResults = () => {
   const { user } = useAuth();
   const [rows, setRows] = useState<LeadRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [waLead, setWaLead] = useState<LeadRow | null>(null);
+  const [responders, setResponders] = useState<Set<string>>(new Set());
 
   // Filtros
   const [filter, setFilter] = useState("");
@@ -99,6 +108,30 @@ export const AllUserResults = () => {
 
   useEffect(() => {
     fetchAll();
+  }, [user?.id]);
+
+  // Carrega telefones que já responderam (têm mensagem inbound no CRM)
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("crm_conversations")
+      .select("phone")
+      .eq("user_id", user.id)
+      .gt("inbound_count", 0)
+      .then(({ data, error }) => {
+        if (error || !data) {
+          // fallback: distinct via crm_messages
+          supabase.from("crm_messages").select("conversation_id, direction").eq("user_id", user.id).eq("direction", "in")
+            .then(async ({ data: msgs }) => {
+              if (!msgs?.length) return;
+              const ids = Array.from(new Set(msgs.map((m: any) => m.conversation_id)));
+              const { data: convs } = await supabase.from("crm_conversations").select("phone").in("id", ids);
+              setResponders(new Set((convs || []).map((c: any) => normalizePhone(c.phone))));
+            });
+          return;
+        }
+        setResponders(new Set(data.map((c: any) => normalizePhone(c.phone))));
+      });
   }, [user?.id]);
 
   // Opções dinâmicas
@@ -402,20 +435,22 @@ export const AllUserResults = () => {
           <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-[180px]">Empresa</TableHead>
+                  <TableHead className="min-w-[180px]">Nome</TableHead>
                   <TableHead>Telefone</TableHead>
                   <TableHead>Email</TableHead>
-                  <TableHead>Website</TableHead>
-                  <TableHead className="min-w-[200px]">Endereço</TableHead>
+                  <TableHead className="w-12 text-center">Site</TableHead>
+                  <TableHead className="w-12 text-center">End.</TableHead>
                   <TableHead>Busca</TableHead>
                   <TableHead>Cidade/UF</TableHead>
-                  <TableHead>Fonte</TableHead>
-                  <TableHead>Enriquecido</TableHead>
-                  <TableHead>Capturado</TableHead>
+                  <TableHead className="w-12 text-center">Enr.</TableHead>
+                  <TableHead className="w-12 text-center">WhatsApp</TableHead>
+                  <TableHead className="w-12 text-center">CRM</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((r) => (
+                {filtered.map((r) => {
+                  const responded = r.phone ? responders.has(normalizePhone(r.phone)) : false;
+                  return (
                   <TableRow key={r.id}>
                     <TableCell className="font-medium">{r.business_name}</TableCell>
                     <TableCell className="text-sm whitespace-nowrap">
@@ -428,36 +463,94 @@ export const AllUserResults = () => {
                         <a href={`mailto:${r.email}`} className="text-primary hover:underline">{r.email}</a>
                       ) : <span className="text-muted-foreground">—</span>}
                     </TableCell>
-                    <TableCell className="text-sm max-w-[180px] truncate">
+                    <TableCell className="text-center">
                       {r.website ? (
-                        <a href={r.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{r.website}</a>
-                      ) : <span className="text-muted-foreground">—</span>}
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="ghost" size="icon-sm" title="Ver website"><Globe className="size-4 text-primary" /></Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-72 text-xs break-all">
+                            <div className="font-semibold mb-1">Website</div>
+                            <a href={r.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{r.website}</a>
+                          </PopoverContent>
+                        </Popover>
+                      ) : <span className="text-muted-foreground text-xs">—</span>}
                     </TableCell>
-                    <TableCell className="text-sm">{r.address || <span className="text-muted-foreground">—</span>}</TableCell>
+                    <TableCell className="text-center">
+                      {r.address ? (
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="ghost" size="icon-sm" title="Ver endereço"><MapPin className="size-4 text-primary" /></Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-72 text-xs">
+                            <div className="font-semibold mb-1">Endereço</div>
+                            <p>{r.address}</p>
+                            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(r.address)}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline mt-2 inline-block">Abrir no Google Maps</a>
+                          </PopoverContent>
+                        </Popover>
+                      ) : <span className="text-muted-foreground text-xs">—</span>}
+                    </TableCell>
                     <TableCell className="text-sm">{r.searches?.category || "—"}</TableCell>
                     <TableCell className="text-sm whitespace-nowrap">
                       {r.searches ? `${r.searches.city}/${r.searches.state}` : "—"}
                     </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="text-xs">{r.source_api || "—"}</Badge>
-                    </TableCell>
-                    <TableCell>
+                    <TableCell className="text-center">
                       {r.enriched_source ? (
-                        <Badge variant="secondary" className="text-xs">
-                          <Sparkles className="w-3 h-3 mr-1" />
-                          {r.enriched_source}
-                        </Badge>
+                        <TooltipProvider><Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-flex"><Sparkles className="size-4 text-amber-500" /></span>
+                          </TooltipTrigger>
+                          <TooltipContent>Enriquecido via {r.enriched_source}</TooltipContent>
+                        </Tooltip></TooltipProvider>
                       ) : <span className="text-muted-foreground text-xs">—</span>}
                     </TableCell>
-                    <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                      {new Date(r.created_at).toLocaleDateString("pt-BR")}
+                    <TableCell className="text-center">
+                      {r.phone ? (
+                        <Button variant="ghost" size="icon-sm" onClick={() => setWaLead(r)} title="Enviar WhatsApp">
+                          <MessageCircle className="size-4 text-green-600" />
+                        </Button>
+                      ) : <span className="text-muted-foreground text-xs">—</span>}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        disabled={!responded}
+                        onClick={() => window.dispatchEvent(new CustomEvent("dashboard:tab", { detail: "addon-crm" }))}
+                        title={responded ? "Abrir no CRM" : "Contato ainda não respondeu"}
+                        className={responded ? "" : "opacity-40 cursor-not-allowed"}
+                      >
+                        <Kanban className={`size-4 ${responded ? "text-primary" : ""}`} />
+                      </Button>
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
         )}
       </CardContent>
+      {waLead && (
+        <SendWhatsAppDialog
+          open={!!waLead}
+          onOpenChange={(o) => !o && setWaLead(null)}
+          lead={{
+            id: waLead.id,
+            nome: waLead.business_name,
+            telefone: waLead.phone,
+            email: waLead.email,
+            site: waLead.website,
+            cidade: waLead.searches?.city,
+            estado: waLead.searches?.state,
+            bairro: waLead.searches?.neighborhood,
+            ramo: waLead.searches?.category,
+          }}
+        />
+      )}
     </Card>
   );
 };
+
+function normalizePhone(p?: string | null): string {
+  return String(p || "").replace(/\D/g, "");
+}
