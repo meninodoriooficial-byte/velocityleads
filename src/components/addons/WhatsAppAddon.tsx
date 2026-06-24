@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/components/ui/use-toast";
-import { MessageCircle, QrCode, Loader2, CheckCircle2, AlertCircle, Power, FileText, History as HistoryIcon, Link2 } from "lucide-react";
+import { MessageCircle, QrCode, Loader2, CheckCircle2, AlertCircle, Power, FileText, History as HistoryIcon, Link2, Smartphone, Wifi, WifiOff } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MessageTemplatesManager } from "./MessageTemplatesManager";
 import { MessageHistoryList } from "./MessageHistoryList";
 
@@ -23,6 +24,7 @@ export const WhatsAppAddon = () => {
   const [state, setState] = useState<string>("unknown");
   const [qr, setQr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [profile, setProfile] = useState<{ name?: string | null; picture?: string | null; number?: string | null } | null>(null);
   const pollRef = useRef<number | null>(null);
 
   const stopPolling = () => {
@@ -36,6 +38,7 @@ export const WhatsAppAddon = () => {
     const { data } = await supabase.functions.invoke("whatsapp-user", { body: { action: "status" } });
     if (data?.instance) setInstanceName(data.instance.instance_name);
     if (data?.state) setState(data.state);
+    if (data?.profile) setProfile(data.profile); else if (!data?.connected) setProfile(null);
     if (data?.connected) {
       setQr(null);
       stopPolling();
@@ -54,9 +57,11 @@ export const WhatsAppAddon = () => {
       if (Date.now() - t0 > 3 * 60 * 1000) { stopPolling(); return; }
       const { data } = await supabase.functions.invoke("whatsapp-user", { body: { action: "status" } });
       if (data?.state) setState(data.state);
+      if (data?.profile) setProfile(data.profile);
       if (data?.connected) {
         stopPolling();
         setQr(null);
+        await fetchStatus();
         toast({ title: "✅ Conectado com sucesso", description: "Seu WhatsApp está pronto para enviar mensagens." });
       }
     }, 3000);
@@ -128,6 +133,60 @@ export const WhatsAppAddon = () => {
         </TabsList>
 
         <TabsContent value="connection" className="mt-5 space-y-4">
+          {state === "open" && (
+            <div className="relative overflow-hidden rounded-2xl border border-green-500/30 bg-gradient-to-br from-green-500/10 via-emerald-500/5 to-transparent p-5 shadow-[0_0_40px_-12px_hsl(142_70%_45%/0.35)]">
+              <div className="absolute -right-12 -top-12 size-40 rounded-full bg-green-500/10 blur-3xl" />
+              <div className="absolute -left-8 -bottom-8 size-32 rounded-full bg-emerald-500/10 blur-3xl" />
+              <div className="relative flex items-center gap-4 flex-wrap">
+                <div className="relative">
+                  <Avatar className="size-20 ring-4 ring-green-500/40 shadow-lg">
+                    {profile?.picture && <AvatarImage src={profile.picture} alt={profile?.name || "WhatsApp"} />}
+                    <AvatarFallback className="bg-gradient-to-br from-green-500 to-emerald-600 text-white text-xl font-bold">
+                      {(profile?.name || instanceName || "WA").slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="absolute -bottom-1 -right-1 size-6 rounded-full bg-green-500 border-2 border-background flex items-center justify-center">
+                    <CheckCircle2 className="size-3.5 text-white" />
+                  </span>
+                </div>
+                <div className="flex-1 min-w-[200px]">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-green-700 dark:text-green-400">
+                      <Wifi className="size-3" /> Online
+                    </span>
+                    <Badge className="bg-green-600 hover:bg-green-600 text-white text-[10px]">Conectado</Badge>
+                  </div>
+                  <div className="text-lg font-bold leading-tight">{profile?.name || "WhatsApp conectado"}</div>
+                  {profile?.number && (
+                    <div className="text-sm text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                      <Smartphone className="size-3.5" /> +{profile.number}
+                    </div>
+                  )}
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Instância: <span className="font-mono">{instanceName}</span>
+                  </div>
+                </div>
+                <Button onClick={fetchStatus} variant="ghost" size="sm" className="ml-auto">
+                  Atualizar
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {state !== "open" && (
+            <div className="rounded-2xl border border-border/60 bg-muted/30 p-5 flex items-center gap-4">
+              <div className="size-16 rounded-full bg-muted flex items-center justify-center">
+                <WifiOff className="size-7 text-muted-foreground" />
+              </div>
+              <div className="flex-1">
+                <div className="font-bold">WhatsApp desconectado</div>
+                <div className="text-sm text-muted-foreground">
+                  {state === "connecting" ? "Aguardando leitura do QR Code..." : state === "not_found" ? "Crie sua instância para começar." : "Conecte para enviar mensagens aos leads."}
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-2 max-w-md">
             <Label>Nome da sua instância</Label>
             <Input
