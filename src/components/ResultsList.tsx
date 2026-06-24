@@ -64,6 +64,35 @@ const facebookUrl = (value: string) => {
   return `https://www.facebook.com/${encodeURIComponent(value.trim())}`;
 };
 
+const formatCnpjStr = (raw: any): string | null => {
+  if (!raw) return null;
+  const d = String(raw).replace(/\D/g, "");
+  if (d.length !== 14) return String(raw);
+  return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`;
+};
+
+const getOverlay = (r: any, enr: any) => {
+  const data = enr?.data || {};
+  const cdd = data.casadosdados || {};
+  const brasil = data.brasilapi || {};
+  const ai = data.ai || {};
+  const cnpj = formatCnpjStr(cdd.cnpj || brasil.cnpj || ai.cnpj);
+  const email =
+    r.email ||
+    cdd.email ||
+    brasil.email ||
+    (Array.isArray(ai.emails) ? ai.emails[0] : ai.email) ||
+    null;
+  const phone =
+    r.phone ||
+    cdd.telefone ||
+    brasil.ddd_telefone_1 ||
+    (Array.isArray(ai.telefones) ? ai.telefones[0] : ai.telefone) ||
+    null;
+  const website = r.website || cdd.website || ai.website || null;
+  return { cnpj, email, phone, website };
+};
+
 export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
   const { toast } = useToast();
   const [enrichedMap, setEnrichedMap] = useState<Record<string, any>>({});
