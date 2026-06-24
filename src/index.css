@@ -194,6 +194,17 @@
       radial-gradient(800px 240px at -10% 120%, hsl(240 6% 6% / 0.06), transparent 60%),
       linear-gradient(180deg, hsl(0 0% 100%), hsl(80 33% 98%));
   }
+  .dark .hero-panel {
+    background:
+      radial-gradient(1200px 300px at 110% -20%, hsl(70 100% 55% / 0.18), transparent 60%),
+      radial-gradient(900px 280px at -10% 120%, hsl(245 95% 72% / 0.22), transparent 60%),
+      linear-gradient(180deg, hsl(230 26% 12%), hsl(230 28% 8%));
+  }
+  .dark .hero-grid::before {
+    background-image:
+      linear-gradient(hsl(230 20% 100% / 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(230 20% 100% / 0.06) 1px, transparent 1px);
+  }
   .hero-grid::before {
     content: "";
     position: absolute; inset: 0;
@@ -220,6 +231,11 @@
     background: hsl(70 100% 50% / 0.18);
     color: hsl(70 80% 25%);
     border: 1px solid hsl(70 100% 50% / 0.4);
+  }
+  .dark .chip-volt {
+    background: hsl(70 100% 55% / 0.18);
+    color: hsl(70 100% 75%);
+    border-color: hsl(70 100% 55% / 0.45);
   }
 
   .divider-soft {
