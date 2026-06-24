@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { Save, Loader2, MessageCircle } from "lucide-react";
+import { Zap, Send, CheckCircle2, AlertCircle } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 
 const SETTING_KEY = "evolution_api";
 
@@ -13,6 +15,13 @@ export const EvolutionApiConfig = () => {
   const [apiKey, setApiKey] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [pingResult, setPingResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [sendResult, setSendResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [testInstance, setTestInstance] = useState("");
+  const [testNumber, setTestNumber] = useState("");
+  const [testMessage, setTestMessage] = useState("Mensagem de teste do Velocity Leads ✅");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -52,6 +61,47 @@ export const EvolutionApiConfig = () => {
     } else {
       toast({ title: "✓ Configuração salva" });
     }
+  };
+
+  const testConnection = async () => {
+    setTesting(true);
+    setPingResult(null);
+    const { data, error } = await supabase.functions.invoke("evolution-test", {
+      body: { action: "ping" },
+    });
+    setTesting(false);
+    if (error) {
+      setPingResult({ ok: false, msg: error.message });
+      return;
+    }
+    setPingResult({
+      ok: !!data?.ok,
+      msg: data?.ok
+        ? `${data.message} • ${data.instances_count} instância(s) • ${data.elapsed_ms}ms`
+        : data?.error || "Falha na conexão",
+    });
+  };
+
+  const sendTest = async () => {
+    setSending(true);
+    setSendResult(null);
+    const { data, error } = await supabase.functions.invoke("evolution-test", {
+      body: {
+        action: "send",
+        instance: testInstance,
+        number: testNumber,
+        message: testMessage,
+      },
+    });
+    setSending(false);
+    if (error) {
+      setSendResult({ ok: false, msg: error.message });
+      return;
+    }
+    setSendResult({
+      ok: !!data?.ok,
+      msg: data?.ok ? "✓ Mensagem enviada com sucesso" : data?.error || "Falha no envio",
+    });
   };
 
   if (loading) {
@@ -103,6 +153,56 @@ export const EvolutionApiConfig = () => {
         {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
         Salvar configuração
       </Button>
+
+      <div className="border-t border-border/60 pt-5 mt-6 space-y-4">
+        <div>
+          <h4 className="font-semibold text-sm mb-1">Testar conexão</h4>
+          <p className="text-xs text-muted-foreground mb-2">
+            Verifica se a URL e a API Key conseguem acessar o servidor Evolution.
+          </p>
+          <Button variant="outline" size="sm" onClick={testConnection} disabled={testing}>
+            {testing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Zap className="w-4 h-4 mr-2" />}
+            Testar API
+          </Button>
+          {pingResult && (
+            <div className={`mt-2 text-xs rounded-md p-2 flex items-start gap-2 ${pingResult.ok ? "bg-green-500/10 text-green-700 dark:text-green-400" : "bg-destructive/10 text-destructive"}`}>
+              {pingResult.ok ? <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" /> : <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />}
+              <span>{pingResult.msg}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-3">
+          <h4 className="font-semibold text-sm">Enviar mensagem de teste</h4>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Nome da instância</Label>
+              <Input value={testInstance} onChange={(e) => setTestInstance(e.target.value)} placeholder="ex: admin_test" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Número (DDI+DDD+nº)</Label>
+              <Input value={testNumber} onChange={(e) => setTestNumber(e.target.value)} placeholder="5511999999999" />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Mensagem</Label>
+            <Textarea rows={3} value={testMessage} onChange={(e) => setTestMessage(e.target.value)} />
+          </div>
+          <Button variant="outline" size="sm" onClick={sendTest} disabled={sending}>
+            {sending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
+            Enviar teste
+          </Button>
+          {sendResult && (
+            <div className={`mt-1 text-xs rounded-md p-2 flex items-start gap-2 ${sendResult.ok ? "bg-green-500/10 text-green-700 dark:text-green-400" : "bg-destructive/10 text-destructive"}`}>
+              {sendResult.ok ? <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" /> : <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />}
+              <span>{sendResult.msg}</span>
+            </div>
+          )}
+          <p className="text-[11px] text-muted-foreground">
+            A instância precisa já estar conectada na Evolution (com QR code escaneado).
+          </p>
+        </div>
+      </div>
     </div>
   );
 };
