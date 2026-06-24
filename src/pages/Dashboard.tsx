@@ -22,6 +22,7 @@ import { PurchasesHistory } from "@/components/PurchasesHistory";
 import { AddonsMarketplace } from "@/components/addons/AddonsMarketplace";
 import { WhatsAppAddon } from "@/components/addons/WhatsAppAddon";
 import { WhatsAppCrmAddon } from "@/components/addons/WhatsAppCrmAddon";
+import { EmailMarketingAddon } from "@/components/addons/EmailMarketingAddon";
 import { explainEdgeError } from "@/lib/edgeFunction";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar, type DashboardTab } from "@/components/AppSidebar";
@@ -228,6 +229,7 @@ export default function Dashboard() {
     addons: { title: "Marketplace de Add-ons", subtitle: "Amplie o sistema com recursos para acelerar sua prospecção." },
     "addon-whatsapp": { title: "WhatsApp Prospect", subtitle: "Conecte seu número, crie templates e dispare mensagens personalizadas para seus leads." },
     "addon-crm": { title: "WhatsApp CRM Pro", subtitle: "Inbox em tempo real, Kanban, respostas rápidas, mídias, botões e fluxos automáticos." },
+    "addon-email": { title: "Email Marketing", subtitle: "Conecte até 5 contas, defina limites diários, ordem de envio e modo rotacional." },
     admin: { title: "Painel administrativo", subtitle: "Gerencie usuários, APIs e configurações." },
   };
   const head = headlines[activeTab];
@@ -547,12 +549,14 @@ export default function Dashboard() {
                 onOpenAddon={(slug) => {
                   if (slug === "whatsapp") setActiveTab("addon-whatsapp");
                   if (slug === "whatsapp_crm") setActiveTab("addon-crm");
+                  if (slug === "email_marketing") setActiveTab("addon-email");
                 }}
               />
             )}
 
             {activeTab === "addon-whatsapp" && <WhatsAppAddon />}
             {activeTab === "addon-crm" && <WhatsAppCrmAddon />}
+            {activeTab === "addon-email" && <EmailMarketingAddon />}
 
             {activeTab === "admin" && isAdmin && (
               <Tabs defaultValue="users" className="w-full">
