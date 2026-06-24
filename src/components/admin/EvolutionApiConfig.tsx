@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { Save, Loader2, MessageCircle } from "lucide-react";
-import { Zap, Send, CheckCircle2, AlertCircle } from "lucide-react";
+import { Zap, Send, CheckCircle2, AlertCircle, QrCode } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
 const SETTING_KEY = "evolution_api";
@@ -24,6 +24,7 @@ export const EvolutionApiConfig = () => {
   const [testMessage, setTestMessage] = useState("Mensagem de teste do Velocity Leads ✅");
   const [creating, setCreating] = useState(false);
   const [createResult, setCreateResult] = useState<{ ok: boolean; msg: string; qr?: string | null } | null>(null);
+  const [reconnecting, setReconnecting] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -140,6 +141,27 @@ export const EvolutionApiConfig = () => {
     });
   };
 
+  const reconnectInstance = async () => {
+    if (!testInstance.trim()) return;
+    setReconnecting(true);
+    setCreateResult(null);
+    const { data, error } = await supabase.functions.invoke("evolution-test", {
+      body: { action: "connect", instance: testInstance.trim() },
+    });
+    setReconnecting(false);
+    if (error) {
+      setCreateResult({ ok: false, msg: error.message });
+      return;
+    }
+    setCreateResult({
+      ok: !!data?.ok,
+      msg: data?.ok
+        ? (data.qr ? "Novo QR Code gerado ✓ — escaneie no WhatsApp" : "Solicitação enviada (sem QR retornado)")
+        : data?.error || "Falha ao gerar QR Code",
+      qr: data?.qr || null,
+    });
+  };
+
   if (loading) {
     return (
       <p className="text-sm text-muted-foreground flex items-center gap-2">
@@ -220,12 +242,17 @@ export const EvolutionApiConfig = () => {
               <Input value={testNumber} onChange={(e) => setTestNumber(e.target.value)} placeholder="5511999999999" />
             </div>
           </div>
-          <div>
+          <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" onClick={createInstance} disabled={creating || !testInstance.trim()}>
               {creating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <MessageCircle className="w-4 h-4 mr-2" />}
               Criar instância "{testInstance || "..."}"
             </Button>
-            {createResult && (
+            <Button variant="outline" size="sm" onClick={reconnectInstance} disabled={reconnecting || !testInstance.trim()}>
+              {reconnecting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <QrCode className="w-4 h-4 mr-2" />}
+              Gerar novo QR Code
+            </Button>
+          </div>
+          {createResult && (
               <div className={`mt-2 text-xs rounded-md p-2 flex items-start gap-2 ${createResult.ok ? "bg-green-500/10 text-green-700 dark:text-green-400" : "bg-destructive/10 text-destructive"}`}>
                 {createResult.ok ? <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" /> : <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />}
                 <div className="space-y-2">
@@ -240,7 +267,6 @@ export const EvolutionApiConfig = () => {
                 </div>
               </div>
             )}
-          </div>
           <div className="space-y-1">
             <Label className="text-xs">Mensagem</Label>
             <Textarea rows={3} value={testMessage} onChange={(e) => setTestMessage(e.target.value)} />
