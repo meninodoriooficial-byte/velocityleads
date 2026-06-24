@@ -749,39 +749,65 @@ async function scrapeCasaDosDadosPublic(
       if (cidadeMatch) cidade = cidadeMatch[1].trim();
     }
 
-    const q = encodeURIComponent(
-      [cleanName, cidade, uf].filter(Boolean).join(" ")
-    );
-    const url = `https://casadosdados.com.br/solucao/cnpj/buscar?q=${q}`;
+    // Estratégia: replicar o que o usuário faria manualmente no Google —
+    // pesquisar "Nome, Cidade, CNPJ" e capturar o primeiro CNPJ da página
+    // de resultados. Como o Google bloqueia bots, usamos motores que
+    // expõem HTML público (DuckDuckGo HTML e Bing).
+    const termo = [cleanName, cidade, uf, "CNPJ"].filter(Boolean).join(" ");
+    const q = encodeURIComponent(termo);
 
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 8000);
-    const resp = await fetch(url, {
-      signal: ctrl.signal,
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (compatible; LeadFinderBot/1.0; +https://lovable.dev)",
-        Accept: "text/html",
+    const candidates: Array<{ url: string; headers?: Record<string, string> }> = [
+      {
+        url: `https://html.duckduckgo.com/html/?q=${q}`,
+        headers: { "Content-Type": "text/html" },
       },
-      redirect: "follow",
-    }).finally(() => clearTimeout(timer));
+      { url: `https://duckduckgo.com/html/?q=${q}` },
+      { url: `https://www.bing.com/search?q=${q}&setlang=pt-BR&cc=br` },
+    ];
 
-    if (!resp.ok) {
-      console.log("CDD scrape HTTP", resp.status);
-      return null;
+    const cnpjRegex = /\b\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}\b/;
+    const cnpj14Regex = /\b\d{14}\b/;
+
+    for (const c of candidates) {
+      try {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 8000);
+        const resp = await fetch(c.url, {
+          signal: ctrl.signal,
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+            Accept:
+              "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+            ...(c.headers || {}),
+          },
+          redirect: "follow",
+        }).finally(() => clearTimeout(timer));
+
+        if (!resp.ok) {
+          console.log("CNPJ web search HTTP", resp.status, c.url);
+          continue;
+        }
+        const html = (await resp.text()).slice(0, 800_000);
+
+        const m = html.match(cnpjRegex);
+        if (m) {
+          console.log("CNPJ encontrado via", c.url, m[0]);
+          return m[0];
+        }
+        const m2 = html.match(cnpj14Regex);
+        if (m2) {
+          const d = m2[0];
+          const formatted = `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`;
+          console.log("CNPJ (14 dígitos) via", c.url, formatted);
+          return formatted;
+        }
+      } catch (e) {
+        console.log("CNPJ web search throw", c.url, (e as any)?.message);
+      }
     }
-    const html = (await resp.text()).slice(0, 500_000);
 
-    // Captura o primeiro CNPJ formatado (xx.xxx.xxx/xxxx-xx) da página
-    const m = html.match(/\b\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}\b/);
-    if (m) return m[0];
-
-    // Fallback: 14 dígitos seguidos
-    const m2 = html.match(/\b\d{14}\b/);
-    if (m2) {
-      const d = m2[0];
-      return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`;
-    }
     return null;
   } catch (e) {
     console.log("scrapeCasaDosDadosPublic throw", e);
