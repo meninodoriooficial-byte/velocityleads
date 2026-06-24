@@ -119,6 +119,25 @@ serve(async (req) => {
       return jsonResponse(result);
     }
 
+    if (keyName === 'OPENAI_API_KEY' || keyName === 'LOVABLE_API_KEY') {
+      const result = await testOpenAI(apiKey);
+      if (!result.ok) {
+        try {
+          await supabase.from('api_error_logs').insert({
+            key_name: keyName,
+            source: 'test-api',
+            error_status: (result as any).status || 'ERROR',
+            error_message: result.message,
+            http_status: (result as any).http ?? null,
+            context: { triggered_by: 'admin_test', user_id: userId },
+          });
+        } catch (e) {
+          console.error('Failed to persist test error', e);
+        }
+      }
+      return jsonResponse(result);
+    }
+
     return jsonResponse({
       ok: false,
       status: 'unsupported',
