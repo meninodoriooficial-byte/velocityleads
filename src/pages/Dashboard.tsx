@@ -229,6 +229,7 @@ export default function Dashboard() {
     addons: { title: "Marketplace de Add-ons", subtitle: "Amplie o sistema com recursos para acelerar sua prospecção." },
     "addon-whatsapp": { title: "WhatsApp Prospect", subtitle: "Conecte seu número, crie templates e dispare mensagens personalizadas para seus leads." },
     "addon-crm": { title: "WhatsApp CRM Pro", subtitle: "Inbox em tempo real, Kanban, respostas rápidas, mídias, botões e fluxos automáticos." },
+    "addon-email": { title: "Email Marketing", subtitle: "Conecte até 5 contas, defina limites diários, ordem de envio e modo rotacional." },
     admin: { title: "Painel administrativo", subtitle: "Gerencie usuários, APIs e configurações." },
   };
   const head = headlines[activeTab];
