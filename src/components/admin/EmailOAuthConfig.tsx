@@ -107,30 +107,105 @@ export const EmailOAuthConfig = () => {
       <Accordion type="multiple" className="w-full">
         <AccordionItem value="google">
           <AccordionTrigger className="text-sm font-semibold">📘 Tutorial — Google / Gmail</AccordionTrigger>
-          <AccordionContent className="space-y-2 text-sm">
-            <ol className="list-decimal pl-5 space-y-1">
-              <li>Acesse o <a className="text-primary underline inline-flex items-center gap-1" href="https://console.cloud.google.com/" target="_blank" rel="noreferrer">Google Cloud Console <ExternalLink className="size-3" /></a> e crie/selecione um projeto.</li>
-              <li>Em <strong>APIs &amp; Services → Library</strong>, ative a <a className="text-primary underline" href="https://console.cloud.google.com/apis/library/gmail.googleapis.com" target="_blank" rel="noreferrer">Gmail API</a>.</li>
-              <li>Em <strong>OAuth consent screen</strong>: tipo <em>External</em>, preencha nome do app, e-mail de suporte e logo. Em <em>Scopes</em>, adicione: <code className="bg-muted px-1 rounded">.../auth/gmail.send</code> e <code className="bg-muted px-1 rounded">.../auth/userinfo.email</code>.</li>
-              <li>Adicione usuários de teste enquanto o app estiver em modo <em>Testing</em> (ou publique para produção).</li>
-              <li>Em <strong>Credentials → Create Credentials → OAuth client ID</strong>, escolha <em>Web application</em>.</li>
-              <li>Em <em>Authorized redirect URIs</em>, cole a URL do Google acima.</li>
-              <li>Copie o <strong>Client ID</strong> e <strong>Client Secret</strong> e cole nos campos abaixo.</li>
+          <AccordionContent className="space-y-3 text-sm">
+            <p className="text-muted-foreground">Siga exatamente nesta ordem. Cada passo abre uma tela diferente do Google Cloud — não pule.</p>
+            <ol className="list-decimal pl-5 space-y-3">
+              <li>
+                <strong>Criar projeto</strong><br />
+                Abra o <a className="text-primary underline inline-flex items-center gap-1" href="https://console.cloud.google.com/projectcreate" target="_blank" rel="noreferrer">Google Cloud Console <ExternalLink className="size-3" /></a>, clique no seletor de projetos no topo e em <em>"Novo projeto"</em>. Dê um nome (ex.: <code className="bg-muted px-1 rounded">leads-saas</code>) e clique em <em>Criar</em>. Aguarde alguns segundos e selecione o projeto recém-criado.
+              </li>
+              <li>
+                <strong>Ativar a Gmail API</strong><br />
+                Acesse <a className="text-primary underline" href="https://console.cloud.google.com/apis/library/gmail.googleapis.com" target="_blank" rel="noreferrer">este link</a> (com seu projeto selecionado) e clique no botão azul <em>"Ativar"</em>. Aguarde até a tela mudar para "API ativada".
+              </li>
+              <li>
+                <strong>Configurar a tela de consentimento (OAuth consent screen)</strong><br />
+                Vá em <a className="text-primary underline" href="https://console.cloud.google.com/apis/credentials/consent" target="_blank" rel="noreferrer">APIs &amp; Services → OAuth consent screen</a>.
+                <ul className="list-disc pl-5 mt-1 space-y-1">
+                  <li>Tipo de usuário: <strong>External</strong> → <em>Criar</em>.</li>
+                  <li><em>App name</em>: nome do seu SaaS. <em>User support email</em>: seu e-mail. <em>Developer contact</em>: seu e-mail. Salvar e continuar.</li>
+                  <li>Tela <em>Scopes</em>: clique <em>"Add or remove scopes"</em>, marque <code className="bg-muted px-1 rounded">.../auth/userinfo.email</code> e cole no filtro <code className="bg-muted px-1 rounded">https://www.googleapis.com/auth/gmail.send</code> para localizar e marcar. Atualizar → Salvar e continuar.</li>
+                  <li>Tela <em>Test users</em>: adicione os e-mails que farão testes (incluindo o seu) enquanto o app estiver em modo <em>Testing</em>. Para liberar para qualquer conta Google, depois clique em <em>"Publish app"</em>.</li>
+                </ul>
+              </li>
+              <li>
+                <strong>Criar a credencial OAuth</strong><br />
+                Vá em <a className="text-primary underline" href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noreferrer">Credentials</a> → <em>"+ Create credentials"</em> → <em>"OAuth client ID"</em>.
+                <ul className="list-disc pl-5 mt-1 space-y-1">
+                  <li><em>Application type</em>: <strong>Web application</strong>.</li>
+                  <li><em>Name</em>: qualquer nome (ex.: <code className="bg-muted px-1 rounded">SaaS Web</code>).</li>
+                  <li>Em <em>Authorized redirect URIs</em>, clique <em>"+ Add URI"</em> e cole exatamente a <strong>URL do Google</strong> mostrada no topo desta página (botão de copiar).</li>
+                  <li>Clique <em>Create</em>.</li>
+                </ul>
+              </li>
+              <li>
+                <strong>Copiar as credenciais</strong><br />
+                Aparecerá um popup com <strong>Client ID</strong> e <strong>Client secret</strong>. Copie ambos e cole nos campos do formulário <em>Google / Gmail</em> abaixo. Clique em <em>Salvar credenciais</em> no final desta página.
+              </li>
             </ol>
+            <Alert>
+              <Info className="size-4" />
+              <AlertDescription className="text-xs">
+                Se mudar a Redirect URI depois, repita o passo 4 (Google não permite editar — é preciso adicionar a nova URL ou criar nova credencial).
+              </AlertDescription>
+            </Alert>
           </AccordionContent>
         </AccordionItem>
 
         <AccordionItem value="microsoft">
           <AccordionTrigger className="text-sm font-semibold">📗 Tutorial — Microsoft / Outlook / Hotmail</AccordionTrigger>
-          <AccordionContent className="space-y-2 text-sm">
-            <ol className="list-decimal pl-5 space-y-1">
-              <li>Acesse o <a className="text-primary underline inline-flex items-center gap-1" href="https://portal.azure.com/#blade/Microsoft_AAD_RegisteredApps/ApplicationsListBlade" target="_blank" rel="noreferrer">Azure Portal — App registrations <ExternalLink className="size-3" /></a>.</li>
-              <li>Clique em <strong>New registration</strong>. Em <em>Supported account types</em>, escolha <strong>"Accounts in any organizational directory and personal Microsoft accounts"</strong> (necessário para Hotmail/Outlook.com).</li>
-              <li>Em <em>Redirect URI</em>, selecione <strong>Web</strong> e cole a URL da Microsoft acima.</li>
-              <li>Após criar, em <strong>Certificates &amp; secrets → New client secret</strong>, gere um segredo e copie o <em>Value</em> (só aparece uma vez).</li>
-              <li>Em <strong>API permissions → Add a permission → Microsoft Graph → Delegated</strong>, adicione: <code className="bg-muted px-1 rounded">Mail.Send</code>, <code className="bg-muted px-1 rounded">offline_access</code>, <code className="bg-muted px-1 rounded">User.Read</code>, <code className="bg-muted px-1 rounded">SMTP.Send</code>.</li>
-              <li>Copie o <strong>Application (client) ID</strong> e o <strong>Client Secret</strong> e cole nos campos abaixo. Mantenha o tenant como <code className="bg-muted px-1 rounded">common</code> para aceitar contas pessoais e corporativas.</li>
+          <AccordionContent className="space-y-3 text-sm">
+            <p className="text-muted-foreground">Você precisa de uma conta Microsoft (pode ser Hotmail/Outlook pessoal mesmo). Siga na ordem.</p>
+            <ol className="list-decimal pl-5 space-y-3">
+              <li>
+                <strong>Abrir App registrations</strong><br />
+                Acesse <a className="text-primary underline inline-flex items-center gap-1" href="https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade" target="_blank" rel="noreferrer">Azure Portal — App registrations <ExternalLink className="size-3" /></a> e faça login. Se for primeira vez, aceite os termos do Azure (gratuito, não precisa cartão).
+              </li>
+              <li>
+                <strong>Registrar o app</strong><br />
+                Clique em <em>"+ New registration"</em> no topo.
+                <ul className="list-disc pl-5 mt-1 space-y-1">
+                  <li><em>Name</em>: nome do app (ex.: <code className="bg-muted px-1 rounded">SaaS Leads Email</code>).</li>
+                  <li><em>Supported account types</em>: escolha a 3ª opção — <strong>"Accounts in any organizational directory (Any Microsoft Entra ID tenant — Multitenant) and personal Microsoft accounts (e.g. Skype, Xbox)"</strong>. ⚠ Sem isso, contas Hotmail/Outlook.com não funcionam.</li>
+                  <li><em>Redirect URI</em>: selecione <strong>Web</strong> no dropdown e cole exatamente a <strong>URL da Microsoft</strong> mostrada no topo desta página.</li>
+                  <li>Clique <em>Register</em>.</li>
+                </ul>
+              </li>
+              <li>
+                <strong>Copiar o Client ID</strong><br />
+                Na tela <em>Overview</em> do app, copie o valor <strong>Application (client) ID</strong> e cole no campo correspondente abaixo. (O <em>Directory (tenant) ID</em> NÃO é necessário — deixe o tenant como <code className="bg-muted px-1 rounded">common</code>.)
+              </li>
+              <li>
+                <strong>Gerar o Client Secret</strong><br />
+                No menu esquerdo, vá em <em>Certificates &amp; secrets</em> → aba <em>Client secrets</em> → <em>"+ New client secret"</em>.
+                <ul className="list-disc pl-5 mt-1 space-y-1">
+                  <li>Description: qualquer texto. Expires: <strong>24 months</strong> (máximo).</li>
+                  <li>Clique <em>Add</em>. ⚠ Copie o <strong>Value</strong> imediatamente (a coluna "Value", não "Secret ID"). Ele só aparece uma vez — se sair da tela, terá que gerar outro.</li>
+                  <li>Cole esse valor no campo <em>Client Secret (Value)</em> abaixo.</li>
+                </ul>
+              </li>
+              <li>
+                <strong>Adicionar permissões</strong><br />
+                No menu esquerdo, <em>API permissions</em> → <em>"+ Add a permission"</em> → <strong>Microsoft Graph</strong> → <strong>Delegated permissions</strong>. Use o campo de busca para localizar e marcar cada uma:
+                <ul className="list-disc pl-5 mt-1 space-y-1">
+                  <li><code className="bg-muted px-1 rounded">Mail.Send</code></li>
+                  <li><code className="bg-muted px-1 rounded">offline_access</code></li>
+                  <li><code className="bg-muted px-1 rounded">User.Read</code> (geralmente já vem por padrão)</li>
+                  <li><code className="bg-muted px-1 rounded">SMTP.Send</code></li>
+                </ul>
+                Clique <em>Add permissions</em>. Não precisa de <em>"Grant admin consent"</em> para contas pessoais — cada usuário consente ao fazer login.
+              </li>
+              <li>
+                <strong>Salvar</strong><br />
+                Volte aqui, confirme que preencheu <em>Client ID</em>, <em>Client Secret</em> e <em>Tenant = common</em>, e clique em <em>Salvar credenciais</em>.
+              </li>
             </ol>
+            <Alert>
+              <Info className="size-4" />
+              <AlertDescription className="text-xs">
+                Erro <code>AADSTS50194</code> ao logar = você esqueceu de marcar "personal Microsoft accounts" no passo 2. Recrie o registro.
+              </AlertDescription>
+            </Alert>
           </AccordionContent>
         </AccordionItem>
       </Accordion>
