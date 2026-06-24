@@ -1,67 +1,103 @@
-# Add-on: Envio de WhatsApp via Evolution API
+# Add-ons / Marketplace de Recursos
 
-Módulo opcional que permite cada usuário conectar seu próprio número de WhatsApp (via QR Code da Evolution API) e disparar mensagens para os leads capturados.
+Criar um sistema de **add-ons** que o usuário compra e ativa por conta. O primeiro add-on é o **WhatsApp (Evolution API)**, que reaproveita a infra de Evolution já configurada no superadmin. A arquitetura fica pronta para novos add-ons (Email, CRM, Disparos em massa, IA de copy, etc.).
 
-## Pré-requisitos do usuário
+## 1. Menu lateral
 
-Preciso que você forneça/confirme:
-1. **URL base da Evolution API** (ex: `https://evolution.seudominio.com`) — servidor onde a Evolution está hospedada.
-2. **API Key global** da Evolution API (chave de admin que cria instâncias).
+Adicionar item **"Add-ons"** no `AppSidebar`. Quando o usuário tem um add-on ativo, aparece um submenu por add-on (ex: "WhatsApp") com um **badge verde "Ativo"** (texto branco) ao lado. Clicar no submenu abre a tela de configuração daquele add-on.
 
-Se ainda não tem uma Evolution API rodando, é necessário hospedar uma (Docker/VPS) — a Evolution não oferece SaaS oficial. Posso te orientar depois.
+```text
+Add-ons
+ ├─ WhatsApp   [Ativo]   ← badge verde
+ └─ ...
+```
 
-Esses dois valores vão como **secrets** (`EVOLUTION_API_URL` e `EVOLUTION_API_KEY`) — só backend acessa.
+## 2. Página "Marketplace de Add-ons"
 
-## Banco de dados (novas tabelas)
+Grid de cards:
+- Ícone, nome, descrição curta, preço (mensal ou one-shot), botão **"Ativar"** ou **"Gerenciar"** se já ativo.
+- Card do add-on ativo mostra o mesmo badge verde "Ativo".
+- Clicar em "Ativar" cria um `payment_order` (reusando o fluxo Mercado Pago já existente). Quando o webhook confirma, marca o add-on como ativo para o usuário.
 
-**`whatsapp_instances`** — uma instância Evolution por usuário
-- `id`, `user_id` (FK auth.users), `instance_name` (único, ex: `user_<uuid>`)
-- `phone_number` (preenchido após conexão), `status` (`disconnected` | `connecting` | `connected`)
-- `last_qr` (texto base64, temporário), `created_at`, `updated_at`
-- RLS: usuário vê/edita só a própria; service_role acesso total
+## 3. Página "Configurar Add-on: WhatsApp"
 
-**`whatsapp_messages`** — log de envios
-- `id`, `user_id`, `instance_id` (FK), `result_id` (FK search_results, nullable)
-- `to_number`, `message`, `status` (`pending`|`sent`|`failed`), `error`, `evolution_message_id`, `created_at`
-- RLS: usuário vê só as próprias
+Três abas:
 
-## Edge Functions
+### Aba 1 — Conexão
+- Campo "Nome da instância" (auto-gerado: `user_<id>` editável).
+- Botão **Criar/Conectar** → mostra QR Code (reusa as actions `create`/`connect`/`state` da edge function `evolution-test`).
+- Indicador de status (Desconectado / Conectando / **Conectado**) com polling.
+- Botão "Desconectar" / "Gerar novo QR".
 
-Todas chamam a Evolution API server-side usando os secrets, autenticadas via JWT do usuário.
+### Aba 2 — Templates de mensagem
+- CRUD de templates com nome + corpo.
+- Toolbar de **tags de personalização** que insere no cursor:
+  - `{{nome}}` — nome do lead/empresa
+  - `{{nome_socio}}` — sócio principal
+  - `{{cidade}}` `{{estado}}` `{{bairro}}` `{{ramo}}`
+  - `{{telefone}}` `{{email}}` `{{site}}`
+  - `{{primeiro_nome_socio}}`
+- Preview ao vivo com um lead de exemplo.
+- Validação: avisa tags inexistentes.
 
-1. **`whatsapp-connect`** — cria instância na Evolution se não existir, chama `/instance/connect/<name>`, retorna QR code base64. Atualiza `status=connecting`.
-2. **`whatsapp-status`** — polling: chama `/instance/connectionState/<name>`. Quando `open`, atualiza `status=connected` e busca número via `/instance/fetchInstances`.
-3. **`whatsapp-disconnect`** — `/instance/logout/<name>`, opcionalmente `/instance/delete/<name>`.
-4. **`whatsapp-send`** — recebe `{ result_ids[], message }`, valida tamanho/template, normaliza telefones BR (E.164: `55<DDD><num>`), itera chamando `/message/sendText/<name>` com pequeno delay anti-ban, grava cada envio em `whatsapp_messages`.
+### Aba 3 — Disparos (melhoria proposta — ver §6)
 
-## Frontend
+## 4. Backend — tabelas novas
 
-**Nova página `/whatsapp`** (rota protegida, item no `AppSidebar`):
-- **Card "Conexão"**: status atual + botão "Conectar WhatsApp" → abre modal com QR code (poll a cada 3s até `connected`), botão "Desconectar".
-- **Card "Modelo de mensagem"**: textarea com variáveis `{{nome}}`, `{{cidade}}`, preview.
+```text
+addons                  catálogo (admin gerencia preços/ativação)
+  id, slug, name, description, price_cents, billing_period, icon, is_active
 
-**Integração em `ResultsList.tsx`**:
-- Botão "WhatsApp" em cada card (habilita só se `whatsapp` do lead existir e instância conectada).
-- Botão de seleção múltipla + ação "Enviar para selecionados" no topo da lista → modal com template, confirma e dispara via `whatsapp-send`.
+user_addons             qual user tem qual add-on ativo
+  id, user_id, addon_slug, status (active|expired|canceled),
+  activated_at, expires_at, payment_order_id
 
-**Histórico simples** na página `/whatsapp`: lista das últimas mensagens enviadas com status.
+user_whatsapp_instances  config WhatsApp por usuário
+  id, user_id, instance_name, connection_state, last_qr_at, connected_at
 
-## Segurança / boas práticas
+message_templates        templates do usuário
+  id, user_id, name, body, tags_used[], created_at, updated_at
+```
 
-- Secrets `EVOLUTION_API_URL` e `EVOLUTION_API_KEY` ficam só em edge functions.
-- Validação Zod nos bodies das functions; limite de 50 destinatários por chamada.
-- Delay aleatório 1–3s entre envios para reduzir risco de banimento.
-- Telefones inválidos são marcados como `failed` sem abortar o lote.
-- RLS estrita: usuário nunca acessa instância/mensagens de outro.
+Todas com RLS por `auth.uid()` e GRANTs padrão.
 
-## O que NÃO está incluso (posso adicionar depois se quiser)
+## 5. Edge functions
 
-- Agendamento de envios, campanhas recorrentes, métricas avançadas.
-- Envio de mídia (imagem/áudio/documento) — começamos só com texto.
-- Webhook da Evolution para receber respostas (inbox bidirecional).
+- `addon-purchase` — cria `payment_order` para o add-on (reusa `mp-create-preference`).
+- `mp-webhook` — ao confirmar pagamento de um add-on, insere/renova `user_addons`.
+- `whatsapp-user` — versão por usuário das ações `create | connect | state | send` (substitui o uso direto de `evolution-test` que é admin-only).
+- `render-template` — recebe `template_id` + `lead_id` e devolve mensagem com tags substituídas.
 
----
+## 6. Melhorias para prospecção (proposto)
 
-**Confirma:**
-1. Você já tem uma Evolution API hospedada? (se sim, me passe URL + API key via secrets quando eu pedir)
-2. Pode começar com envio só de **texto** (sem mídia) e **sem agendamento**?
+Recursos que tornam o add-on realmente útil para prospectar:
+
+1. **Disparo a partir dos resultados de busca** — selecionar leads na lista e enviar template em fila (rate-limit configurável, ex: 1 msg / 8s) para evitar bloqueio do WhatsApp.
+2. **Sequências (follow-up)** — se o lead não responder em N dias, enviar template 2, depois template 3.
+3. **Detecção de resposta** — webhook da Evolution marca lead como "respondeu" e pausa a sequência.
+4. **Variações A/B** — múltiplas versões do mesmo template, escolha aleatória para evitar padrão repetitivo (também reduz bloqueio).
+5. **Spintax leve** — `{Olá|Oi|Bom dia}` para variar a saudação automaticamente.
+6. **Agendamento** — escolher dia/hora do disparo, respeitar horário comercial por fuso do estado do lead.
+7. **Blacklist / opt-out** — número que responder "PARAR" entra em lista que bloqueia futuros disparos.
+8. **Histórico por lead** — timeline de mensagens enviadas/recebidas por lead.
+9. **Limites de plano** — cada add-on tem cota mensal (ex: 1.000 disparos), exibida no header da aba.
+10. **Score de qualidade** — alerta se a taxa de resposta cair muito (indica que o número pode estar sendo penalizado).
+
+Implementar nesta primeira entrega: 1, 4, 8 e 9 (alto impacto, baixo custo). Os demais ficam como evolução.
+
+## 7. Ordem de implementação
+
+1. Migration (tabelas + RLS + GRANT) e seed do add-on "whatsapp".
+2. Página Marketplace + item no sidebar (sem badge ainda).
+3. Edge function `addon-purchase` + hook no `mp-webhook` para ativar.
+4. Página de configuração WhatsApp, aba Conexão (refator de `evolution-test` para `whatsapp-user`).
+5. Submenu dinâmico no sidebar com badge verde "Ativo".
+6. CRUD de templates + preview com tags.
+7. Disparo a partir da lista de resultados + histórico + cota.
+
+## 8. Pontos a confirmar antes de iniciar
+
+- Preço e periodicidade do add-on WhatsApp (ex: R$ 49/mês? R$ 199 vitalício?).
+- Cota mensal de disparos por usuário.
+- Quais tags adicionais você quer além das listadas em §3.
+- Posso usar o Mercado Pago já configurado no projeto para cobrar os add-ons?
