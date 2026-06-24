@@ -445,9 +445,6 @@ export const AllUserResults = () => {
                   <TableHead>Email</TableHead>
                   <TableHead className="w-12 text-center">Site</TableHead>
                   <TableHead className="w-12 text-center">End.</TableHead>
-                  <TableHead>Busca</TableHead>
-                  <TableHead>Cidade/UF</TableHead>
-                  <TableHead className="w-12 text-center">Enr.</TableHead>
                   <TableHead className="w-12 text-center">WhatsApp</TableHead>
                   <TableHead className="w-12 text-center">CRM</TableHead>
                 </TableRow>
@@ -494,20 +491,6 @@ export const AllUserResults = () => {
                             <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(r.address)}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline mt-2 inline-block">Abrir no Google Maps</a>
                           </PopoverContent>
                         </Popover>
-                      ) : <span className="text-muted-foreground text-xs">—</span>}
-                    </TableCell>
-                    <TableCell className="text-sm">{r.searches?.category || "—"}</TableCell>
-                    <TableCell className="text-sm whitespace-nowrap">
-                      {r.searches ? `${r.searches.city}/${r.searches.state}` : "—"}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {r.enriched_source ? (
-                        <TooltipProvider><Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="inline-flex"><Sparkles className="size-4 text-amber-500" /></span>
-                          </TooltipTrigger>
-                          <TooltipContent>Enriquecido via {r.enriched_source}</TooltipContent>
-                        </Tooltip></TooltipProvider>
                       ) : <span className="text-muted-foreground text-xs">—</span>}
                     </TableCell>
                     <TableCell className="text-center">
