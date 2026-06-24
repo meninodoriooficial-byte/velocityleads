@@ -432,6 +432,7 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
           const enr = getEnriched(r);
           const isSelected = !!selected[r.id];
           const isExpanded = !compact || !!expandedCards[r.id];
+          const ov = getOverlay(r, enr);
           if (compact) {
             return (
               <Card
