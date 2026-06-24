@@ -76,21 +76,63 @@ const getOverlay = (r: any, enr: any) => {
   const cdd = data.casadosdados || {};
   const brasil = data.brasilapi || {};
   const ai = data.ai || {};
+  const scraped = data.scraped || {};
   const cnpj = formatCnpjStr(cdd.cnpj || brasil.cnpj || ai.cnpj);
   const email =
     r.email ||
     cdd.email ||
     brasil.email ||
+    scraped.emails?.[0] ||
     (Array.isArray(ai.emails) ? ai.emails[0] : ai.email) ||
     null;
   const phone =
     r.phone ||
     cdd.telefone ||
+    brasil.telefone ||
     brasil.ddd_telefone_1 ||
+    scraped.phones?.[0] ||
     (Array.isArray(ai.telefones) ? ai.telefones[0] : ai.telefone) ||
     null;
-  const website = r.website || cdd.website || ai.website || null;
-  return { cnpj, email, phone, website };
+  const website = r.website || cdd.website || ai.site || ai.website || null;
+  const sociosRaw: any[] =
+    (Array.isArray(brasil.socios) && brasil.socios) ||
+    (Array.isArray(cdd.socios) && cdd.socios) ||
+    [];
+  const socios = sociosRaw
+    .map((s: any) => ({
+      nome: s?.nome_socio || s?.nome || s?.razao_social || null,
+      qualificacao:
+        s?.qualificacao_socio ||
+        s?.codigo_qualificacao_socio ||
+        s?.qualificacao ||
+        null,
+    }))
+    .filter((s: any) => s.nome);
+  const aiSocials = ai?.redes_sociais || {};
+  const social = {
+    instagram:
+      r.social_media?.instagram ||
+      cdd.instagram ||
+      scraped.instagram ||
+      aiSocials.instagram ||
+      null,
+    facebook:
+      r.social_media?.facebook ||
+      cdd.facebook ||
+      scraped.facebook ||
+      aiSocials.facebook ||
+      null,
+    linkedin:
+      r.social_media?.linkedin ||
+      scraped.linkedin ||
+      aiSocials.linkedin ||
+      null,
+    youtube:
+      r.social_media?.youtube || scraped.youtube || aiSocials.youtube || null,
+    tiktok:
+      r.social_media?.tiktok || scraped.tiktok || aiSocials.tiktok || null,
+  };
+  return { cnpj, email, phone, website, socios, social };
 };
 
 export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
