@@ -95,6 +95,7 @@ export const EmailMarketingAddon = () => {
       return;
     }
     setForm({ provider: "smtp", smtp_port: 465, smtp_secure: true, daily_limit: 50 });
+    setActivePreset(null);
     setDlgOpen(true);
   };
 
