@@ -1,55 +1,186 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
-import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
+
+const encoder = new TextEncoder();
+const decoder = new TextDecoder();
+
+const json = (body: Record<string, unknown>, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
+const withTimeout = async <T>(promise: Promise<T>, ms: number, label: string, onTimeout?: () => void): Promise<T> => {
+  let timer: number | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => {
+          reject(new Error(`${label} em ${Math.round(ms / 1000)}s`));
+          queueMicrotask(() => {
+            try { onTimeout?.(); } catch { /* noop */ }
+          });
+        }, ms);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+};
+
+const b64 = (value: string) => {
+  const bytes = encoder.encode(value);
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+};
+
+const cleanAddress = (value: string) => value.trim().replace(/[\r\n<>]/g, "");
+
+class SmtpSession {
+  private conn: Deno.Conn;
+  private reader: ReadableStreamDefaultReader<Uint8Array>;
+  private writer: WritableStreamDefaultWriter<Uint8Array>;
+  private buffer = "";
+
+  constructor(conn: Deno.Conn) {
+    this.conn = conn;
+    this.reader = conn.readable.getReader();
+    this.writer = conn.writable.getWriter();
+  }
+
+  async upgradeToTls(hostname: string) {
+    this.reader.releaseLock();
+    this.writer.releaseLock();
+    this.conn = await withTimeout(Deno.startTls(this.conn, { hostname }), 8_000, "Timeout ao iniciar STARTTLS", () => this.close());
+    this.reader = this.conn.readable.getReader();
+    this.writer = this.conn.writable.getWriter();
+    this.buffer = "";
+  }
+
+  close() {
+    try { this.conn.close(); } catch { /* noop */ }
+  }
+
+  async write(raw: string) {
+    await withTimeout(this.writer.write(encoder.encode(raw)), 6_000, "Timeout ao enviar comando SMTP", () => this.close());
+  }
+
+  async readResponse(label: string) {
+    const lines: string[] = [];
+    while (true) {
+      let idx = this.buffer.indexOf("\n");
+      while (idx < 0) {
+        const result = await withTimeout(this.reader.read(), 8_000, `Timeout aguardando resposta SMTP (${label})`, () => this.close());
+        if (result.done) throw new Error(`Servidor encerrou a conexão durante ${label}`);
+        this.buffer += decoder.decode(result.value, { stream: true });
+        idx = this.buffer.indexOf("\n");
+      }
+
+      const line = this.buffer.slice(0, idx + 1).replace(/\r?\n$/, "");
+      this.buffer = this.buffer.slice(idx + 1);
+      if (!line) continue;
+      lines.push(line);
+
+      if (/^\d{3} /.test(line)) {
+        return { code: Number(line.slice(0, 3)), text: lines.join("\n") };
+      }
+    }
+  }
+
+  async command(raw: string, expected: number[], label: string) {
+    await this.write(`${raw}\r\n`);
+    const response = await this.readResponse(label);
+    if (!expected.includes(response.code)) {
+      throw new Error(`${label}: ${response.text}`);
+    }
+    return response;
+  }
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-  const withTimeout = <T>(p: Promise<T>, ms: number): Promise<T> =>
-    Promise.race([
-      p,
-      new Promise<T>((_, rej) =>
-        setTimeout(() => rej(new Error(`timeout após ${ms / 1000}s — verifique host/porta/SSL e se a rede do servidor permite a conexão`)), ms)
-      ),
-    ]);
+
+  let session: SmtpSession | null = null;
+
   try {
     const { host, port, secure, user, pass, from, to } = await req.json();
     if (!host || !user || !pass) {
-      return new Response(JSON.stringify({ ok: false, error: "Informe host, usuário e senha." }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ ok: false, error: "Informe host, usuário e senha." });
     }
+
     const p = Number(port) || 465;
-    const useTLS = secure ?? (p === 465);
-    const client = new SMTPClient({
-      connection: {
-        hostname: host,
-        port: p,
-        tls: useTLS, // true => SMTPS direto (465); false => STARTTLS opcional (587)
-        auth: { username: user, password: pass },
-      },
-      debug: { allowUnsecure: !useTLS },
+    if (!Number.isInteger(p) || p < 1 || p > 65535) {
+      return json({ ok: false, error: "Porta SMTP inválida." });
+    }
+
+    const hostname = String(host).trim();
+    const username = String(user).trim();
+    const password = String(pass);
+    const sender = cleanAddress(String(from || user));
+    const target = cleanAddress(String(to || from || user));
+    const useImplicitTls = secure ?? p === 465;
+    const useStartTls = !useImplicitTls && p !== 25;
+
+    const conn = useImplicitTls
+      ? await withTimeout(Deno.connectTls({ hostname, port: p }), 10_000, "Timeout ao conectar com SSL/TLS")
+      : await withTimeout(Deno.connect({ hostname, port: p }), 10_000, "Timeout ao conectar ao SMTP");
+
+    session = new SmtpSession(conn);
+
+    const greeting = await session.readResponse("boas-vindas");
+    if (greeting.code !== 220) throw new Error(`Conexão recusada: ${greeting.text}`);
+
+    await session.command("EHLO lovable.local", [250], "EHLO");
+
+    if (useStartTls) {
+      await session.command("STARTTLS", [220], "STARTTLS");
+      await session.upgradeToTls(hostname);
+      await session.command("EHLO lovable.local", [250], "EHLO após STARTTLS");
+    }
+
+    await session.command("AUTH LOGIN", [334], "Autenticação");
+    await session.command(b64(username), [334], "Usuário SMTP");
+    await session.command(b64(password), [235], "Senha SMTP");
+
+    await session.command(`MAIL FROM:<${sender}>`, [250], "Remetente");
+    await session.command(`RCPT TO:<${target}>`, [250, 251], "Destinatário");
+    await session.command("DATA", [354], "Início do envio");
+
+    const now = new Date().toUTCString();
+    await session.write([
+      `From: <${sender}>`,
+      `To: <${target}>`,
+      "Subject: Teste de conexão SMTP - Lovable",
+      `Date: ${now}`,
+      "MIME-Version: 1.0",
+      "Content-Type: text/plain; charset=utf-8",
+      "",
+      "Se você recebeu este e-mail, a configuração SMTP está funcionando corretamente.",
+      ".",
+      "",
+    ].join("\r\n"));
+
+    await session.readResponse("confirmação do envio").then((response) => {
+      if (response.code !== 250) throw new Error(`Confirmação do envio: ${response.text}`);
     });
-    const target = to || from || user;
-    await withTimeout(
-      client.send({
-        from: from || user,
-        to: target,
-        subject: "Teste de conexão SMTP — Lovable",
-        content: "Se você recebeu este e-mail, a configuração SMTP está funcionando corretamente.",
-      }),
-      20000
-    );
-    try { await client.close(); } catch { /* noop */ }
-    return new Response(JSON.stringify({ ok: true, sent_to: target }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+
+    try { await session.command("QUIT", [221], "Encerrar conexão"); } catch { /* noop */ }
+    session.close();
+    session = null;
+
+    return json({ ok: true, sent_to: target });
   } catch (e) {
+    session?.close();
     const msg = (e as Error).message || String(e);
     let hint = "";
-    if (/auth|535|credential|password/i.test(msg)) hint = " — verifique usuário/senha. No Gmail use uma Senha de App (não a senha normal).";
-    else if (/timeout|ECONN|ENOTFOUND|getaddrinfo/i.test(msg)) hint = " — verifique host/porta e se sua rede permite a conexão.";
-    else if (/tls|ssl/i.test(msg)) hint = " — alterne SSL/TLS (465 com SSL ou 587 sem SSL).";
-    return new Response(JSON.stringify({ ok: false, error: msg + hint }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    if (/auth|535|5\.7\.3|5\.7\.8|credential|password|senha/i.test(msg)) {
+      hint = " — verifique usuário/senha. No Gmail use Senha de App; no Outlook confirme se SMTP AUTH está habilitado para a conta.";
+    } else if (/timeout|ECONN|ENOTFOUND|getaddrinfo|conectar/i.test(msg)) {
+      hint = " — verifique host/porta. Para Outlook use smtp.office365.com na porta 587 com SSL desativado (STARTTLS automático).";
+    } else if (/tls|ssl|starttls|certificate/i.test(msg)) {
+      hint = " — confira o modo de segurança: 465 com SSL ativado ou 587 com SSL desativado.";
+    }
+    return json({ ok: false, error: msg + hint });
   }
 });

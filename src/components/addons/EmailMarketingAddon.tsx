@@ -166,23 +166,38 @@ export const EmailMarketingAddon = () => {
       return;
     }
     setTesting(true);
-    const { data, error } = await supabase.functions.invoke("email-smtp-test", {
-      body: {
-        host: form.smtp_host,
-        port: form.smtp_port || 465,
-        secure: form.smtp_secure ?? true,
-        user: form.smtp_user || form.email,
-        pass: form.smtp_pass,
-        from: form.email,
-        to: form.email,
-      },
-    });
-    setTesting(false);
-    if (error || !data?.ok) {
-      toast({ title: "Falha no teste de conexão", description: data?.error || error?.message || "Erro desconhecido", variant: "destructive" });
-      return;
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 30000);
+    try {
+      const { data, error } = await supabase.functions.invoke("email-smtp-test", {
+        body: {
+          host: form.smtp_host,
+          port: form.smtp_port || 465,
+          secure: form.smtp_secure ?? true,
+          user: form.smtp_user || form.email,
+          pass: form.smtp_pass,
+          from: form.email,
+          to: form.email,
+        },
+        signal: controller.signal,
+      });
+      if (error || !data?.ok) {
+        toast({ title: "Falha no teste de conexão", description: data?.error || error?.message || "Erro desconhecido", variant: "destructive" });
+        return;
+      }
+      toast({ title: "✓ Conexão OK", description: `E-mail de teste enviado para ${data.sent_to}` });
+    } catch (e) {
+      toast({
+        title: "Falha no teste de conexão",
+        description: e instanceof DOMException && e.name === "AbortError"
+          ? "O teste demorou demais e foi cancelado. Verifique host/porta e use smtp.office365.com na porta 587 com SSL desativado para Outlook."
+          : (e as Error).message || "Erro desconhecido",
+        variant: "destructive",
+      });
+    } finally {
+      window.clearTimeout(timeout);
+      setTesting(false);
     }
-    toast({ title: "✓ Conexão OK", description: `E-mail de teste enviado para ${data.sent_to}` });
   };
 
   const openTplNew = () => {
