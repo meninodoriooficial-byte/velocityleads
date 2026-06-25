@@ -198,12 +198,19 @@ const getOverlay = (r: any, enr: any) => {
       : String(capitalSocialRaw);
   }
   // CNAE principal (código + descrição)
+  const atividadePrincipalArr = Array.isArray(cdd.atividade_principal)
+    ? cdd.atividade_principal[0]
+    : null;
   const cnaeCodigo =
     brasil.cnae_principal_codigo ||
     brasil.cnae_fiscal ||
     brasil.raw?.cnae_fiscal ||
     cdd.cnae_fiscal ||
     cdd.cnae_principal_codigo ||
+    cdd.raw?.cnae_fiscal ||
+    cdd.raw?.cnae_principal_codigo ||
+    atividadePrincipalArr?.code ||
+    atividadePrincipalArr?.codigo ||
     ai.cnae_codigo ||
     ai.cnae_principal_codigo ||
     null;
