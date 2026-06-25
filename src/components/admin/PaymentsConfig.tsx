@@ -250,9 +250,8 @@ export function PaymentsConfig() {
                 <CardContent className="space-y-3">
                   <div className="space-y-2">
                     <Label htmlFor={`input-${key.key_name}`}>Nova credencial</Label>
-                    <Input
+                    <PasswordInput
                       id={`input-${key.key_name}`}
-                      type="password"
                       autoComplete="off"
                       placeholder={key.placeholder}
                       value={values[key.key_name] || ""}

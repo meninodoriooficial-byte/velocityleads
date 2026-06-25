@@ -327,8 +327,7 @@ export const ApiConfigManager = () => {
             </div>
             <div>
               <Label>Chave (opcional)</Label>
-              <Input
-                type="password"
+              <PasswordInput
                 value={newConfig.api_key}
                 onChange={(e) => setNewConfig({ ...newConfig, api_key: e.target.value })}
                 placeholder="Cole a chave aqui"
@@ -434,8 +433,7 @@ export const ApiConfigManager = () => {
                   </Label>
                   {isEditingThisKey ? (
                     <div className="flex gap-2">
-                      <Input
-                        type="password"
+                      <PasswordInput
                         value={keyDrafts[config.id] ?? ""}
                         onChange={(e) => setKeyDrafts((prev) => ({ ...prev, [config.id]: e.target.value }))}
                         placeholder="Cole a nova chave aqui"

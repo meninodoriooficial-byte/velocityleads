@@ -230,9 +230,8 @@ export const EvolutionApiConfig = () => {
 
       <div className="space-y-2">
         <Label htmlFor="evo-key">API Key (global)</Label>
-        <Input
+        <PasswordInput
           id="evo-key"
-          type="password"
           placeholder="Cole a AUTHENTICATION_API_KEY do servidor"
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}
