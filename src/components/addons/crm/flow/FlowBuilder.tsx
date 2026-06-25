@@ -250,7 +250,7 @@ export function FlowBuilder({ value, onChange }: Props) {
                     ref={fileRef}
                     type="file"
                     multiple
-                    accept="image/*,audio/*,text/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                    accept="image/*,audio/*,.mp3,.pdf,.doc,.docx"
                     className="hidden"
                     onChange={(e) => handleAttach(e.target.files)}
                   />
@@ -263,7 +263,7 @@ export function FlowBuilder({ value, onChange }: Props) {
                     onClick={() => fileRef.current?.click()}
                   >
                     {uploading ? <Loader2 className="size-3.5 mr-2 animate-spin" /> : <Paperclip className="size-3.5 mr-2" />}
-                    Vincular arquivo (áudio, imagem, PDF, Word, texto)
+                    Vincular arquivo (áudio, imagem, PDF, Word, MP3)
                   </Button>
                 </div>
               </div>
