@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
-import { Mail, Plus, Trash2, ArrowUp, ArrowDown, Loader2, Shuffle, FileText, Pencil, Eye, PlugZap } from "lucide-react";
+import { Mail, Plus, Trash2, ArrowUp, ArrowDown, Loader2, Shuffle, FileText, Pencil, Eye, PlugZap, AlertTriangle } from "lucide-react";
 
 type Account = {
   id: string;
@@ -393,12 +393,22 @@ export const EmailMarketingAddon = () => {
                   <Label>Usuário</Label>
                   <Input value={form.smtp_user || ""} onChange={(e) => setForm({ ...form, smtp_user: e.target.value })} placeholder="(geralmente o e-mail)" />
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-2">
                   <Label>Senha de app *</Label>
                   <PasswordInput value={form.smtp_pass || ""} onChange={(e) => setForm({ ...form, smtp_pass: e.target.value })} />
-                  <p className="text-[10px] text-muted-foreground">
-                    No Gmail é obrigatório usar uma <a className="underline" href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer">Senha de App</a> (com verificação em 2 etapas ativada). No Outlook, gere em conta.live.com / Segurança.
-                  </p>
+                  <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-200">
+                    <AlertTriangle className="size-4 mt-0.5 shrink-0 text-amber-400" />
+                    <p className="leading-relaxed">
+                      <strong className="font-semibold">Atenção:</strong> no Gmail é <strong>obrigatório</strong> usar uma{" "}
+                      <a className="underline font-semibold" href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer">
+                        Senha de App
+                      </a>{" "}
+                      (com verificação em 2 etapas ativada). No Outlook, gere em{" "}
+                      <a className="underline font-semibold" href="https://account.live.com/proofs/Manage" target="_blank" rel="noreferrer">
+                        conta.live.com / Segurança
+                      </a>.
+                    </p>
+                  </div>
                 </div>
               </>
             )}
