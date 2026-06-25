@@ -3,7 +3,10 @@ import { useUserAddons } from "@/hooks/useUserAddons";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
-import { Kanban, MessageSquare, Zap, GitBranch, Inbox } from "lucide-react";
+import { Kanban, MessageSquare, Zap, GitBranch, Inbox, RefreshCw, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { ConversationList, type Conversation } from "./crm/ConversationList";
 import { ConversationView } from "./crm/ConversationView";
 import { KanbanBoard } from "./crm/KanbanBoard";
@@ -15,6 +18,27 @@ export function WhatsAppCrmAddon() {
   const { active } = useUserAddons();
   const addon = active.find((a) => a.addon_slug === "whatsapp_crm");
   const [selected, setSelected] = useState<Conversation | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const handleCheckMessages = async () => {
+    setChecking(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("crm-poll-messages");
+      if (error) throw error;
+      const processed = (data as any)?.totalProcessed ?? 0;
+      toast.success(
+        processed > 0
+          ? `${processed} nova(s) mensagem(ns) recebida(s)`
+          : "Nenhuma mensagem nova",
+      );
+      setReloadKey((k) => k + 1);
+    } catch (e: any) {
+      toast.error("Falha ao verificar mensagens", { description: e?.message });
+    } finally {
+      setChecking(false);
+    }
+  };
 
   if (!addon) {
     return <div className="text-center py-12 text-sm text-muted-foreground">Você ainda não tem o add-on WhatsApp CRM Pro ativo.</div>;
@@ -46,18 +70,31 @@ export function WhatsAppCrmAddon() {
       </div>
 
       <Tabs defaultValue="inbox">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="inbox" className="gap-2"><Inbox className="size-4" /> Inbox</TabsTrigger>
-          <TabsTrigger value="kanban" className="gap-2"><Kanban className="size-4" /> Kanban</TabsTrigger>
-          <TabsTrigger value="quick" className="gap-2"><MessageSquare className="size-4" /> Respostas rápidas</TabsTrigger>
-          <TabsTrigger value="flows" className="gap-2"><GitBranch className="size-4" /> Fluxos</TabsTrigger>
-        </TabsList>
+        <div className="flex items-center gap-2">
+          <TabsList className="grid flex-1 grid-cols-4">
+            <TabsTrigger value="inbox" className="gap-2"><Inbox className="size-4" /> Inbox</TabsTrigger>
+            <TabsTrigger value="kanban" className="gap-2"><Kanban className="size-4" /> Kanban</TabsTrigger>
+            <TabsTrigger value="quick" className="gap-2"><MessageSquare className="size-4" /> Respostas rápidas</TabsTrigger>
+            <TabsTrigger value="flows" className="gap-2"><GitBranch className="size-4" /> Fluxos</TabsTrigger>
+          </TabsList>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={handleCheckMessages}
+            disabled={checking}
+            className="gap-2 shrink-0"
+          >
+            {checking ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
+            Verificar mensagens recebidas
+          </Button>
+        </div>
 
         <TabsContent value="inbox" className="mt-4">
           <CrmMetrics />
           <div className="mt-4 grid grid-cols-[320px_1fr] h-[calc(100vh-360px)] min-h-[500px] border border-border/60 rounded-xl overflow-hidden bg-card">
             <div className="border-r border-border/60">
-              <ConversationList selectedId={selected?.id} onSelect={setSelected} />
+              <ConversationList key={reloadKey} selectedId={selected?.id} onSelect={setSelected} />
             </div>
             {selected ? (
               <ConversationView conversation={selected} />
