@@ -294,11 +294,11 @@ export const EmailMarketingAddon = () => {
                     <p>{a.sent_today}/{a.daily_limit} hoje</p>
                     <p>Ordem #{a.send_order}</p>
                   </div>
-                  <Button size="icon-sm" variant="ghost" onClick={() => remove(a.id)} title="Remover">
-                    <Trash2 className="size-4 text-destructive" />
-                  </Button>
                   <Button size="icon-sm" variant="ghost" onClick={() => openEdit(a)} title="Editar">
                     <Pencil className="size-4" />
+                  </Button>
+                  <Button size="icon-sm" variant="ghost" onClick={() => remove(a.id)} title="Remover">
+                    <Trash2 className="size-4 text-destructive" />
                   </Button>
                 </div>
               ))}
