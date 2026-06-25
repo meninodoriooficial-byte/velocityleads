@@ -377,15 +377,14 @@ export const EmailMarketingAddon = () => {
           <div className="space-y-3">
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground">Preencher automaticamente</Label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <Button type="button" variant="outline" onClick={() => applyPreset("gmail")} className={activePreset === "gmail" ? "bg-green-600 text-white border-green-600 hover:bg-green-700 hover:text-white" : ""}>Gmail</Button>
-                <Button type="button" variant="outline" onClick={() => applyPreset("outlook")} className={activePreset === "outlook" ? "bg-green-600 text-white border-green-600 hover:bg-green-700 hover:text-white" : ""}>Outlook</Button>
                 <Button type="button" variant="outline" onClick={() => applyPreset("smtp")} className={activePreset === "smtp" ? "bg-green-600 text-white border-green-600 hover:bg-green-700 hover:text-white" : ""}>SMTP genérico</Button>
               </div>
             </div>
-            {(activePreset === "gmail" || activePreset === "outlook") && (
+            {activePreset === "gmail" && (
               <Button type="button" variant="secondary" size="sm" className="w-full" onClick={() => setTutorialOpen(activePreset)}>
-                📘 Ver tutorial: como obter a Senha de App {activePreset === "gmail" ? "do Gmail" : "do Outlook"}
+                📘 Ver tutorial: como obter a Senha de App do Gmail
               </Button>
             )}
             <div className="space-y-1">
@@ -396,7 +395,7 @@ export const EmailMarketingAddon = () => {
               <Label>Nome de exibição</Label>
               <Input value={form.display_name || ""} onChange={(e) => setForm({ ...form, display_name: e.target.value })} placeholder="Sua Empresa" />
             </div>
-            {(form.provider === "smtp" || form.provider === "gmail" || form.provider === "outlook") && (
+            {(form.provider === "smtp" || form.provider === "gmail") && (
               <>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1 col-span-2">
