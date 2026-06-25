@@ -96,6 +96,11 @@ export const EmailMarketingAddon = () => {
     setDlgOpen(true);
   };
 
+  const openEdit = (a: Account) => {
+    setForm({ ...a });
+    setDlgOpen(true);
+  };
+
   const saveAccount = async () => {
     if (!user) return;
     if (!form.email) { toast({ title: "Informe o e-mail", variant: "destructive" }); return; }
@@ -103,9 +108,7 @@ export const EmailMarketingAddon = () => {
       toast({ title: "Preencha host SMTP e senha", variant: "destructive" }); return;
     }
     setSaving(true);
-    const nextOrder = (accounts.reduce((m, a) => Math.max(m, a.send_order), 0) || 0) + 1;
-    const { error } = await supabase.from("email_accounts").insert({
-      user_id: user.id,
+    const payload: any = {
       provider: form.provider as any,
       email: form.email!,
       display_name: form.display_name || null,
@@ -115,11 +118,17 @@ export const EmailMarketingAddon = () => {
       smtp_pass: form.smtp_pass || null,
       smtp_secure: form.smtp_secure ?? true,
       daily_limit: form.daily_limit || 50,
-      send_order: nextOrder,
-    });
+    };
+    const { error } = form.id
+      ? await supabase.from("email_accounts").update(payload).eq("id", form.id)
+      : await supabase.from("email_accounts").insert({
+          ...payload,
+          user_id: user.id,
+          send_order: (accounts.reduce((m, a) => Math.max(m, a.send_order), 0) || 0) + 1,
+        });
     setSaving(false);
     if (error) { toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" }); return; }
-    toast({ title: "✓ Conta adicionada" });
+    toast({ title: form.id ? "✓ Conta atualizada" : "✓ Conta adicionada" });
     setDlgOpen(false);
     load();
   };
@@ -285,6 +294,9 @@ export const EmailMarketingAddon = () => {
                     <p>{a.sent_today}/{a.daily_limit} hoje</p>
                     <p>Ordem #{a.send_order}</p>
                   </div>
+                  <Button size="icon-sm" variant="ghost" onClick={() => openEdit(a)} title="Editar">
+                    <Pencil className="size-4" />
+                  </Button>
                   <Button size="icon-sm" variant="ghost" onClick={() => remove(a.id)} title="Remover">
                     <Trash2 className="size-4 text-destructive" />
                   </Button>
