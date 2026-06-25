@@ -110,6 +110,42 @@ export function FlowBuilder({ value, onChange }: Props) {
     setNodes(ns); setEdges(es); setSelectedId(null); emit(ns, es);
   };
 
+  const handleAttach = async (files: FileList | null) => {
+    if (!files || !files.length || !selected || !user) return;
+    setUploading(true);
+    try {
+      const current: any[] = Array.isArray((selected.data as any).attachments) ? [...(selected.data as any).attachments] : [];
+      for (const f of Array.from(files)) {
+        const ext = (f.name.split(".").pop() || "bin").toLowerCase();
+        const path = `${user.id}/flows/${crypto.randomUUID()}.${ext}`;
+        const up = await supabase.storage.from("crm-media").upload(path, f, {
+          contentType: f.type || "application/octet-stream", upsert: false,
+        });
+        if (up.error) { toast({ title: "Erro ao enviar", description: up.error.message, variant: "destructive" }); continue; }
+        const { data } = await supabase.storage.from("crm-media").createSignedUrl(path, 60 * 60 * 24 * 365);
+        current.push({ url: data?.signedUrl || "", path, name: f.name, mime: f.type || "application/octet-stream", size: f.size });
+      }
+      updateData({ attachments: current });
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  const removeAttachment = (idx: number) => {
+    if (!selected) return;
+    const current: any[] = Array.isArray((selected.data as any).attachments) ? [...(selected.data as any).attachments] : [];
+    current.splice(idx, 1);
+    updateData({ attachments: current });
+  };
+
+  const attachmentIcon = (mime: string) => {
+    if (mime.startsWith("image/")) return ImageIcon;
+    if (mime.startsWith("audio/")) return FileAudio;
+    if (mime.includes("pdf") || mime.includes("word") || mime.includes("officedocument") || mime.startsWith("text/")) return FileText;
+    return FileIcon;
+  };
+
   useEffect(() => { emit(nodes, edges); /* initial */ }, []); // eslint-disable-line
 
   return (
