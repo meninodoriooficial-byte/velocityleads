@@ -511,6 +511,63 @@ export const EmailMarketingAddon = () => {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={!!sendTestAcc} onOpenChange={(o) => !o && !sendingTest && setSendTestAcc(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Enviar e-mail de teste</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="text-xs text-muted-foreground rounded-md bg-muted/40 p-2 border border-border/60">
+              Conta: <strong>{sendTestAcc?.email}</strong> via <code>{sendTestAcc?.smtp_host}:{sendTestAcc?.smtp_port}</code>
+            </div>
+            <div className="space-y-1">
+              <Label>Enviar para *</Label>
+              <Input type="email" value={sendTestTo} onChange={(e) => setSendTestTo(e.target.value)} placeholder="destinatario@exemplo.com" />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" onClick={() => setSendTestAcc(null)} disabled={sendingTest}>Cancelar</Button>
+            <Button
+              onClick={async () => {
+                if (!sendTestAcc || !sendTestTo) {
+                  toast({ title: "Informe o destinatário", variant: "destructive" });
+                  return;
+                }
+                setSendingTest(true);
+                try {
+                  const { data, error } = await supabase.functions.invoke("email-smtp-test", {
+                    body: {
+                      host: sendTestAcc.smtp_host,
+                      port: sendTestAcc.smtp_port,
+                      secure: sendTestAcc.smtp_secure,
+                      user: sendTestAcc.smtp_user || sendTestAcc.email,
+                      pass: sendTestAcc.smtp_pass,
+                      from: sendTestAcc.email,
+                      to: sendTestTo,
+                      sendTest: true,
+                      subject: "✅ Teste de envio - Lead SaaS",
+                      body: `Olá!\n\nEste é um e-mail de teste enviado pela conta ${sendTestAcc.email}.\nSe você está lendo, sua configuração SMTP está funcionando perfeitamente.\n\n— Lead SaaS`,
+                    },
+                  });
+                  if (error || !data?.ok) {
+                    toast({ title: "Falha no envio", description: (data as any)?.error || error?.message || "Erro desconhecido", variant: "destructive" });
+                  } else {
+                    toast({ title: "✓ E-mail enviado", description: `Verifique a caixa de entrada de ${sendTestTo}` });
+                    setSendTestAcc(null);
+                  }
+                } finally {
+                  setSendingTest(false);
+                }
+              }}
+              disabled={sendingTest}
+            >
+              {sendingTest ? <Loader2 className="size-4 mr-2 animate-spin" /> : <Send className="size-4 mr-2" />}
+              Enviar teste
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={tplDlg} onOpenChange={setTplDlg}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{tplForm.id ? "Editar template" : "Novo template"}</DialogTitle></DialogHeader>
