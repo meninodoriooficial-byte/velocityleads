@@ -109,15 +109,27 @@ export const SearchForm = ({ onSearch, selectedSearch }: SearchFormProps) => {
     const controller = new AbortController();
 
     const loadNeighborhoods = async () => {
-      // Query Overpass restrita pelo estado (ISO3166-2) — bem mais confiável
-      const query = `[out:json][timeout:25];
+      // Cache local por 7 dias para evitar refazer a query lenta do Overpass
+      const cacheKey = `nb:${selectedState}:${city}`;
+      try {
+        const raw = localStorage.getItem(cacheKey);
+        if (raw) {
+          const { at, names } = JSON.parse(raw);
+          if (Date.now() - at < 7 * 24 * 60 * 60 * 1000 && Array.isArray(names)) {
+            setNeighborhoods(names);
+            setLoadingNeighborhoods(false);
+            return;
+          }
+        }
+      } catch {}
+
+      // Query enxuta com timeout curto
+      const query = `[out:json][timeout:10];
 area["ISO3166-2"="BR-${selectedState}"]->.s;
 area["name"="${city}"]["admin_level"~"8|9|10"](area.s)->.a;
 (
   node["place"~"suburb|neighbourhood|quarter|city_block"](area.a);
-  way["place"~"suburb|neighbourhood|quarter|city_block"](area.a);
-  relation["place"~"suburb|neighbourhood|quarter|city_block"](area.a);
-  relation["boundary"="administrative"]["admin_level"~"10|11"](area.a);
+  relation["place"~"suburb|neighbourhood|quarter"](area.a);
 );
 out tags;`;
 
@@ -129,23 +141,19 @@ out tags;`;
 
       let elements: any[] = [];
       try {
-        for (const url of endpoints) {
-          try {
-            const res = await fetch(url, {
-              method: "POST",
-              headers: { "Content-Type": "text/plain" },
-              body: "data=" + encodeURIComponent(query),
-              signal: controller.signal,
-            });
-            if (!res.ok) continue;
+        // Corrida paralela: usa o primeiro endpoint que responder com sucesso
+        const fetchOne = (url: string) =>
+          fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain" },
+            body: "data=" + encodeURIComponent(query),
+            signal: controller.signal,
+          }).then(async (res) => {
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
-            elements = data?.elements || [];
-            if (elements.length > 0) break;
-          } catch (e: any) {
-            if (e?.name === "AbortError") throw e;
-            continue;
-          }
-        }
+            return (data?.elements || []) as any[];
+          });
+        elements = await Promise.any(endpoints.map(fetchOne)).catch(() => []);
 
         const names = Array.from(
           new Set(
@@ -157,6 +165,7 @@ out tags;`;
 
         console.log(`[Bairros] ${city}/${selectedState}: ${names.length} encontrados`);
         setNeighborhoods(names as string[]);
+        try { localStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), names })); } catch {}
       } catch (err: any) {
         if (err?.name !== "AbortError") {
           console.error("Erro ao carregar bairros:", err);
