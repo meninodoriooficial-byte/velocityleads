@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
   let session: SmtpSession | null = null;
 
   try {
-    const { host, port, secure, user, pass, from, to } = await req.json();
+    const { host, port, secure, user, pass, from, to, sendTest, subject, body } = await req.json();
     if (!host || !user || !pass) {
       return json({ ok: false, error: "Informe host, usuário e senha." });
     }
@@ -143,11 +143,29 @@ Deno.serve(async (req) => {
     await session.command(b64(username), [334], "Usuário SMTP");
     await session.command(b64(password), [235], "Senha SMTP", 50_000);
 
+    if (sendTest) {
+      const subj = String(subject || "Teste de envio SMTP").replace(/[\r\n]/g, " ");
+      const text = String(body || "Este é um e-mail de teste enviado pelo seu SaaS de leads. Se você está lendo isso, sua configuração SMTP está funcionando! ✅");
+      await session.command(`MAIL FROM:<${sender}>`, [250], "MAIL FROM");
+      await session.command(`RCPT TO:<${target}>`, [250, 251], "RCPT TO");
+      await session.command("DATA", [354], "DATA");
+      const headers =
+        `From: ${sender}\r\n` +
+        `To: ${target}\r\n` +
+        `Subject: ${subj}\r\n` +
+        `MIME-Version: 1.0\r\n` +
+        `Content-Type: text/plain; charset=utf-8\r\n` +
+        `Date: ${new Date().toUTCString()}\r\n` +
+        `\r\n`;
+      const bodyEscaped = text.replace(/\r?\n/g, "\r\n").replace(/^\./gm, "..");
+      await session.command(`${headers}${bodyEscaped}\r\n.`, [250], "Envio de mensagem", 30_000);
+    }
+
     try { await session.command("QUIT", [221], "Encerrar conexão"); } catch { /* noop */ }
     session.close();
     session = null;
 
-    return json({ ok: true, sent_to: target, authenticated: true });
+    return json({ ok: true, sent_to: target, authenticated: true, sent: !!sendTest });
   } catch (e) {
     session?.close();
     const msg = (e as Error).message || String(e);
