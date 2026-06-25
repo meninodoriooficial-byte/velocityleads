@@ -167,7 +167,40 @@ const getOverlay = (r: any, enr: any) => {
     tiktok:
       r.social_media?.tiktok || scraped.tiktok || aiSocials.tiktok || null,
   };
-  return { cnpj, email, phone, website, socios, social, status };
+  // Dados fiscais: IE, Simples, MEI, Capital Social
+  const ie =
+    brasil.inscricao_estadual ||
+    cdd.inscricao_estadual ||
+    ai.inscricao_estadual ||
+    null;
+  const inscricoesEstaduais: any[] = Array.isArray(brasil.inscricoes_estaduais)
+    ? brasil.inscricoes_estaduais
+    : [];
+  const simples =
+    typeof brasil.opcao_pelo_simples === "boolean"
+      ? brasil.opcao_pelo_simples
+      : typeof cdd.opcao_pelo_simples === "boolean"
+        ? cdd.opcao_pelo_simples
+        : null;
+  const mei =
+    typeof brasil.opcao_pelo_mei === "boolean"
+      ? brasil.opcao_pelo_mei
+      : typeof cdd.opcao_pelo_mei === "boolean"
+        ? cdd.opcao_pelo_mei
+        : null;
+  const capitalSocialRaw =
+    brasil.capital_social ?? cdd.capital_social ?? ai.capital_social ?? null;
+  let capitalSocial: string | null = null;
+  if (capitalSocialRaw != null && capitalSocialRaw !== "") {
+    const n = Number(capitalSocialRaw);
+    capitalSocial = Number.isFinite(n)
+      ? n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 2 })
+      : String(capitalSocialRaw);
+  }
+  return {
+    cnpj, email, phone, website, socios, social, status,
+    ie, inscricoesEstaduais, simples, mei, capitalSocial,
+  };
 };
 
 export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
@@ -598,6 +631,28 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
                         )}
                       </div>
                     )}
+                    {(ov.ie || ov.simples != null || ov.mei != null || ov.capitalSocial) && (
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {ov.mei === true && (
+                          <Badge className="text-[10px] bg-emerald-600 hover:bg-emerald-600 text-white border-transparent">MEI</Badge>
+                        )}
+                        {ov.mei === false && (
+                          <Badge variant="outline" className="text-[10px]">Não MEI</Badge>
+                        )}
+                        {ov.simples === true && (
+                          <Badge className="text-[10px] bg-sky-600 hover:bg-sky-600 text-white border-transparent">Simples Nacional</Badge>
+                        )}
+                        {ov.simples === false && (
+                          <Badge variant="outline" className="text-[10px]">Lucro Presumido/Real</Badge>
+                        )}
+                        {ov.ie && (
+                          <Badge variant="secondary" className="text-[10px] font-mono">IE: {ov.ie}</Badge>
+                        )}
+                        {ov.capitalSocial && (
+                          <Badge variant="secondary" className="text-[10px]">Capital: {ov.capitalSocial}</Badge>
+                        )}
+                      </div>
+                    )}
                     {r.business_type && (
                       <Badge variant="secondary" className="text-[10px]">
                         <Building2 className="w-3 h-3 mr-1" />
@@ -785,6 +840,28 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
                       >
                         {ov.status.active ? "Ativa" : ov.status.label}
                       </Badge>
+                    )}
+                  </div>
+                )}
+                {(ov.ie || ov.simples != null || ov.mei != null || ov.capitalSocial) && (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {ov.mei === true && (
+                      <Badge className="text-[10px] bg-emerald-600 hover:bg-emerald-600 text-white border-transparent">MEI</Badge>
+                    )}
+                    {ov.mei === false && (
+                      <Badge variant="outline" className="text-[10px]">Não MEI</Badge>
+                    )}
+                    {ov.simples === true && (
+                      <Badge className="text-[10px] bg-sky-600 hover:bg-sky-600 text-white border-transparent">Simples Nacional</Badge>
+                    )}
+                    {ov.simples === false && (
+                      <Badge variant="outline" className="text-[10px]">Lucro Presumido/Real</Badge>
+                    )}
+                    {ov.ie && (
+                      <Badge variant="secondary" className="text-[10px] font-mono">IE: {ov.ie}</Badge>
+                    )}
+                    {ov.capitalSocial && (
+                      <Badge variant="secondary" className="text-[10px]">Capital: {ov.capitalSocial}</Badge>
                     )}
                   </div>
                 )}

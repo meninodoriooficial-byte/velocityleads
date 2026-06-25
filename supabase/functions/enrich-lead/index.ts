@@ -471,6 +471,9 @@ async function fetchBrasilApi(cnpjDigits: string) {
       d.ddd_telefone_1
         ? formatPhoneBR(d.ddd_telefone_1)
         : (d.ddd_1 && d.telefone_1 ? `(${d.ddd_1}) ${d.telefone_1}` : null);
+    // Tenta complementar com cnpj.ws (público) para inscrição estadual
+    // e fallback de Simples/MEI quando BrasilAPI não retornar.
+    const extra = await fetchCnpjWs(cnpjDigits);
     return {
       cnpj: d.cnpj || cnpjDigits,
       razao_social: d.razao_social || null,
@@ -495,9 +498,69 @@ async function fetchBrasilApi(cnpjDigits: string) {
       telefone,
       socios,
       proprietario,
+      opcao_pelo_simples:
+        typeof d.opcao_pelo_simples === "boolean"
+          ? d.opcao_pelo_simples
+          : extra?.simples ?? null,
+      data_opcao_pelo_simples: d.data_opcao_pelo_simples || extra?.data_simples || null,
+      opcao_pelo_mei:
+        typeof d.opcao_pelo_mei === "boolean"
+          ? d.opcao_pelo_mei
+          : extra?.mei ?? null,
+      data_opcao_pelo_mei: d.data_opcao_pelo_mei || extra?.data_mei || null,
+      inscricoes_estaduais: extra?.inscricoes_estaduais || [],
+      inscricao_estadual: extra?.inscricao_estadual || null,
     };
   } catch (e) {
     console.log("fetchBrasilApi throw", e);
+    return null;
+  }
+}
+
+/**
+ * cnpj.ws (público) — complementa com inscrição estadual e regime tributário.
+ * Rate limit baixo (3/min), use apenas como complemento.
+ */
+async function fetchCnpjWs(cnpjDigits: string): Promise<{
+  inscricoes_estaduais: Array<{ uf: string; inscricao: string; ativo: boolean }>;
+  inscricao_estadual: string | null;
+  simples: boolean | null;
+  data_simples: string | null;
+  mei: boolean | null;
+  data_mei: string | null;
+} | null> {
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 8000);
+    const resp = await fetch(`https://publica.cnpj.ws/cnpj/${cnpjDigits}`, {
+      signal: ctrl.signal,
+      headers: { Accept: "application/json" },
+    }).finally(() => clearTimeout(t));
+    if (!resp.ok) {
+      console.log("cnpj.ws HTTP", resp.status);
+      return null;
+    }
+    const d = await resp.json();
+    const est = d.estabelecimento || {};
+    const ies: any[] = Array.isArray(est.inscricoes_estaduais)
+      ? est.inscricoes_estaduais
+      : [];
+    const mapped = ies.map((i: any) => ({
+      uf: i.estado?.sigla || i.uf || "",
+      inscricao: i.inscricao_estadual || i.inscricao || "",
+      ativo: !!i.ativo,
+    })).filter((x: any) => x.inscricao);
+    const ativa = mapped.find((x: any) => x.ativo) || mapped[0] || null;
+    return {
+      inscricoes_estaduais: mapped,
+      inscricao_estadual: ativa ? `${ativa.inscricao}${ativa.uf ? ` (${ativa.uf})` : ""}` : null,
+      simples: d.simples?.simples === "Sim" ? true : d.simples?.simples === "Não" ? false : null,
+      data_simples: d.simples?.data_opcao_simples || null,
+      mei: d.simples?.mei === "Sim" ? true : d.simples?.mei === "Não" ? false : null,
+      data_mei: d.simples?.data_opcao_mei || null,
+    };
+  } catch (e) {
+    console.log("fetchCnpjWs throw", e);
     return null;
   }
 }
