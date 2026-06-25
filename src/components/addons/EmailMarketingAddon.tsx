@@ -377,6 +377,45 @@ export const EmailMarketingAddon = () => {
                 <Button type="button" variant="outline" onClick={() => applyPreset("smtp")} className={activePreset === "smtp" ? "bg-green-600 text-white border-green-600 hover:bg-green-700 hover:text-white" : ""}>SMTP genérico</Button>
               </div>
             </div>
+            {activePreset === "gmail" && (
+              <Accordion type="single" collapsible className="rounded-lg border border-border bg-muted/30 px-3">
+                <AccordionItem value="t" className="border-0">
+                  <AccordionTrigger className="text-sm">📘 Como obter a Senha de App do Gmail</AccordionTrigger>
+                  <AccordionContent className="text-xs leading-relaxed space-y-2">
+                    <ol className="list-decimal pl-4 space-y-1.5">
+                      <li>Acesse <a className="underline text-primary" href="https://myaccount.google.com/security" target="_blank" rel="noreferrer">myaccount.google.com/security</a>.</li>
+                      <li>Ative a <strong>Verificação em duas etapas</strong> (obrigatório). Sem ela o Google não libera a opção de Senha de App.</li>
+                      <li>Depois, acesse <a className="underline text-primary" href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer">myaccount.google.com/apppasswords</a>.</li>
+                      <li>Em "Nome do app" digite algo como <em>"Lead SaaS"</em> e clique em <strong>Criar</strong>.</li>
+                      <li>O Google mostrará uma senha de <strong>16 caracteres</strong> (ex.: <code>abcd efgh ijkl mnop</code>).</li>
+                      <li>Copie e cole no campo <strong>Senha de app</strong> abaixo (pode colar com ou sem espaços — removemos automaticamente).</li>
+                      <li>Servidor: <code>smtp.gmail.com</code> · Porta: <code>465</code> · SSL: <strong>Sim</strong>.</li>
+                    </ol>
+                    <p className="text-muted-foreground">⚠️ Se não aparecer a opção "Senhas de app", confirme que a verificação em 2 etapas está ativa e que sua conta não tem restrições corporativas (Google Workspace).</p>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            )}
+            {activePreset === "outlook" && (
+              <Accordion type="single" collapsible className="rounded-lg border border-border bg-muted/30 px-3">
+                <AccordionItem value="t" className="border-0">
+                  <AccordionTrigger className="text-sm">📘 Como obter a Senha de App do Outlook/Hotmail</AccordionTrigger>
+                  <AccordionContent className="text-xs leading-relaxed space-y-2">
+                    <ol className="list-decimal pl-4 space-y-1.5">
+                      <li>Acesse <a className="underline text-primary" href="https://account.live.com/proofs/Manage" target="_blank" rel="noreferrer">account.live.com/proofs/Manage</a>.</li>
+                      <li>Ative a <strong>Verificação em duas etapas</strong> (clique em "Ativar" em "Verificação em duas etapas"). Sem isso a Microsoft bloqueia SMTP.</li>
+                      <li>Em seguida, acesse <a className="underline text-primary" href="https://account.live.com/proofs/AppPassword" target="_blank" rel="noreferrer">account.live.com/proofs/AppPassword</a>.</li>
+                      <li>Clique em <strong>Criar uma nova senha de app</strong>.</li>
+                      <li>A Microsoft mostrará uma senha de <strong>16 caracteres</strong> sem espaços.</li>
+                      <li>Copie e cole no campo <strong>Senha de app</strong> abaixo.</li>
+                      <li>Servidor: <code>smtp-mail.outlook.com</code> · Porta: <code>587</code> · SSL: <strong>Não</strong> (STARTTLS).</li>
+                      <li>Para contas Microsoft 365 corporativas use <code>smtp.office365.com</code> e peça ao admin para liberar SMTP AUTH.</li>
+                    </ol>
+                    <p className="text-muted-foreground">⚠️ Erro <code>535 5.7.3 Authentication unsuccessful</code> = a senha usada não é uma Senha de App ou a 2FA não está ativa.</p>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            )}
             <div className="space-y-1">
               <Label>E-mail *</Label>
               <Input type="email" value={form.email || ""} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="seu@dominio.com" />
