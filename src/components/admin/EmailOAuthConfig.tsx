@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { PasswordInput } from "@/components/ui/password-input";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -333,7 +334,7 @@ export const EmailOAuthConfig = () => {
           </div>
           <div className="space-y-1">
             <Label>Client Secret</Label>
-            <Input type="password" value={cfg.google_client_secret} onChange={(e) => setCfg({ ...cfg, google_client_secret: e.target.value })} placeholder="GOCSPX-..." />
+            <PasswordInput value={cfg.google_client_secret} onChange={(e) => setCfg({ ...cfg, google_client_secret: e.target.value })} placeholder="GOCSPX-..." />
           </div>
           <div className="flex justify-end">
             <Button variant="outline" size="sm" onClick={testGoogle} disabled={testing === "google"}>
@@ -360,7 +361,7 @@ export const EmailOAuthConfig = () => {
           </div>
           <div className="space-y-1">
             <Label>Client Secret (Value)</Label>
-            <Input type="password" value={cfg.microsoft_client_secret} onChange={(e) => setCfg({ ...cfg, microsoft_client_secret: e.target.value })} />
+            <PasswordInput value={cfg.microsoft_client_secret} onChange={(e) => setCfg({ ...cfg, microsoft_client_secret: e.target.value })} />
           </div>
           <div className="space-y-1">
             <Label>Tenant</Label>

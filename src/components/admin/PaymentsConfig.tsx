@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { PasswordInput } from "@/components/ui/password-input";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -249,9 +250,8 @@ export function PaymentsConfig() {
                 <CardContent className="space-y-3">
                   <div className="space-y-2">
                     <Label htmlFor={`input-${key.key_name}`}>Nova credencial</Label>
-                    <Input
+                    <PasswordInput
                       id={`input-${key.key_name}`}
-                      type="password"
                       autoComplete="off"
                       placeholder={key.placeholder}
                       value={values[key.key_name] || ""}

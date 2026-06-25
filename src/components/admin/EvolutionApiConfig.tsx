@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { PasswordInput } from "@/components/ui/password-input";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -229,9 +230,8 @@ export const EvolutionApiConfig = () => {
 
       <div className="space-y-2">
         <Label htmlFor="evo-key">API Key (global)</Label>
-        <Input
+        <PasswordInput
           id="evo-key"
-          type="password"
           placeholder="Cole a AUTHENTICATION_API_KEY do servidor"
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { PasswordInput } from "@/components/ui/password-input";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -248,9 +249,8 @@ export default function Auth() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="password">Senha</Label>
-                  <Input
+                  <PasswordInput
                     id="password"
-                    type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Sua senha"
@@ -297,9 +297,8 @@ export default function Auth() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="password-signup">Senha</Label>
-                  <Input
+                  <PasswordInput
                     id="password-signup"
-                    type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Mínimo 6 caracteres"
