@@ -197,9 +197,27 @@ const getOverlay = (r: any, enr: any) => {
       ? n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 2 })
       : String(capitalSocialRaw);
   }
+  // CNAE principal (código + descrição)
+  const cnaeCodigo =
+    brasil.cnae_principal_codigo || cdd.cnae_fiscal || ai.cnae_codigo || null;
+  const cnaeDescricao =
+    brasil.cnae_principal_descricao ||
+    brasil.atividade_principal ||
+    cdd.atividade_principal ||
+    ai.cnae_descricao ||
+    ai.atividade_principal ||
+    null;
+  const formatCnae = (c: any) => {
+    const s = String(c || "").replace(/\D/g, "");
+    if (s.length === 7) return `${s.slice(0, 4)}-${s.slice(4, 5)}/${s.slice(5)}`;
+    return c ? String(c) : null;
+  };
+  const cnae = cnaeCodigo || cnaeDescricao
+    ? { codigo: formatCnae(cnaeCodigo), descricao: cnaeDescricao }
+    : null;
   return {
     cnpj, email, phone, website, socios, social, status,
-    ie, inscricoesEstaduais, simples, mei, capitalSocial,
+    ie, inscricoesEstaduais, simples, mei, capitalSocial, cnae,
   };
 };
 
