@@ -103,6 +103,23 @@ Deno.serve(async (req) => {
       const desired = (body.instance_name || `user_${user.id.slice(0, 8)}`).toString().toLowerCase().replace(/[^a-z0-9_-]/g, "");
       const name = desired || `user_${user.id.slice(0, 8)}`;
       await ensureInstanceRecord(name);
+
+      // Se a instância já existe e está conectada/conectando, NÃO recriar (evita derrubar a sessão).
+      try {
+        const cr = await fetch(`${baseUrl}/instance/connectionState/${encodeURIComponent(name)}`, { headers });
+        if (cr.ok) {
+          const ct = await cr.text();
+          let cp: any = null; try { cp = JSON.parse(ct); } catch {}
+          const curState = cp?.instance?.state || cp?.state;
+          if (curState === "open" || curState === "connecting") {
+            await admin.from("user_whatsapp_instances")
+              .update({ connection_state: curState })
+              .eq("user_id", user.id);
+            return json({ ok: true, instance_name: name, already_exists: true, state: curState, qr: null });
+          }
+        }
+      } catch (e) { console.error("connectionState pre-check failed", e); }
+
       const r = await fetch(`${baseUrl}/instance/create`, {
         method: "POST",
         headers,
