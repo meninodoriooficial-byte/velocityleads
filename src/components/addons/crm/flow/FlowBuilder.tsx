@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ReactFlow, Background, Controls, MiniMap, addEdge, applyEdgeChanges, applyNodeChanges,
   type Edge, type Node, type Connection, type NodeChange, type EdgeChange, MarkerType,
@@ -10,7 +10,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, X } from "lucide-react";
+import { Trash2, X, Paperclip, Loader2, FileText, Image as ImageIcon, FileAudio, File as FileIcon } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/components/ui/use-toast";
 
 export type FlowGraph = { nodes: Node[]; edges: Edge[] };
 
@@ -51,7 +54,7 @@ export function FlowBuilder({ value, onChange }: Props) {
       const n = ns.find((x) => x.id === cur);
       if (!n) break;
       const d: any = n.data || {};
-      if (n.type === "send_message") steps.push({ type: "send_message", text: d.text || "" });
+      if (n.type === "send_message") steps.push({ type: "send_message", text: d.text || "", attachments: Array.isArray(d.attachments) ? d.attachments : [] });
       else if (n.type === "wait") steps.push({ type: "wait", minutes: Number(d.minutes || 0) });
       else if (n.type === "move_stage") steps.push({ type: "move_stage", stage_name: d.stage_name || "" });
       else if (n.type === "add_tag") steps.push({ type: "add_tag", tag: d.tag || "" });
