@@ -56,6 +56,8 @@ export const EmailMarketingAddon = () => {
   const [testing, setTesting] = useState(false);
   const [activePreset, setActivePreset] = useState<"gmail" | "outlook" | "smtp" | null>(null);
   const [tutorialOpen, setTutorialOpen] = useState<"gmail" | "outlook" | null>(null);
+  const [outlookWarnOpen, setOutlookWarnOpen] = useState(false);
+  const [connectingOAuth, setConnectingOAuth] = useState(false);
   const [sendTestAcc, setSendTestAcc] = useState<Account | null>(null);
   const [sendTestTo, setSendTestTo] = useState("");
   const [sendingTest, setSendingTest] = useState(false);
@@ -163,8 +165,25 @@ export const EmailMarketingAddon = () => {
       setForm((f) => ({ ...f, provider: "gmail", smtp_host: "smtp.gmail.com", smtp_port: 465, smtp_secure: true, smtp_user: f.smtp_user || f.email || "" }));
     } else if (p === "outlook") {
       setForm((f) => ({ ...f, provider: "outlook", smtp_host: "smtp-mail.outlook.com", smtp_port: 587, smtp_secure: false, smtp_user: f.smtp_user || f.email || "" }));
+      setOutlookWarnOpen(true);
     } else {
       setForm((f) => ({ ...f, provider: "smtp" }));
+    }
+  };
+
+  const connectOutlookOAuth = async () => {
+    setConnectingOAuth(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("email-oauth-start", {
+        body: { provider: "microsoft", return_to: window.location.href },
+      });
+      if (error || !data?.url) {
+        toast({ title: "Falha ao iniciar OAuth", description: data?.error || error?.message || "Tente novamente.", variant: "destructive" });
+        return;
+      }
+      window.location.href = data.url;
+    } finally {
+      setConnectingOAuth(false);
     }
   };
 
