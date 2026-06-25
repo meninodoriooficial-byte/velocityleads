@@ -141,9 +141,30 @@ Deno.serve(async (req) => {
       };
     }
 
-    const r = await fetch(endpoint, { method: "POST", headers, body: JSON.stringify(payload) });
-    const tx = await r.text();
+    let r = await fetch(endpoint, { method: "POST", headers, body: JSON.stringify(payload) });
+    let tx = await r.text();
     let parsed: any = null; try { parsed = JSON.parse(tx); } catch {}
+
+    // Fallback: se Evolution v2 falhou em sendMedia, tentar formato v1 (nested mediaMessage)
+    if (!r.ok && (type === "image" || type === "video" || type === "document")) {
+      const v1Payload = {
+        number: phone,
+        mediaMessage: {
+          mediatype: payload.mediatype,
+          mimetype: payload.mimetype,
+          caption: payload.caption,
+          media: payload.media,
+          fileName: payload.fileName,
+        },
+      };
+      console.log("crm-send retrying with v1 mediaMessage format");
+      const r2 = await fetch(endpoint, { method: "POST", headers, body: JSON.stringify(v1Payload) });
+      const tx2 = await r2.text();
+      if (r2.ok) {
+        r = r2; tx = tx2;
+        try { parsed = JSON.parse(tx2); } catch { parsed = null; }
+      }
+    }
 
     const ok = r.ok;
     const { data: saved } = await admin.from("crm_messages").insert({
