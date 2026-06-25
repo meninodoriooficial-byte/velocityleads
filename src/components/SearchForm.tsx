@@ -153,7 +153,19 @@ out tags;`;
             const data = await res.json();
             return (data?.elements || []) as any[];
           });
-        elements = await Promise.any(endpoints.map(fetchOne)).catch(() => []);
+        elements = await new Promise<any[]>((resolve) => {
+          let pending = endpoints.length;
+          let done = false;
+          endpoints.map(fetchOne).forEach((p) => {
+            p.then((els) => {
+              if (done) return;
+              done = true;
+              resolve(els);
+            }).catch(() => {
+              if (--pending === 0 && !done) { done = true; resolve([]); }
+            });
+          });
+        });
 
         const names = Array.from(
           new Set(
