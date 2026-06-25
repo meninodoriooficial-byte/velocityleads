@@ -71,7 +71,18 @@ export function SendEmailDialog({ open, onOpenChange, lead, onSent }: Props) {
     });
     setSending(false);
     if (error || !data?.ok) {
-      const msg = String(data?.error || error?.message || "");
+      // FunctionsHttpError: body real do 400 vem em error.context (Response)
+      let serverMsg = data?.error as string | undefined;
+      if (!serverMsg && (error as any)?.context?.json) {
+        try { serverMsg = (await (error as any).context.json())?.error; } catch { /* ignore */ }
+      }
+      if (!serverMsg && (error as any)?.context?.text) {
+        try {
+          const t = await (error as any).context.text();
+          try { serverMsg = JSON.parse(t)?.error || t; } catch { serverMsg = t; }
+        } catch { /* ignore */ }
+      }
+      const msg = String(serverMsg || error?.message || "");
       if (/Mail service not enabled|gmail api|failedPrecondition/i.test(msg)) {
         setGmailApiError(msg);
         toast({ title: "Gmail API não ativada", description: "Ative a API no Google Cloud para enviar e-mails.", variant: "destructive" });
