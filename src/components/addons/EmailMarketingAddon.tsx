@@ -53,6 +53,7 @@ export const EmailMarketingAddon = () => {
   const [dlgOpen, setDlgOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [activePreset, setActivePreset] = useState<"gmail" | "outlook" | "smtp" | null>(null);
   const [form, setForm] = useState<Partial<Account>>({
     provider: "smtp",
     smtp_port: 465,
@@ -94,6 +95,7 @@ export const EmailMarketingAddon = () => {
       return;
     }
     setForm({ provider: "smtp", smtp_port: 465, smtp_secure: true, daily_limit: 50 });
+    setActivePreset(null);
     setDlgOpen(true);
   };
 
@@ -151,6 +153,7 @@ export const EmailMarketingAddon = () => {
   };
 
   const applyPreset = (p: "gmail" | "outlook" | "smtp") => {
+    setActivePreset(p);
     if (p === "gmail") {
       setForm((f) => ({ ...f, provider: "smtp", smtp_host: "smtp.gmail.com", smtp_port: 465, smtp_secure: true, smtp_user: f.smtp_user || f.email || "" }));
     } else if (p === "outlook") {
@@ -369,9 +372,9 @@ export const EmailMarketingAddon = () => {
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground">Preencher automaticamente</Label>
               <div className="grid grid-cols-3 gap-2">
-                <Button type="button" variant="outline" onClick={() => applyPreset("gmail")}>Gmail</Button>
-                <Button type="button" variant="outline" onClick={() => applyPreset("outlook")}>Outlook</Button>
-                <Button type="button" variant="outline" onClick={() => applyPreset("smtp")}>SMTP genérico</Button>
+                <Button type="button" variant="outline" onClick={() => applyPreset("gmail")} className={activePreset === "gmail" ? "bg-green-600 text-white border-green-600 hover:bg-green-700 hover:text-white" : ""}>Gmail</Button>
+                <Button type="button" variant="outline" onClick={() => applyPreset("outlook")} className={activePreset === "outlook" ? "bg-green-600 text-white border-green-600 hover:bg-green-700 hover:text-white" : ""}>Outlook</Button>
+                <Button type="button" variant="outline" onClick={() => applyPreset("smtp")} className={activePreset === "smtp" ? "bg-green-600 text-white border-green-600 hover:bg-green-700 hover:text-white" : ""}>SMTP genérico</Button>
               </div>
             </div>
             <div className="space-y-1">
