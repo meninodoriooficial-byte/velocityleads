@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Mic, Square, Loader2 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface Props {
   onRecorded: (blob: Blob, mime: string, durationMs: number) => void;
@@ -51,15 +52,25 @@ export function AudioRecorder({ onRecorded, disabled }: Props) {
 
   if (recording) {
     return (
-      <Button type="button" variant="destructive" size="icon" onClick={stop} title="Parar gravação">
-        <Square className="size-4" />
-        <span className="sr-only">{elapsed}s</span>
-      </Button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button type="button" variant="destructive" size="icon" onClick={stop}>
+            <Square className="size-4" />
+            <span className="sr-only">{elapsed}s</span>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Parar gravação ({elapsed}s)</TooltipContent>
+      </Tooltip>
     );
   }
   return (
-    <Button type="button" variant="ghost" size="icon" onClick={start} disabled={disabled} title="Gravar áudio">
-      <Mic className="size-4" />
-    </Button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button type="button" variant="ghost" size="icon" onClick={start} disabled={disabled}>
+          <Mic className="size-4" />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>Gravar áudio</TooltipContent>
+    </Tooltip>
   );
 }

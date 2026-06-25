@@ -5,6 +5,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Zap } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export type QuickReply = { id: string; shortcut: string; title: string; body: string };
 
@@ -25,9 +26,14 @@ export function QuickReplyPicker({ onPick }: Props) {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button type="button" variant="ghost" size="icon" title="Respostas rápidas">
-          <Zap className="size-4" />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button type="button" variant="ghost" size="icon">
+              <Zap className="size-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Respostas rápidas</TooltipContent>
+        </Tooltip>
       </PopoverTrigger>
       <PopoverContent className="p-0 w-80" align="start">
         <Command>

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ListOrdered, Plus, X } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export type BtnDef = { id: string; text: string };
 
@@ -24,9 +25,14 @@ export function ButtonComposer({ onSend }: Props) {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button type="button" variant="ghost" size="icon" title="Enviar lista numerada (1️⃣ 2️⃣ 3️⃣)">
-          <ListOrdered className="size-4" />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button type="button" variant="ghost" size="icon">
+              <ListOrdered className="size-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Enviar lista numerada (1️⃣ 2️⃣ 3️⃣)</TooltipContent>
+        </Tooltip>
       </PopoverTrigger>
       <PopoverContent className="w-96 space-y-3">
         <h4 className="font-semibold text-sm">Mensagem com opções numeradas</h4>
