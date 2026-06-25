@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
-import { Mail, Plus, Trash2, ArrowUp, ArrowDown, Loader2, Shuffle, FileText, Pencil, Eye, PlugZap, AlertTriangle } from "lucide-react";
+import { Mail, Plus, Trash2, ArrowUp, ArrowDown, Loader2, Shuffle, FileText, Pencil, Eye, PlugZap, AlertTriangle, Send } from "lucide-react";
 
 type Account = {
   id: string;
@@ -56,6 +56,9 @@ export const EmailMarketingAddon = () => {
   const [testing, setTesting] = useState(false);
   const [activePreset, setActivePreset] = useState<"gmail" | "outlook" | "smtp" | null>(null);
   const [tutorialOpen, setTutorialOpen] = useState<"gmail" | "outlook" | null>(null);
+  const [sendTestAcc, setSendTestAcc] = useState<Account | null>(null);
+  const [sendTestTo, setSendTestTo] = useState("");
+  const [sendingTest, setSendingTest] = useState(false);
   const [form, setForm] = useState<Partial<Account>>({
     provider: "smtp",
     smtp_port: 465,
@@ -317,6 +320,9 @@ export const EmailMarketingAddon = () => {
                   </div>
                   <Button size="icon-sm" variant="ghost" onClick={() => openEdit(a)} title="Editar">
                     <Pencil className="size-4" />
+                  </Button>
+                  <Button size="icon-sm" variant="ghost" onClick={() => { setSendTestAcc(a); setSendTestTo(a.email); }} title="Enviar e-mail de teste">
+                    <Send className="size-4 text-primary" />
                   </Button>
                   <Button size="icon-sm" variant="ghost" onClick={() => remove(a.id)} title="Remover">
                     <Trash2 className="size-4 text-destructive" />
