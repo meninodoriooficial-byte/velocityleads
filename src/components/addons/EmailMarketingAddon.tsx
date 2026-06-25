@@ -154,7 +154,7 @@ export const EmailMarketingAddon = () => {
     if (p === "gmail") {
       setForm((f) => ({ ...f, provider: "smtp", smtp_host: "smtp.gmail.com", smtp_port: 465, smtp_secure: true, smtp_user: f.smtp_user || f.email || "" }));
     } else if (p === "outlook") {
-      setForm((f) => ({ ...f, provider: "smtp", smtp_host: "smtp.office365.com", smtp_port: 587, smtp_secure: false, smtp_user: f.smtp_user || f.email || "" }));
+      setForm((f) => ({ ...f, provider: "smtp", smtp_host: "smtp-mail.outlook.com", smtp_port: 587, smtp_secure: false, smtp_user: f.smtp_user || f.email || "" }));
     } else {
       setForm((f) => ({ ...f, provider: "smtp" }));
     }
@@ -175,7 +175,7 @@ export const EmailMarketingAddon = () => {
           port: form.smtp_port || 465,
           secure: form.smtp_secure ?? true,
           user: form.smtp_user || form.email,
-          pass: form.smtp_pass,
+          pass: form.smtp_pass.trim().replace(/\s+/g, ""),
           from: form.email,
           to: form.email,
         },
@@ -185,7 +185,7 @@ export const EmailMarketingAddon = () => {
         toast({ title: "Falha no teste de conexão", description: data?.error || error?.message || "Erro desconhecido", variant: "destructive" });
         return;
       }
-      toast({ title: "✓ Conexão OK", description: `E-mail de teste enviado para ${data.sent_to}` });
+      toast({ title: "✓ Conexão OK", description: `Login SMTP validado para ${data.sent_to}` });
     } catch (e) {
       toast({
         title: "Falha no teste de conexão",
