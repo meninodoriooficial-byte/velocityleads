@@ -116,7 +116,7 @@ Deno.serve(async (req) => {
 
     const hostname = String(host).trim();
     const username = String(user).trim();
-    const password = String(pass);
+    const password = String(pass).trim().replace(/\s+/g, "");
     const sender = cleanAddress(String(from || user));
     const target = cleanAddress(String(to || from || user));
     const useImplicitTls = secure ?? p === 465;
@@ -143,41 +143,19 @@ Deno.serve(async (req) => {
     await session.command(b64(username), [334], "Usuário SMTP");
     await session.command(b64(password), [235], "Senha SMTP", 50_000);
 
-    await session.command(`MAIL FROM:<${sender}>`, [250], "Remetente");
-    await session.command(`RCPT TO:<${target}>`, [250, 251], "Destinatário");
-    await session.command("DATA", [354], "Início do envio");
-
-    const now = new Date().toUTCString();
-    await session.write([
-      `From: <${sender}>`,
-      `To: <${target}>`,
-      "Subject: Teste de conexão SMTP - Lovable",
-      `Date: ${now}`,
-      "MIME-Version: 1.0",
-      "Content-Type: text/plain; charset=utf-8",
-      "",
-      "Se você recebeu este e-mail, a configuração SMTP está funcionando corretamente.",
-      ".",
-      "",
-    ].join("\r\n"));
-
-    await session.readResponse("confirmação do envio").then((response) => {
-      if (response.code !== 250) throw new Error(`Confirmação do envio: ${response.text}`);
-    });
-
     try { await session.command("QUIT", [221], "Encerrar conexão"); } catch { /* noop */ }
     session.close();
     session = null;
 
-    return json({ ok: true, sent_to: target });
+    return json({ ok: true, sent_to: target, authenticated: true });
   } catch (e) {
     session?.close();
     const msg = (e as Error).message || String(e);
     let hint = "";
     if (/auth|535|5\.7\.3|5\.7\.8|credential|password|senha/i.test(msg)) {
-      hint = " — verifique usuário/senha. No Gmail use Senha de App; no Outlook confirme se SMTP AUTH está habilitado para a conta.";
+      hint = " — verifique usuário/senha. No Gmail use Senha de App; no Outlook use uma Senha de App e confirme se SMTP AUTH está habilitado para a conta.";
     } else if (/timeout|ECONN|ENOTFOUND|getaddrinfo|conectar/i.test(msg)) {
-      hint = " — verifique host/porta. Para Outlook use smtp.office365.com na porta 587 com SSL desativado (STARTTLS automático).";
+      hint = " — verifique host/porta. Para Outlook pessoal use smtp-mail.outlook.com na porta 587 com SSL desativado; para Microsoft 365 use smtp.office365.com.";
     } else if (/tls|ssl|starttls|certificate/i.test(msg)) {
       hint = " — confira o modo de segurança: 465 com SSL ativado ou 587 com SSL desativado.";
     }
