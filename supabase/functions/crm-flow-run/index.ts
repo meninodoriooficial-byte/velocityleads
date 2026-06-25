@@ -48,23 +48,70 @@ Deno.serve(async (req) => {
             const { data: inst } = await admin.from("user_whatsapp_instances").select("instance_name").eq("user_id", run.user_id).maybeSingle();
             if (inst?.instance_name) {
               const text = renderTags(String(step.text || ""), ctx);
-              const r = await fetch(`${baseUrl}/message/sendText/${encodeURIComponent(inst.instance_name)}`, {
-                method: "POST", headers: evoHeaders,
-                body: JSON.stringify({ number: conv.phone, text }),
-              });
-              const ok = r.ok;
-              await admin.from("crm_messages").insert({
-                conversation_id: conv.id, user_id: run.user_id,
-                direction: "out", type: "text", body: text,
-                status: ok ? "sent" : "failed",
-              });
+              const attachments: any[] = Array.isArray(step.attachments) ? step.attachments : [];
+              const instName = encodeURIComponent(inst.instance_name);
+              let anySent = false;
+              let lastPreview = text;
+
+              // 1) Texto (se houver)
+              if (text.trim()) {
+                const r = await fetch(`${baseUrl}/message/sendText/${instName}`, {
+                  method: "POST", headers: evoHeaders,
+                  body: JSON.stringify({ number: conv.phone, text }),
+                });
+                const ok = r.ok;
+                anySent ||= ok;
+                await admin.from("crm_messages").insert({
+                  conversation_id: conv.id, user_id: run.user_id,
+                  direction: "out", type: "text", body: text,
+                  status: ok ? "sent" : "failed",
+                });
+              }
+
+              // 2) Anexos
+              for (const a of attachments) {
+                const url = a?.url; if (!url) continue;
+                const mime = String(a?.mime || "");
+                const fileName = a?.name || "arquivo";
+                let endpoint = "sendMedia";
+                let payload: any;
+                let msgType: "image" | "video" | "audio" | "document" = "document";
+                if (mime.startsWith("image/")) {
+                  msgType = "image";
+                  payload = { number: conv.phone, mediatype: "image", mimetype: mime, media: url, fileName };
+                } else if (mime.startsWith("video/")) {
+                  msgType = "video";
+                  payload = { number: conv.phone, mediatype: "video", mimetype: mime, media: url, fileName };
+                } else if (mime.startsWith("audio/")) {
+                  msgType = "audio";
+                  endpoint = "sendWhatsAppAudio";
+                  payload = { number: conv.phone, audio: url };
+                } else {
+                  msgType = "document";
+                  payload = { number: conv.phone, mediatype: "document", mimetype: mime || "application/octet-stream", media: url, fileName };
+                }
+                const r = await fetch(`${baseUrl}/message/${endpoint}/${instName}`, {
+                  method: "POST", headers: evoHeaders, body: JSON.stringify(payload),
+                });
+                const ok = r.ok;
+                anySent ||= ok;
+                if (!ok) console.error("flow attach failed", endpoint, await r.text().catch(() => ""));
+                await admin.from("crm_messages").insert({
+                  conversation_id: conv.id, user_id: run.user_id,
+                  direction: "out", type: msgType, body: "",
+                  media_url: url, media_mime: mime, media_filename: fileName,
+                  status: ok ? "sent" : "failed",
+                });
+                if (!text.trim()) lastPreview = `[${msgType}] ${fileName}`;
+              }
+
               await admin.from("crm_conversations").update({
                 last_message_at: new Date().toISOString(),
-                last_message_preview: text.slice(0, 120),
+                last_message_preview: lastPreview.slice(0, 120),
               }).eq("id", conv.id);
               // incrementa cota
               const { data: addon } = await admin.from("user_addons").select("*").eq("user_id", run.user_id).eq("addon_slug", "whatsapp_crm").maybeSingle();
-              if (addon && ok) await admin.from("user_addons").update({ monthly_used: (addon.monthly_used || 0) + 1 }).eq("id", addon.id);
+              if (addon && anySent) await admin.from("user_addons").update({ monthly_used: (addon.monthly_used || 0) + 1 }).eq("id", addon.id);
             }
           } else if (step.type === "wait") {
             const minutes = Number(step.minutes || step.hours * 60 || 0);
