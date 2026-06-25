@@ -167,7 +167,40 @@ const getOverlay = (r: any, enr: any) => {
     tiktok:
       r.social_media?.tiktok || scraped.tiktok || aiSocials.tiktok || null,
   };
-  return { cnpj, email, phone, website, socios, social, status };
+  // Dados fiscais: IE, Simples, MEI, Capital Social
+  const ie =
+    brasil.inscricao_estadual ||
+    cdd.inscricao_estadual ||
+    ai.inscricao_estadual ||
+    null;
+  const inscricoesEstaduais: any[] = Array.isArray(brasil.inscricoes_estaduais)
+    ? brasil.inscricoes_estaduais
+    : [];
+  const simples =
+    typeof brasil.opcao_pelo_simples === "boolean"
+      ? brasil.opcao_pelo_simples
+      : typeof cdd.opcao_pelo_simples === "boolean"
+        ? cdd.opcao_pelo_simples
+        : null;
+  const mei =
+    typeof brasil.opcao_pelo_mei === "boolean"
+      ? brasil.opcao_pelo_mei
+      : typeof cdd.opcao_pelo_mei === "boolean"
+        ? cdd.opcao_pelo_mei
+        : null;
+  const capitalSocialRaw =
+    brasil.capital_social ?? cdd.capital_social ?? ai.capital_social ?? null;
+  let capitalSocial: string | null = null;
+  if (capitalSocialRaw != null && capitalSocialRaw !== "") {
+    const n = Number(capitalSocialRaw);
+    capitalSocial = Number.isFinite(n)
+      ? n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 2 })
+      : String(capitalSocialRaw);
+  }
+  return {
+    cnpj, email, phone, website, socios, social, status,
+    ie, inscricoesEstaduais, simples, mei, capitalSocial,
+  };
 };
 
 export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
