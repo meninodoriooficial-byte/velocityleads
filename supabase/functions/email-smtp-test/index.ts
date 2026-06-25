@@ -66,12 +66,12 @@ class SmtpSession {
     await withTimeout(this.writer.write(encoder.encode(raw)), 6_000, "Timeout ao enviar comando SMTP", () => this.close());
   }
 
-  async readResponse(label: string) {
+  async readResponse(label: string, timeoutMs = 8_000) {
     const lines: string[] = [];
     while (true) {
       let idx = this.buffer.indexOf("\n");
       while (idx < 0) {
-        const result = await withTimeout(this.reader.read(), 8_000, `Timeout aguardando resposta SMTP (${label})`, () => this.close());
+        const result = await withTimeout(this.reader.read(), timeoutMs, `Timeout aguardando resposta SMTP (${label})`, () => this.close());
         if (result.done) throw new Error(`Servidor encerrou a conexão durante ${label}`);
         this.buffer += decoder.decode(result.value, { stream: true });
         idx = this.buffer.indexOf("\n");
@@ -88,9 +88,9 @@ class SmtpSession {
     }
   }
 
-  async command(raw: string, expected: number[], label: string) {
+  async command(raw: string, expected: number[], label: string, timeoutMs = 8_000) {
     await this.write(`${raw}\r\n`);
-    const response = await this.readResponse(label);
+    const response = await this.readResponse(label, timeoutMs);
     if (!expected.includes(response.code)) {
       throw new Error(`${label}: ${response.text}`);
     }
@@ -141,7 +141,7 @@ Deno.serve(async (req) => {
 
     await session.command("AUTH LOGIN", [334], "Autenticação");
     await session.command(b64(username), [334], "Usuário SMTP");
-    await session.command(b64(password), [235], "Senha SMTP");
+    await session.command(b64(password), [235], "Senha SMTP", 50_000);
 
     await session.command(`MAIL FROM:<${sender}>`, [250], "Remetente");
     await session.command(`RCPT TO:<${target}>`, [250, 251], "Destinatário");
