@@ -19,7 +19,10 @@ function j(d: unknown, status = 200) {
 function extractMsg(m: any) {
   const key = m.key || {};
   const remoteJid: string = key.remoteJid || m.remoteJid || "";
-  const phone = remoteJid.replace(/@.*/, "").replace(/\D/g, "");
+  // Só importar mensagens privadas (@s.whatsapp.net). Ignorar grupos (@g.us),
+  // status (status@broadcast), newsletters etc.
+  const isUserChat = remoteJid.endsWith("@s.whatsapp.net");
+  const phone = isUserChat ? remoteJid.replace(/@.*/, "").replace(/\D/g, "") : "";
   const msg = m.message || {};
   let type = "text";
   let body: string | null = null;
@@ -35,6 +38,7 @@ function extractMsg(m: any) {
   else { body = "[mensagem não suportada]"; }
   return {
     phone,
+    isUserChat,
     contactName: m.pushName || null,
     type,
     body,
@@ -99,7 +103,9 @@ Deno.serve(async (req) => {
         let processed = 0;
         for (const m of list) {
           const x = extractMsg(m);
-          if (!x.phone || x.fromMe) continue;
+          if (!x.isUserChat || !x.phone || x.fromMe) continue;
+          // Telefones válidos no WhatsApp têm 10–15 dígitos (E.164)
+          if (x.phone.length < 10 || x.phone.length > 15) continue;
           if (x.ts && x.ts < sinceMs) continue;
           if (!x.evoId) continue;
 
