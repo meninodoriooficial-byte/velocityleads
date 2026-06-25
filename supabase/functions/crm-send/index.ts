@@ -1,6 +1,27 @@
 // Envia mensagem do CRM via Evolution API (texto, mídia, áudio, documento, botões).
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { z } from "npm:zod@3.23.8";
+
+const BUTTON_TYPES = ["reply", "copy", "url", "call", "pix"] as const;
+const ButtonSchema = z.object({
+  type: z.enum(BUTTON_TYPES).default("reply"),
+  displayText: z.string().trim().min(1, "displayText vazio").max(20, "displayText máx 20 chars"),
+  id: z.string().trim().max(256).optional(),
+  url: z.string().url().optional(),
+  copyCode: z.string().max(256).optional(),
+  phoneNumber: z.string().max(32).optional(),
+  currency: z.string().max(8).optional(),
+  name: z.string().max(120).optional(),
+  keyType: z.enum(["phone", "email", "cpf", "cnpj", "random"]).optional(),
+  key: z.string().max(256).optional(),
+}).superRefine((b, ctx) => {
+  if (b.type === "url" && !b.url) ctx.addIssue({ code: "custom", message: "type=url requer 'url'", path: ["url"] });
+  if (b.type === "copy" && !b.copyCode) ctx.addIssue({ code: "custom", message: "type=copy requer 'copyCode'", path: ["copyCode"] });
+  if (b.type === "call" && !b.phoneNumber) ctx.addIssue({ code: "custom", message: "type=call requer 'phoneNumber'", path: ["phoneNumber"] });
+  if (b.type === "pix" && (!b.key || !b.keyType)) ctx.addIssue({ code: "custom", message: "type=pix requer 'key' e 'keyType'", path: ["key"] });
+});
+const ButtonsPayloadSchema = z.array(ButtonSchema).min(1, "Envie ao menos 1 botão").max(3, "Máximo 3 botões");
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -143,14 +164,29 @@ Deno.serve(async (req) => {
       payload = { number: phone, audio: audioPayload };
     } else if (type === "buttons") {
       endpoint = `${baseUrl}/message/sendButtons/${encodeURIComponent(instance)}`;
+      // Normaliza entrada vinda do frontend (que usa { text, id } ou objetos completos)
+      const rawButtons = Array.isArray(buttons) ? buttons : [];
+      const normalized = rawButtons.map((b: any, i: number) => ({
+        type: typeof b?.type === "string" ? b.type : "reply",
+        displayText: String(b?.displayText ?? b?.text ?? ""),
+        id: b?.id ? String(b.id) : `btn_${i}`,
+        url: b?.url, copyCode: b?.copyCode, phoneNumber: b?.phoneNumber,
+        currency: b?.currency, name: b?.name, keyType: b?.keyType, key: b?.key,
+      }));
+      const parsed = ButtonsPayloadSchema.safeParse(normalized);
+      if (!parsed.success) {
+        return j({
+          ok: false,
+          error: "Botões inválidos",
+          details: parsed.error.issues.map((iss) => `buttons[${iss.path[0] ?? "?"}]: ${iss.message}`),
+        }, 400);
+      }
       payload = {
-        number: phone, title: body.title || "", description: text,
-        footer: body.footer || "",
-        buttons: (buttons || []).map((b: any, i: number) => ({
-          type: "reply",
-          displayText: b.text,
-          id: b.id || `btn_${i}`,
-        })),
+        number: phone,
+        title: String(body.title || ""),
+        description: text,
+        footer: String(body.footer || ""),
+        buttons: parsed.data,
       };
     }
 
