@@ -539,7 +539,7 @@ export const AllUserResults = () => {
                           >
                             <MailIcon
                               className={wasEmailed ? "size-4 text-white" : "size-4 text-primary"}
-                              fill={wasEmailed ? "#2563eb" : "none"}
+                              fill={wasEmailed ? "#16a34a" : "none"}
                             />
                           </Button>
                         );
