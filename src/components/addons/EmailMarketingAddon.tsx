@@ -431,10 +431,7 @@ export const EmailMarketingAddon = () => {
                       <a className="underline font-semibold" href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer">
                         Senha de App
                       </a>{" "}
-                      (com verificação em 2 etapas ativada). No Outlook, gere em{" "}
-                      <a className="underline font-semibold" href="https://account.live.com/proofs/Manage" target="_blank" rel="noreferrer">
-                        conta.live.com / Segurança
-                      </a>.
+                      (com verificação em 2 etapas ativada).
                     </p>
                   </div>
                 </div>
