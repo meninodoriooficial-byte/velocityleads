@@ -454,6 +454,57 @@ export const EmailMarketingAddon = () => {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={tutorialOpen !== null} onOpenChange={(o) => !o && setTutorialOpen(null)}>
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {tutorialOpen === "gmail" ? "📘 Senha de App — Gmail" : "📘 Senha de App — Outlook / Hotmail"}
+            </DialogTitle>
+          </DialogHeader>
+          {tutorialOpen === "gmail" && (
+            <div className="space-y-3 text-sm leading-relaxed">
+              <ol className="list-decimal pl-5 space-y-2">
+                <li>Acesse <a className="underline text-primary" href="https://myaccount.google.com/security" target="_blank" rel="noreferrer">myaccount.google.com/security</a>.</li>
+                <li>Ative a <strong>Verificação em duas etapas</strong> (obrigatório). Sem ela o Google não libera Senha de App.</li>
+                <li>Depois, acesse <a className="underline text-primary" href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer">myaccount.google.com/apppasswords</a>.</li>
+                <li>Em "Nome do app" digite algo como <em>"Lead SaaS"</em> e clique em <strong>Criar</strong>.</li>
+                <li>O Google mostrará uma senha de <strong>16 caracteres</strong> (ex.: <code>abcd efgh ijkl mnop</code>).</li>
+                <li>Copie e cole no campo <strong>Senha de app</strong> do formulário (espaços são removidos automaticamente).</li>
+                <li>Servidor: <code>smtp.gmail.com</code> · Porta: <code>465</code> · SSL: <strong>Sim</strong>.</li>
+              </ol>
+              <p className="text-xs text-muted-foreground">⚠️ Se não aparecer "Senhas de app", confirme a 2FA ativa e que não é conta Google Workspace com restrição.</p>
+              <DialogFooter className="gap-2 sm:gap-2">
+                <Button variant="outline" onClick={() => setTutorialOpen(null)}>Fechar</Button>
+                <Button asChild>
+                  <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer">Gerar Senha de App ↗</a>
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+          {tutorialOpen === "outlook" && (
+            <div className="space-y-3 text-sm leading-relaxed">
+              <ol className="list-decimal pl-5 space-y-2">
+                <li>Acesse <a className="underline text-primary" href="https://account.live.com/proofs/Manage" target="_blank" rel="noreferrer">account.live.com/proofs/Manage</a>.</li>
+                <li>Ative a <strong>Verificação em duas etapas</strong>. Sem isso a Microsoft bloqueia SMTP.</li>
+                <li>Em seguida, acesse <a className="underline text-primary" href="https://account.live.com/proofs/AppPassword" target="_blank" rel="noreferrer">account.live.com/proofs/AppPassword</a>.</li>
+                <li>Clique em <strong>Criar uma nova senha de app</strong>.</li>
+                <li>A Microsoft mostrará uma senha de <strong>16 caracteres</strong> sem espaços.</li>
+                <li>Copie e cole no campo <strong>Senha de app</strong> do formulário.</li>
+                <li>Servidor: <code>smtp-mail.outlook.com</code> · Porta: <code>587</code> · SSL: <strong>Não</strong> (STARTTLS).</li>
+                <li>Microsoft 365 corporativo: use <code>smtp.office365.com</code> e peça ao admin para liberar SMTP AUTH.</li>
+              </ol>
+              <p className="text-xs text-muted-foreground">⚠️ Erro <code>535 5.7.3 Authentication unsuccessful</code> = senha usada não é Senha de App ou a 2FA não está ativa.</p>
+              <DialogFooter className="gap-2 sm:gap-2">
+                <Button variant="outline" onClick={() => setTutorialOpen(null)}>Fechar</Button>
+                <Button asChild>
+                  <a href="https://account.live.com/proofs/AppPassword" target="_blank" rel="noreferrer">Gerar Senha de App ↗</a>
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={tplDlg} onOpenChange={setTplDlg}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{tplForm.id ? "Editar template" : "Novo template"}</DialogTitle></DialogHeader>
