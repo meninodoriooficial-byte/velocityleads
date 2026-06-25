@@ -54,10 +54,8 @@ export const EmailMarketingAddon = () => {
   const [dlgOpen, setDlgOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [activePreset, setActivePreset] = useState<"gmail" | "outlook" | "smtp" | null>(null);
-  const [tutorialOpen, setTutorialOpen] = useState<"gmail" | "outlook" | null>(null);
-  const [outlookWarnOpen, setOutlookWarnOpen] = useState(false);
-  const [connectingOAuth, setConnectingOAuth] = useState(false);
+  const [activePreset, setActivePreset] = useState<"gmail" | "smtp" | null>(null);
+  const [tutorialOpen, setTutorialOpen] = useState<"gmail" | null>(null);
   const [sendTestAcc, setSendTestAcc] = useState<Account | null>(null);
   const [sendTestTo, setSendTestTo] = useState("");
   const [sendingTest, setSendingTest] = useState(false);
@@ -159,31 +157,12 @@ export const EmailMarketingAddon = () => {
     load();
   };
 
-  const applyPreset = (p: "gmail" | "outlook" | "smtp") => {
+  const applyPreset = (p: "gmail" | "smtp") => {
     setActivePreset(p);
     if (p === "gmail") {
       setForm((f) => ({ ...f, provider: "gmail", smtp_host: "smtp.gmail.com", smtp_port: 465, smtp_secure: true, smtp_user: f.smtp_user || f.email || "" }));
-    } else if (p === "outlook") {
-      setForm((f) => ({ ...f, provider: "outlook", smtp_host: "smtp-mail.outlook.com", smtp_port: 587, smtp_secure: false, smtp_user: f.smtp_user || f.email || "" }));
-      setOutlookWarnOpen(true);
     } else {
       setForm((f) => ({ ...f, provider: "smtp" }));
-    }
-  };
-
-  const connectOutlookOAuth = async () => {
-    setConnectingOAuth(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("email-oauth-start", {
-        body: { provider: "microsoft", return_to: window.location.href },
-      });
-      if (error || !data?.url) {
-        toast({ title: "Falha ao iniciar OAuth", description: data?.error || error?.message || "Tente novamente.", variant: "destructive" });
-        return;
-      }
-      window.location.href = data.url;
-    } finally {
-      setConnectingOAuth(false);
     }
   };
 
@@ -398,15 +377,14 @@ export const EmailMarketingAddon = () => {
           <div className="space-y-3">
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground">Preencher automaticamente</Label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <Button type="button" variant="outline" onClick={() => applyPreset("gmail")} className={activePreset === "gmail" ? "bg-green-600 text-white border-green-600 hover:bg-green-700 hover:text-white" : ""}>Gmail</Button>
-                <Button type="button" variant="outline" onClick={() => applyPreset("outlook")} className={activePreset === "outlook" ? "bg-green-600 text-white border-green-600 hover:bg-green-700 hover:text-white" : ""}>Outlook</Button>
                 <Button type="button" variant="outline" onClick={() => applyPreset("smtp")} className={activePreset === "smtp" ? "bg-green-600 text-white border-green-600 hover:bg-green-700 hover:text-white" : ""}>SMTP genérico</Button>
               </div>
             </div>
-            {(activePreset === "gmail" || activePreset === "outlook") && (
+            {activePreset === "gmail" && (
               <Button type="button" variant="secondary" size="sm" className="w-full" onClick={() => setTutorialOpen(activePreset)}>
-                📘 Ver tutorial: como obter a Senha de App {activePreset === "gmail" ? "do Gmail" : "do Outlook"}
+                📘 Ver tutorial: como obter a Senha de App do Gmail
               </Button>
             )}
             <div className="space-y-1">
@@ -417,7 +395,7 @@ export const EmailMarketingAddon = () => {
               <Label>Nome de exibição</Label>
               <Input value={form.display_name || ""} onChange={(e) => setForm({ ...form, display_name: e.target.value })} placeholder="Sua Empresa" />
             </div>
-            {(form.provider === "smtp" || form.provider === "gmail" || form.provider === "outlook") && (
+            {(form.provider === "smtp" || form.provider === "gmail") && (
               <>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1 col-span-2">
@@ -506,64 +484,6 @@ export const EmailMarketingAddon = () => {
               </DialogFooter>
             </div>
           )}
-          {tutorialOpen === "outlook" && (
-            <div className="space-y-3 text-sm leading-relaxed">
-              <ol className="list-decimal pl-5 space-y-2">
-                <li>Acesse <a className="underline text-primary" href="https://account.live.com/proofs/Manage" target="_blank" rel="noreferrer">account.live.com/proofs/Manage</a>.</li>
-                <li>Ative a <strong>Verificação em duas etapas</strong>. Sem isso a Microsoft bloqueia SMTP.</li>
-                <li>Em seguida, acesse <a className="underline text-primary" href="https://account.live.com/proofs/AppPassword" target="_blank" rel="noreferrer">account.live.com/proofs/AppPassword</a>.</li>
-                <li>Clique em <strong>Criar uma nova senha de app</strong>.</li>
-                <li>A Microsoft mostrará uma senha de <strong>16 caracteres</strong> sem espaços.</li>
-                <li>Copie e cole no campo <strong>Senha de app</strong> do formulário.</li>
-                <li>Servidor: <code>smtp-mail.outlook.com</code> · Porta: <code>587</code> · SSL: <strong>Não</strong> (STARTTLS).</li>
-                <li>Microsoft 365 corporativo: use <code>smtp.office365.com</code> e peça ao admin para liberar SMTP AUTH.</li>
-              </ol>
-              <p className="text-xs text-muted-foreground">⚠️ Erro <code>535 5.7.3 Authentication unsuccessful</code> = senha usada não é Senha de App ou a 2FA não está ativa.</p>
-              <DialogFooter className="gap-2 sm:gap-2">
-                <Button variant="outline" onClick={() => setTutorialOpen(null)}>Fechar</Button>
-                <Button asChild>
-                  <a href="https://account.live.com/proofs/AppPassword" target="_blank" rel="noreferrer">Gerar Senha de App ↗</a>
-                </Button>
-              </DialogFooter>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={outlookWarnOpen} onOpenChange={setOutlookWarnOpen}>
-        <DialogContent className="sm:max-w-md z-[100]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-red-400">
-              <AlertTriangle className="size-5" /> SMTP do Outlook está bloqueado
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 text-sm leading-relaxed">
-            <p>
-              Desde <strong>setembro/2024</strong>, a Microsoft <strong>desativou</strong> a autenticação SMTP básica
-              para contas pessoais <code>@outlook.com</code> / <code>@hotmail.com</code> / <code>@live.com</code> —
-              mesmo com Senha de App e verificação em 2 etapas ativadas.
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Erro retornado pelo servidor: <code>535 5.7.139 SmtpClientAuthentication is disabled</code>.
-            </p>
-            <div className="rounded-lg border border-primary/30 bg-primary/10 p-3 text-xs space-y-1">
-              <p className="font-semibold">✅ Solução recomendada:</p>
-              <p>Conecte sua conta Outlook via <strong>OAuth</strong> (método oficial da Microsoft para contas pessoais).</p>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Alternativas: use uma conta <strong>Gmail</strong> com Senha de App, ou peça ao admin do Microsoft 365
-              corporativo para liberar "Authenticated SMTP".
-            </p>
-          </div>
-          <DialogFooter className="gap-2 sm:gap-2">
-            <Button variant="outline" onClick={() => setOutlookWarnOpen(false)} disabled={connectingOAuth}>
-              Fechar
-            </Button>
-            <Button onClick={connectOutlookOAuth} disabled={connectingOAuth}>
-              {connectingOAuth ? <Loader2 className="size-4 mr-2 animate-spin" /> : null}
-              Conectar com Outlook (OAuth)
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 
