@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { PasswordInput } from "@/components/ui/password-input";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";

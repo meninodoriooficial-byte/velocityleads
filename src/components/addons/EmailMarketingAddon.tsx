@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { PasswordInput } from "@/components/ui/password-input";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -394,7 +395,7 @@ export const EmailMarketingAddon = () => {
                 </div>
                 <div className="space-y-1">
                   <Label>Senha de app *</Label>
-                  <Input type="password" value={form.smtp_pass || ""} onChange={(e) => setForm({ ...form, smtp_pass: e.target.value })} />
+                  <PasswordInput value={form.smtp_pass || ""} onChange={(e) => setForm({ ...form, smtp_pass: e.target.value })} />
                   <p className="text-[10px] text-muted-foreground">
                     No Gmail é obrigatório usar uma <a className="underline" href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer">Senha de App</a> (com verificação em 2 etapas ativada). No Outlook, gere em conta.live.com / Segurança.
                   </p>

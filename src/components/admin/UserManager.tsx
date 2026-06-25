@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { PasswordInput } from "@/components/ui/password-input";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -265,7 +266,7 @@ export const UserManager = () => {
               </div>
               <div>
                 <Label>Senha *</Label>
-                <Input type="password" value={newUser.password} onChange={(e) => setNewUser({ ...newUser, password: e.target.value })} />
+                <PasswordInput value={newUser.password} onChange={(e) => setNewUser({ ...newUser, password: e.target.value })} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -446,7 +447,7 @@ export const UserManager = () => {
             </DialogHeader>
             <div>
               <Label>Nova senha</Label>
-              <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+              <PasswordInput value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setPwOpen(false)}>Cancelar</Button>
