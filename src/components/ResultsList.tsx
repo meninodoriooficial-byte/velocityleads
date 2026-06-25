@@ -631,6 +631,28 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
                         )}
                       </div>
                     )}
+                    {(ov.ie || ov.simples != null || ov.mei != null || ov.capitalSocial) && (
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {ov.mei === true && (
+                          <Badge className="text-[10px] bg-emerald-600 hover:bg-emerald-600 text-white border-transparent">MEI</Badge>
+                        )}
+                        {ov.mei === false && (
+                          <Badge variant="outline" className="text-[10px]">Não MEI</Badge>
+                        )}
+                        {ov.simples === true && (
+                          <Badge className="text-[10px] bg-sky-600 hover:bg-sky-600 text-white border-transparent">Simples Nacional</Badge>
+                        )}
+                        {ov.simples === false && (
+                          <Badge variant="outline" className="text-[10px]">Lucro Presumido/Real</Badge>
+                        )}
+                        {ov.ie && (
+                          <Badge variant="secondary" className="text-[10px] font-mono">IE: {ov.ie}</Badge>
+                        )}
+                        {ov.capitalSocial && (
+                          <Badge variant="secondary" className="text-[10px]">Capital: {ov.capitalSocial}</Badge>
+                        )}
+                      </div>
+                    )}
                     {r.business_type && (
                       <Badge variant="secondary" className="text-[10px]">
                         <Building2 className="w-3 h-3 mr-1" />
