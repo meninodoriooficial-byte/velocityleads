@@ -275,6 +275,21 @@ export const ResultsSection = ({ searchData }: ResultsSectionProps) => {
                 {enriching ? "Enriquecendo..." : `Enriquecer todos (${allResults.filter((r: any) => !r.enriched_at).length})`}
               </Button>
             )}
+            {allResults.length > 0 && hasMore && (
+              <Button
+                onClick={loadMoreResults}
+                size="sm"
+                disabled={loading || isFetchingBatch}
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                {isFetchingBatch ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                )}
+                Capturar mais 100
+              </Button>
+            )}
             {allResults.length > 0 && (
               <Button onClick={exportToCSV} size="sm" className="btn-volt">
                 <Download className="w-4 h-4 mr-2" />
