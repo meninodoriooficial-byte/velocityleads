@@ -55,6 +55,7 @@ export const EmailMarketingAddon = () => {
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [activePreset, setActivePreset] = useState<"gmail" | "outlook" | "smtp" | null>(null);
+  const [tutorialOpen, setTutorialOpen] = useState<"gmail" | "outlook" | null>(null);
   const [form, setForm] = useState<Partial<Account>>({
     provider: "smtp",
     smtp_port: 465,
@@ -378,44 +379,10 @@ export const EmailMarketingAddon = () => {
                 <Button type="button" variant="outline" onClick={() => applyPreset("smtp")} className={activePreset === "smtp" ? "bg-green-600 text-white border-green-600 hover:bg-green-700 hover:text-white" : ""}>SMTP genérico</Button>
               </div>
             </div>
-            {activePreset === "gmail" && (
-              <Accordion type="single" collapsible className="rounded-lg border border-border bg-muted/30 px-3">
-                <AccordionItem value="t" className="border-0">
-                  <AccordionTrigger className="text-sm">📘 Como obter a Senha de App do Gmail</AccordionTrigger>
-                  <AccordionContent className="text-xs leading-relaxed space-y-2">
-                    <ol className="list-decimal pl-4 space-y-1.5">
-                      <li>Acesse <a className="underline text-primary" href="https://myaccount.google.com/security" target="_blank" rel="noreferrer">myaccount.google.com/security</a>.</li>
-                      <li>Ative a <strong>Verificação em duas etapas</strong> (obrigatório). Sem ela o Google não libera a opção de Senha de App.</li>
-                      <li>Depois, acesse <a className="underline text-primary" href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer">myaccount.google.com/apppasswords</a>.</li>
-                      <li>Em "Nome do app" digite algo como <em>"Lead SaaS"</em> e clique em <strong>Criar</strong>.</li>
-                      <li>O Google mostrará uma senha de <strong>16 caracteres</strong> (ex.: <code>abcd efgh ijkl mnop</code>).</li>
-                      <li>Copie e cole no campo <strong>Senha de app</strong> abaixo (pode colar com ou sem espaços — removemos automaticamente).</li>
-                      <li>Servidor: <code>smtp.gmail.com</code> · Porta: <code>465</code> · SSL: <strong>Sim</strong>.</li>
-                    </ol>
-                    <p className="text-muted-foreground">⚠️ Se não aparecer a opção "Senhas de app", confirme que a verificação em 2 etapas está ativa e que sua conta não tem restrições corporativas (Google Workspace).</p>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-            )}
-            {activePreset === "outlook" && (
-              <Accordion type="single" collapsible className="rounded-lg border border-border bg-muted/30 px-3">
-                <AccordionItem value="t" className="border-0">
-                  <AccordionTrigger className="text-sm">📘 Como obter a Senha de App do Outlook/Hotmail</AccordionTrigger>
-                  <AccordionContent className="text-xs leading-relaxed space-y-2">
-                    <ol className="list-decimal pl-4 space-y-1.5">
-                      <li>Acesse <a className="underline text-primary" href="https://account.live.com/proofs/Manage" target="_blank" rel="noreferrer">account.live.com/proofs/Manage</a>.</li>
-                      <li>Ative a <strong>Verificação em duas etapas</strong> (clique em "Ativar" em "Verificação em duas etapas"). Sem isso a Microsoft bloqueia SMTP.</li>
-                      <li>Em seguida, acesse <a className="underline text-primary" href="https://account.live.com/proofs/AppPassword" target="_blank" rel="noreferrer">account.live.com/proofs/AppPassword</a>.</li>
-                      <li>Clique em <strong>Criar uma nova senha de app</strong>.</li>
-                      <li>A Microsoft mostrará uma senha de <strong>16 caracteres</strong> sem espaços.</li>
-                      <li>Copie e cole no campo <strong>Senha de app</strong> abaixo.</li>
-                      <li>Servidor: <code>smtp-mail.outlook.com</code> · Porta: <code>587</code> · SSL: <strong>Não</strong> (STARTTLS).</li>
-                      <li>Para contas Microsoft 365 corporativas use <code>smtp.office365.com</code> e peça ao admin para liberar SMTP AUTH.</li>
-                    </ol>
-                    <p className="text-muted-foreground">⚠️ Erro <code>535 5.7.3 Authentication unsuccessful</code> = a senha usada não é uma Senha de App ou a 2FA não está ativa.</p>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
+            {(activePreset === "gmail" || activePreset === "outlook") && (
+              <Button type="button" variant="secondary" size="sm" className="w-full" onClick={() => setTutorialOpen(activePreset)}>
+                📘 Ver tutorial: como obter a Senha de App {activePreset === "gmail" ? "do Gmail" : "do Outlook"}
+              </Button>
             )}
             <div className="space-y-1">
               <Label>E-mail *</Label>
@@ -484,6 +451,57 @@ export const EmailMarketingAddon = () => {
               {saving ? <Loader2 className="size-4 mr-2 animate-spin" /> : null} Salvar
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={tutorialOpen !== null} onOpenChange={(o) => !o && setTutorialOpen(null)}>
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {tutorialOpen === "gmail" ? "📘 Senha de App — Gmail" : "📘 Senha de App — Outlook / Hotmail"}
+            </DialogTitle>
+          </DialogHeader>
+          {tutorialOpen === "gmail" && (
+            <div className="space-y-3 text-sm leading-relaxed">
+              <ol className="list-decimal pl-5 space-y-2">
+                <li>Acesse <a className="underline text-primary" href="https://myaccount.google.com/security" target="_blank" rel="noreferrer">myaccount.google.com/security</a>.</li>
+                <li>Ative a <strong>Verificação em duas etapas</strong> (obrigatório). Sem ela o Google não libera Senha de App.</li>
+                <li>Depois, acesse <a className="underline text-primary" href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer">myaccount.google.com/apppasswords</a>.</li>
+                <li>Em "Nome do app" digite algo como <em>"Lead SaaS"</em> e clique em <strong>Criar</strong>.</li>
+                <li>O Google mostrará uma senha de <strong>16 caracteres</strong> (ex.: <code>abcd efgh ijkl mnop</code>).</li>
+                <li>Copie e cole no campo <strong>Senha de app</strong> do formulário (espaços são removidos automaticamente).</li>
+                <li>Servidor: <code>smtp.gmail.com</code> · Porta: <code>465</code> · SSL: <strong>Sim</strong>.</li>
+              </ol>
+              <p className="text-xs text-muted-foreground">⚠️ Se não aparecer "Senhas de app", confirme a 2FA ativa e que não é conta Google Workspace com restrição.</p>
+              <DialogFooter className="gap-2 sm:gap-2">
+                <Button variant="outline" onClick={() => setTutorialOpen(null)}>Fechar</Button>
+                <Button asChild>
+                  <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer">Gerar Senha de App ↗</a>
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+          {tutorialOpen === "outlook" && (
+            <div className="space-y-3 text-sm leading-relaxed">
+              <ol className="list-decimal pl-5 space-y-2">
+                <li>Acesse <a className="underline text-primary" href="https://account.live.com/proofs/Manage" target="_blank" rel="noreferrer">account.live.com/proofs/Manage</a>.</li>
+                <li>Ative a <strong>Verificação em duas etapas</strong>. Sem isso a Microsoft bloqueia SMTP.</li>
+                <li>Em seguida, acesse <a className="underline text-primary" href="https://account.live.com/proofs/AppPassword" target="_blank" rel="noreferrer">account.live.com/proofs/AppPassword</a>.</li>
+                <li>Clique em <strong>Criar uma nova senha de app</strong>.</li>
+                <li>A Microsoft mostrará uma senha de <strong>16 caracteres</strong> sem espaços.</li>
+                <li>Copie e cole no campo <strong>Senha de app</strong> do formulário.</li>
+                <li>Servidor: <code>smtp-mail.outlook.com</code> · Porta: <code>587</code> · SSL: <strong>Não</strong> (STARTTLS).</li>
+                <li>Microsoft 365 corporativo: use <code>smtp.office365.com</code> e peça ao admin para liberar SMTP AUTH.</li>
+              </ol>
+              <p className="text-xs text-muted-foreground">⚠️ Erro <code>535 5.7.3 Authentication unsuccessful</code> = senha usada não é Senha de App ou a 2FA não está ativa.</p>
+              <DialogFooter className="gap-2 sm:gap-2">
+                <Button variant="outline" onClick={() => setTutorialOpen(null)}>Fechar</Button>
+                <Button asChild>
+                  <a href="https://account.live.com/proofs/AppPassword" target="_blank" rel="noreferrer">Gerar Senha de App ↗</a>
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
