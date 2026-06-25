@@ -220,10 +220,52 @@ export function FlowBuilder({ value, onChange }: Props) {
             )}
 
             {selected.type === "send_message" && (
-              <div className="space-y-1">
-                <Label className="text-xs">Mensagem</Label>
-                <Textarea rows={6} value={(selected.data as any).text || ""} onChange={(e) => updateData({ text: e.target.value })} />
-                <p className="text-[10px] text-muted-foreground">Use {"{{nome}}"} e {"{{telefone}}"} para personalizar.</p>
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Mensagem</Label>
+                  <Textarea rows={6} value={(selected.data as any).text || ""} onChange={(e) => updateData({ text: e.target.value })} />
+                  <p className="text-[10px] text-muted-foreground">Use {"{{nome}}"} e {"{{telefone}}"} para personalizar.</p>
+                </div>
+                <div className="space-y-2 pt-2 border-t border-border/60">
+                  <Label className="text-xs flex items-center gap-1.5">
+                    <Paperclip className="size-3.5" /> Anexos
+                  </Label>
+                  {Array.isArray((selected.data as any).attachments) && (selected.data as any).attachments.length > 0 && (
+                    <div className="space-y-1">
+                      {(selected.data as any).attachments.map((a: any, i: number) => {
+                        const Icon = attachmentIcon(a.mime || "");
+                        return (
+                          <div key={i} className="flex items-center gap-2 p-2 rounded-md border border-border/60 bg-muted/40 text-xs">
+                            <Icon className="size-3.5 shrink-0 text-primary" />
+                            <span className="truncate flex-1" title={a.name}>{a.name}</span>
+                            <button type="button" onClick={() => removeAttachment(i)} className="text-destructive hover:opacity-70">
+                              <X className="size-3.5" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    multiple
+                    accept="image/*,audio/*,text/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                    className="hidden"
+                    onChange={(e) => handleAttach(e.target.files)}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    disabled={uploading}
+                    onClick={() => fileRef.current?.click()}
+                  >
+                    {uploading ? <Loader2 className="size-3.5 mr-2 animate-spin" /> : <Paperclip className="size-3.5 mr-2" />}
+                    Vincular arquivo (áudio, imagem, PDF, Word, texto)
+                  </Button>
+                </div>
               </div>
             )}
 
