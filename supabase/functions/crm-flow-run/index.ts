@@ -8,6 +8,21 @@ function renderTags(s: string, ctx: Record<string, any>) {
   return (s || "").replace(TAG_RE, (_, k) => (ctx[k.toLowerCase()] ?? "") as string);
 }
 
+async function urlToBase64(url: string): Promise<{ b64: string; mime: string } | null> {
+  try {
+    const r = await fetch(url);
+    if (!r.ok) { console.error("download media failed", r.status, url); return null; }
+    const mime = r.headers.get("content-type") || "application/octet-stream";
+    const buf = new Uint8Array(await r.arrayBuffer());
+    let binary = "";
+    const CHUNK = 8192;
+    for (let i = 0; i < buf.length; i += CHUNK) {
+      binary += String.fromCharCode.apply(null, Array.from(buf.subarray(i, Math.min(i + CHUNK, buf.length))));
+    }
+    return { b64: btoa(binary), mime };
+  } catch (e) { console.error("download media err", e); return null; }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -71,24 +86,35 @@ Deno.serve(async (req) => {
               // 2) Anexos
               for (const a of attachments) {
                 const url = a?.url; if (!url) continue;
-                const mime = String(a?.mime || "");
+                const dl = await urlToBase64(url);
+                if (!dl) {
+                  console.error("flow attach skipped (download failed)", url);
+                  await admin.from("crm_messages").insert({
+                    conversation_id: conv.id, user_id: run.user_id,
+                    direction: "out", type: "document", body: "",
+                    media_url: url, media_mime: String(a?.mime || ""), media_filename: a?.name || "arquivo",
+                    status: "failed",
+                  });
+                  continue;
+                }
+                const mime = String(a?.mime || dl.mime || "");
                 const fileName = a?.name || "arquivo";
                 let endpoint = "sendMedia";
                 let payload: any;
                 let msgType: "image" | "video" | "audio" | "document" = "document";
                 if (mime.startsWith("image/")) {
                   msgType = "image";
-                  payload = { number: conv.phone, mediatype: "image", mimetype: mime, media: url, fileName };
+                  payload = { number: conv.phone, mediatype: "image", mimetype: mime, media: dl.b64, fileName };
                 } else if (mime.startsWith("video/")) {
                   msgType = "video";
-                  payload = { number: conv.phone, mediatype: "video", mimetype: mime, media: url, fileName };
+                  payload = { number: conv.phone, mediatype: "video", mimetype: mime, media: dl.b64, fileName };
                 } else if (mime.startsWith("audio/")) {
                   msgType = "audio";
                   endpoint = "sendWhatsAppAudio";
-                  payload = { number: conv.phone, audio: url };
+                  payload = { number: conv.phone, audio: dl.b64 };
                 } else {
                   msgType = "document";
-                  payload = { number: conv.phone, mediatype: "document", mimetype: mime || "application/octet-stream", media: url, fileName };
+                  payload = { number: conv.phone, mediatype: "document", mimetype: mime || "application/octet-stream", media: dl.b64, fileName };
                 }
                 const r = await fetch(`${baseUrl}/message/${endpoint}/${instName}`, {
                   method: "POST", headers: evoHeaders, body: JSON.stringify(payload),
