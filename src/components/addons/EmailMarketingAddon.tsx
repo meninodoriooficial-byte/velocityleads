@@ -173,6 +173,20 @@ export const EmailMarketingAddon = () => {
       toast({ title: "Preencha host, usuário/e-mail e senha", variant: "destructive" });
       return;
     }
+    const emailLc = (form.smtp_user || form.email || "").toLowerCase();
+    const host = (form.smtp_host || "").toLowerCase();
+    if (host.includes("outlook") || host.includes("office365") || host.includes("hotmail") || host.includes("live")) {
+      if (!/@(outlook|hotmail|live|msn)\.[a-z.]+$/.test(emailLc) && !emailLc.includes("@")) {
+        // skip
+      } else if (!/@(outlook|hotmail|live|msn)\.[a-z.]+$/.test(emailLc)) {
+        toast({ title: "E-mail incompatível com Outlook SMTP", description: `${emailLc} não é uma conta Microsoft. O servidor smtp-mail.outlook.com só aceita contas @outlook.com, @hotmail.com, @live.com ou Microsoft 365. Use o preset Gmail para contas @gmail.com.`, variant: "destructive" });
+        return;
+      }
+    }
+    if (host.includes("gmail") && emailLc && !emailLc.endsWith("@gmail.com") && !emailLc.includes("@googlemail.com")) {
+      toast({ title: "E-mail incompatível com Gmail SMTP", description: `${emailLc} não é uma conta Google. Use o preset correto para o seu provedor.`, variant: "destructive" });
+      return;
+    }
     setTesting(true);
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 70000);
