@@ -56,6 +56,8 @@ export const EmailMarketingAddon = () => {
   const [testing, setTesting] = useState(false);
   const [activePreset, setActivePreset] = useState<"gmail" | "outlook" | "smtp" | null>(null);
   const [tutorialOpen, setTutorialOpen] = useState<"gmail" | "outlook" | null>(null);
+  const [outlookWarnOpen, setOutlookWarnOpen] = useState(false);
+  const [connectingOAuth, setConnectingOAuth] = useState(false);
   const [sendTestAcc, setSendTestAcc] = useState<Account | null>(null);
   const [sendTestTo, setSendTestTo] = useState("");
   const [sendingTest, setSendingTest] = useState(false);
@@ -163,8 +165,25 @@ export const EmailMarketingAddon = () => {
       setForm((f) => ({ ...f, provider: "gmail", smtp_host: "smtp.gmail.com", smtp_port: 465, smtp_secure: true, smtp_user: f.smtp_user || f.email || "" }));
     } else if (p === "outlook") {
       setForm((f) => ({ ...f, provider: "outlook", smtp_host: "smtp-mail.outlook.com", smtp_port: 587, smtp_secure: false, smtp_user: f.smtp_user || f.email || "" }));
+      setOutlookWarnOpen(true);
     } else {
       setForm((f) => ({ ...f, provider: "smtp" }));
+    }
+  };
+
+  const connectOutlookOAuth = async () => {
+    setConnectingOAuth(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("email-oauth-start", {
+        body: { provider: "microsoft", return_to: window.location.href },
+      });
+      if (error || !data?.url) {
+        toast({ title: "Falha ao iniciar OAuth", description: data?.error || error?.message || "Tente novamente.", variant: "destructive" });
+        return;
+      }
+      window.location.href = data.url;
+    } finally {
+      setConnectingOAuth(false);
     }
   };
 
@@ -405,24 +424,6 @@ export const EmailMarketingAddon = () => {
                     <Label>Servidor SMTP *</Label>
                     <Input value={form.smtp_host || ""} onChange={(e) => setForm({ ...form, smtp_host: e.target.value })} placeholder="smtp.gmail.com" />
                   </div>
-                  {form.smtp_host === "smtp-mail.outlook.com" && (
-                    <div className="col-span-2 flex items-start gap-2 rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-xs text-red-200">
-                      <AlertTriangle className="size-4 mt-0.5 shrink-0 text-red-400" />
-                      <div className="space-y-1 leading-relaxed">
-                        <p className="font-semibold text-red-100">⚠️ SMTP do Outlook pessoal foi BLOQUEADO pela Microsoft (set/2024)</p>
-                        <p>
-                          Contas <code>@outlook.com</code> / <code>@hotmail.com</code> não conseguem mais autenticar via SMTP,
-                          mesmo com Senha de App + 2FA. Erro retornado: <code>535 5.7.139 SmtpClientAuthentication is disabled</code>.
-                        </p>
-                        <p className="font-semibold pt-1">Soluções recomendadas:</p>
-                        <ul className="list-disc pl-4 space-y-0.5">
-                          <li>Use o botão <strong>"Conectar com Outlook"</strong> (OAuth) — único método oficial para contas pessoais.</li>
-                          <li>Ou troque para o preset <strong>Gmail</strong> com uma conta <code>@gmail.com</code> + Senha de App.</li>
-                          <li>Microsoft 365 corporativo: peça ao admin liberar "Authenticated SMTP" e use <code>smtp.office365.com</code>.</li>
-                        </ul>
-                      </div>
-                    </div>
-                  )}
                   <div className="space-y-1">
                     <Label>Porta</Label>
                     <Input type="number" value={form.smtp_port || 465} onChange={(e) => setForm({ ...form, smtp_port: Number(e.target.value) })} />
@@ -526,6 +527,43 @@ export const EmailMarketingAddon = () => {
               </DialogFooter>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={outlookWarnOpen} onOpenChange={setOutlookWarnOpen}>
+        <DialogContent className="sm:max-w-md z-[100]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-400">
+              <AlertTriangle className="size-5" /> SMTP do Outlook está bloqueado
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm leading-relaxed">
+            <p>
+              Desde <strong>setembro/2024</strong>, a Microsoft <strong>desativou</strong> a autenticação SMTP básica
+              para contas pessoais <code>@outlook.com</code> / <code>@hotmail.com</code> / <code>@live.com</code> —
+              mesmo com Senha de App e verificação em 2 etapas ativadas.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Erro retornado pelo servidor: <code>535 5.7.139 SmtpClientAuthentication is disabled</code>.
+            </p>
+            <div className="rounded-lg border border-primary/30 bg-primary/10 p-3 text-xs space-y-1">
+              <p className="font-semibold">✅ Solução recomendada:</p>
+              <p>Conecte sua conta Outlook via <strong>OAuth</strong> (método oficial da Microsoft para contas pessoais).</p>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Alternativas: use uma conta <strong>Gmail</strong> com Senha de App, ou peça ao admin do Microsoft 365
+              corporativo para liberar "Authenticated SMTP".
+            </p>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" onClick={() => setOutlookWarnOpen(false)} disabled={connectingOAuth}>
+              Fechar
+            </Button>
+            <Button onClick={connectOutlookOAuth} disabled={connectingOAuth}>
+              {connectingOAuth ? <Loader2 className="size-4 mr-2 animate-spin" /> : null}
+              Conectar com Outlook (OAuth)
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
