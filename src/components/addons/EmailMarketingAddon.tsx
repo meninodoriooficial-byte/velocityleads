@@ -424,24 +424,6 @@ export const EmailMarketingAddon = () => {
                     <Label>Servidor SMTP *</Label>
                     <Input value={form.smtp_host || ""} onChange={(e) => setForm({ ...form, smtp_host: e.target.value })} placeholder="smtp.gmail.com" />
                   </div>
-                  {form.smtp_host === "smtp-mail.outlook.com" && (
-                    <div className="col-span-2 flex items-start gap-2 rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-xs text-red-200">
-                      <AlertTriangle className="size-4 mt-0.5 shrink-0 text-red-400" />
-                      <div className="space-y-1 leading-relaxed">
-                        <p className="font-semibold text-red-100">⚠️ SMTP do Outlook pessoal foi BLOQUEADO pela Microsoft (set/2024)</p>
-                        <p>
-                          Contas <code>@outlook.com</code> / <code>@hotmail.com</code> não conseguem mais autenticar via SMTP,
-                          mesmo com Senha de App + 2FA. Erro retornado: <code>535 5.7.139 SmtpClientAuthentication is disabled</code>.
-                        </p>
-                        <p className="font-semibold pt-1">Soluções recomendadas:</p>
-                        <ul className="list-disc pl-4 space-y-0.5">
-                          <li>Use o botão <strong>"Conectar com Outlook"</strong> (OAuth) — único método oficial para contas pessoais.</li>
-                          <li>Ou troque para o preset <strong>Gmail</strong> com uma conta <code>@gmail.com</code> + Senha de App.</li>
-                          <li>Microsoft 365 corporativo: peça ao admin liberar "Authenticated SMTP" e use <code>smtp.office365.com</code>.</li>
-                        </ul>
-                      </div>
-                    </div>
-                  )}
                   <div className="space-y-1">
                     <Label>Porta</Label>
                     <Input type="number" value={form.smtp_port || 465} onChange={(e) => setForm({ ...form, smtp_port: Number(e.target.value) })} />
