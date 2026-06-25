@@ -54,10 +54,8 @@ export const EmailMarketingAddon = () => {
   const [dlgOpen, setDlgOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [activePreset, setActivePreset] = useState<"gmail" | "outlook" | "smtp" | null>(null);
-  const [tutorialOpen, setTutorialOpen] = useState<"gmail" | "outlook" | null>(null);
-  const [outlookWarnOpen, setOutlookWarnOpen] = useState(false);
-  const [connectingOAuth, setConnectingOAuth] = useState(false);
+  const [activePreset, setActivePreset] = useState<"gmail" | "smtp" | null>(null);
+  const [tutorialOpen, setTutorialOpen] = useState<"gmail" | null>(null);
   const [sendTestAcc, setSendTestAcc] = useState<Account | null>(null);
   const [sendTestTo, setSendTestTo] = useState("");
   const [sendingTest, setSendingTest] = useState(false);
