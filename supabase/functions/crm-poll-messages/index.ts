@@ -103,6 +103,10 @@ Deno.serve(async (req) => {
           : Array.isArray(raw?.messages?.records) ? raw.messages.records
           : Array.isArray(raw?.records) ? raw.records
           : Array.isArray(raw?.data) ? raw.data : [];
+        console.log(`[poll ${inst.instance_name}] findMessages returned ${list.length} records, sinceMs=${sinceMs}`);
+        if (list.length > 0) {
+          console.log(`[poll ${inst.instance_name}] sample`, JSON.stringify(list[0]).slice(0, 800));
+        }
 
         let processed = 0;
         for (const m of list) {
