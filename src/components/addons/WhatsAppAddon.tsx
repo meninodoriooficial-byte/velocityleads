@@ -26,12 +26,27 @@ export const WhatsAppAddon = () => {
   const [busy, setBusy] = useState(false);
   const [profile, setProfile] = useState<{ name?: string | null; picture?: string | null; number?: string | null } | null>(null);
   const pollRef = useRef<number | null>(null);
+  const heartbeatRef = useRef<number | null>(null);
 
   const stopPolling = () => {
     if (pollRef.current !== null) {
       clearInterval(pollRef.current);
       pollRef.current = null;
     }
+  };
+
+  const stopHeartbeat = () => {
+    if (heartbeatRef.current !== null) {
+      clearInterval(heartbeatRef.current);
+      heartbeatRef.current = null;
+    }
+  };
+
+  const startHeartbeat = () => {
+    stopHeartbeat();
+    // Mantém o status sincronizado com a Evolution a cada 25s
+    // para o usuário não clicar em "Conectar" e derrubar a sessão.
+    heartbeatRef.current = window.setInterval(() => { fetchStatus(); }, 25000);
   };
 
   const fetchStatus = async () => {
@@ -47,7 +62,8 @@ export const WhatsAppAddon = () => {
 
   useEffect(() => {
     fetchStatus();
-    return () => stopPolling();
+    startHeartbeat();
+    return () => { stopPolling(); stopHeartbeat(); };
   }, []);
 
   const startPolling = () => {
