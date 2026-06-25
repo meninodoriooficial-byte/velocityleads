@@ -16,8 +16,10 @@ const withTimeout = async <T>(promise: Promise<T>, ms: number, label: string, on
       promise,
       new Promise<T>((_, reject) => {
         timer = setTimeout(() => {
-          try { onTimeout?.(); } catch { /* noop */ }
           reject(new Error(`${label} em ${Math.round(ms / 1000)}s`));
+          queueMicrotask(() => {
+            try { onTimeout?.(); } catch { /* noop */ }
+          });
         }, ms);
       }),
     ]);
@@ -57,8 +59,6 @@ class SmtpSession {
   }
 
   close() {
-    try { this.reader.releaseLock(); } catch { /* noop */ }
-    try { this.writer.releaseLock(); } catch { /* noop */ }
     try { this.conn.close(); } catch { /* noop */ }
   }
 
