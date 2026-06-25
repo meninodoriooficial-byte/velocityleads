@@ -484,6 +484,8 @@ async function fetchBrasilApi(cnpjDigits: string) {
       porte: d.descricao_porte || null,
       natureza_juridica: d.natureza_juridica || null,
       atividade_principal: d.cnae_fiscal_descricao || null,
+      cnae_principal_codigo: d.cnae_fiscal || null,
+      cnae_principal_descricao: d.cnae_fiscal_descricao || null,
       atividades_secundarias: (d.cnaes_secundarios || []).map((c: any) => c.descricao).filter(Boolean),
       endereco_completo: [
         d.logradouro,

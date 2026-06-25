@@ -197,9 +197,27 @@ const getOverlay = (r: any, enr: any) => {
       ? n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 2 })
       : String(capitalSocialRaw);
   }
+  // CNAE principal (código + descrição)
+  const cnaeCodigo =
+    brasil.cnae_principal_codigo || cdd.cnae_fiscal || ai.cnae_codigo || null;
+  const cnaeDescricao =
+    brasil.cnae_principal_descricao ||
+    brasil.atividade_principal ||
+    cdd.atividade_principal ||
+    ai.cnae_descricao ||
+    ai.atividade_principal ||
+    null;
+  const formatCnae = (c: any) => {
+    const s = String(c || "").replace(/\D/g, "");
+    if (s.length === 7) return `${s.slice(0, 4)}-${s.slice(4, 5)}/${s.slice(5)}`;
+    return c ? String(c) : null;
+  };
+  const cnae = cnaeCodigo || cnaeDescricao
+    ? { codigo: formatCnae(cnaeCodigo), descricao: cnaeDescricao }
+    : null;
   return {
     cnpj, email, phone, website, socios, social, status,
-    ie, inscricoesEstaduais, simples, mei, capitalSocial,
+    ie, inscricoesEstaduais, simples, mei, capitalSocial, cnae,
   };
 };
 
@@ -653,6 +671,16 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
                         )}
                       </div>
                     )}
+                    {ov.cnae && (
+                      <div className="flex items-start gap-2 text-xs">
+                        <Badge variant="outline" className="text-[10px] shrink-0">CNAE</Badge>
+                        <span className="text-muted-foreground leading-snug">
+                          {ov.cnae.codigo && <span className="font-mono font-semibold text-foreground">{ov.cnae.codigo}</span>}
+                          {ov.cnae.codigo && ov.cnae.descricao && " — "}
+                          {ov.cnae.descricao}
+                        </span>
+                      </div>
+                    )}
                     {r.business_type && (
                       <Badge variant="secondary" className="text-[10px]">
                         <Building2 className="w-3 h-3 mr-1" />
@@ -863,6 +891,16 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
                     {ov.capitalSocial && (
                       <Badge variant="secondary" className="text-[10px]">Capital: {ov.capitalSocial}</Badge>
                     )}
+                  </div>
+                )}
+                {ov.cnae && (
+                  <div className="flex items-start gap-2 text-xs">
+                    <Badge variant="outline" className="text-[10px] shrink-0">CNAE</Badge>
+                    <span className="text-muted-foreground leading-snug">
+                      {ov.cnae.codigo && <span className="font-mono font-semibold text-foreground">{ov.cnae.codigo}</span>}
+                      {ov.cnae.codigo && ov.cnae.descricao && " — "}
+                      {ov.cnae.descricao}
+                    </span>
                   </div>
                 )}
                 {r.address && (
