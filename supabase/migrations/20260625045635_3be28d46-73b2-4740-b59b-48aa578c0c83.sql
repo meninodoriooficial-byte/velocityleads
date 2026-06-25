@@ -1,0 +1,2 @@
+ALTER TABLE public.email_accounts DROP CONSTRAINT IF EXISTS email_accounts_user_id_email_key;
+ALTER TABLE public.email_accounts ADD CONSTRAINT email_accounts_user_email_provider_key UNIQUE (user_id, email, provider);
