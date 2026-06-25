@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2, Send, Mail } from "lucide-react";
 import { renderTemplate, type LeadContext } from "@/lib/templateTags";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertTriangle, ExternalLink } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -31,6 +33,7 @@ export function SendEmailDialog({ open, onOpenChange, lead, onSent }: Props) {
   const [subject, setSubject] = useState("");
   const [bodyHtml, setBodyHtml] = useState("");
   const [sending, setSending] = useState(false);
+  const [gmailApiError, setGmailApiError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open || !user) return;
@@ -59,6 +62,7 @@ export function SendEmailDialog({ open, onOpenChange, lead, onSent }: Props) {
     if (!subject.trim() || !bodyHtml.trim()) { toast({ title: "Preencha assunto e corpo", variant: "destructive" }); return; }
     if (!accountId) { toast({ title: "Nenhuma conta de envio", description: "Conecte uma conta em Email Marketing.", variant: "destructive" }); return; }
     setSending(true);
+    setGmailApiError(null);
     const { data, error } = await supabase.functions.invoke("email-send-user", {
       body: {
         to: lead.email, subject, html: bodyHtml, text: bodyHtml.replace(/<[^>]+>/g, ""),
@@ -67,7 +71,13 @@ export function SendEmailDialog({ open, onOpenChange, lead, onSent }: Props) {
     });
     setSending(false);
     if (error || !data?.ok) {
-      toast({ title: "Falha ao enviar e-mail", description: String(data?.error || error?.message || ""), variant: "destructive" });
+      const msg = String(data?.error || error?.message || "");
+      if (/Mail service not enabled|gmail api|failedPrecondition/i.test(msg)) {
+        setGmailApiError(msg);
+        toast({ title: "Gmail API não ativada", description: "Ative a API no Google Cloud para enviar e-mails.", variant: "destructive" });
+      } else {
+        toast({ title: "Falha ao enviar e-mail", description: msg, variant: "destructive" });
+      }
       return;
     }
     toast({ title: "✓ E-mail enviado", description: `Para ${lead.email}` });
@@ -88,6 +98,30 @@ export function SendEmailDialog({ open, onOpenChange, lead, onSent }: Props) {
         </DialogHeader>
 
         <div className="space-y-3">
+          {gmailApiError && (
+            <Alert variant="destructive">
+              <AlertTriangle className="size-4" />
+              <AlertTitle>Gmail API não está ativada</AlertTitle>
+              <AlertDescription className="space-y-2">
+                <p className="text-xs">
+                  A conta Gmail conectada não consegue enviar porque a <b>Gmail API</b> não foi ativada
+                  no projeto do Google Cloud das credenciais OAuth.
+                </p>
+                <ol className="text-xs list-decimal pl-4 space-y-1">
+                  <li>Abra o link abaixo e selecione o <b>mesmo projeto</b> usado para criar o Client ID/Secret.</li>
+                  <li>Clique em <b>Ativar</b> (Enable) e aguarde ~1 minuto.</li>
+                  <li>Tente enviar novamente — não precisa reconectar a conta.</li>
+                </ol>
+                <a
+                  href="https://console.cloud.google.com/apis/library/gmail.googleapis.com"
+                  target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs underline font-medium"
+                >
+                  Ativar Gmail API <ExternalLink className="size-3" />
+                </a>
+              </AlertDescription>
+            </Alert>
+          )}
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
               <Label className="text-xs">Conta de envio</Label>
