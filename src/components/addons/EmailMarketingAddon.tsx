@@ -167,7 +167,7 @@ export const EmailMarketingAddon = () => {
     }
     setTesting(true);
     const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 30000);
+    const timeout = window.setTimeout(() => controller.abort(), 70000);
     try {
       const { data, error } = await supabase.functions.invoke("email-smtp-test", {
         body: {
