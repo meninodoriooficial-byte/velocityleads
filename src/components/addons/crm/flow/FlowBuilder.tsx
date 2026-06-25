@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ReactFlow, Background, Controls, MiniMap, addEdge, applyEdgeChanges, applyNodeChanges,
   type Edge, type Node, type Connection, type NodeChange, type EdgeChange, MarkerType,
@@ -10,7 +10,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, X } from "lucide-react";
+import { Trash2, X, Paperclip, Loader2, FileText, Image as ImageIcon, FileAudio, File as FileIcon } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/components/ui/use-toast";
 
 export type FlowGraph = { nodes: Node[]; edges: Edge[] };
 
@@ -30,6 +33,10 @@ interface Props {
 }
 
 export function FlowBuilder({ value, onChange }: Props) {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const [uploading, setUploading] = useState(false);
   const initial = value && value.nodes?.length ? value : DEFAULT_GRAPH;
   const [nodes, setNodes] = useState<Node[]>(initial.nodes);
   const [edges, setEdges] = useState<Edge[]>(initial.edges);
@@ -51,7 +58,7 @@ export function FlowBuilder({ value, onChange }: Props) {
       const n = ns.find((x) => x.id === cur);
       if (!n) break;
       const d: any = n.data || {};
-      if (n.type === "send_message") steps.push({ type: "send_message", text: d.text || "" });
+      if (n.type === "send_message") steps.push({ type: "send_message", text: d.text || "", attachments: Array.isArray(d.attachments) ? d.attachments : [] });
       else if (n.type === "wait") steps.push({ type: "wait", minutes: Number(d.minutes || 0) });
       else if (n.type === "move_stage") steps.push({ type: "move_stage", stage_name: d.stage_name || "" });
       else if (n.type === "add_tag") steps.push({ type: "add_tag", tag: d.tag || "" });
@@ -101,6 +108,42 @@ export function FlowBuilder({ value, onChange }: Props) {
     const ns = nodes.filter((n) => n.id !== selected.id);
     const es = edges.filter((e) => e.source !== selected.id && e.target !== selected.id);
     setNodes(ns); setEdges(es); setSelectedId(null); emit(ns, es);
+  };
+
+  const handleAttach = async (files: FileList | null) => {
+    if (!files || !files.length || !selected || !user) return;
+    setUploading(true);
+    try {
+      const current: any[] = Array.isArray((selected.data as any).attachments) ? [...(selected.data as any).attachments] : [];
+      for (const f of Array.from(files)) {
+        const ext = (f.name.split(".").pop() || "bin").toLowerCase();
+        const path = `${user.id}/flows/${crypto.randomUUID()}.${ext}`;
+        const up = await supabase.storage.from("crm-media").upload(path, f, {
+          contentType: f.type || "application/octet-stream", upsert: false,
+        });
+        if (up.error) { toast({ title: "Erro ao enviar", description: up.error.message, variant: "destructive" }); continue; }
+        const { data } = await supabase.storage.from("crm-media").createSignedUrl(path, 60 * 60 * 24 * 365);
+        current.push({ url: data?.signedUrl || "", path, name: f.name, mime: f.type || "application/octet-stream", size: f.size });
+      }
+      updateData({ attachments: current });
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  const removeAttachment = (idx: number) => {
+    if (!selected) return;
+    const current: any[] = Array.isArray((selected.data as any).attachments) ? [...(selected.data as any).attachments] : [];
+    current.splice(idx, 1);
+    updateData({ attachments: current });
+  };
+
+  const attachmentIcon = (mime: string) => {
+    if (mime.startsWith("image/")) return ImageIcon;
+    if (mime.startsWith("audio/")) return FileAudio;
+    if (mime.includes("pdf") || mime.includes("word") || mime.includes("officedocument") || mime.startsWith("text/")) return FileText;
+    return FileIcon;
   };
 
   useEffect(() => { emit(nodes, edges); /* initial */ }, []); // eslint-disable-line
@@ -177,10 +220,52 @@ export function FlowBuilder({ value, onChange }: Props) {
             )}
 
             {selected.type === "send_message" && (
-              <div className="space-y-1">
-                <Label className="text-xs">Mensagem</Label>
-                <Textarea rows={6} value={(selected.data as any).text || ""} onChange={(e) => updateData({ text: e.target.value })} />
-                <p className="text-[10px] text-muted-foreground">Use {"{{nome}}"} e {"{{telefone}}"} para personalizar.</p>
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Mensagem</Label>
+                  <Textarea rows={6} value={(selected.data as any).text || ""} onChange={(e) => updateData({ text: e.target.value })} />
+                  <p className="text-[10px] text-muted-foreground">Use {"{{nome}}"} e {"{{telefone}}"} para personalizar.</p>
+                </div>
+                <div className="space-y-2 pt-2 border-t border-border/60">
+                  <Label className="text-xs flex items-center gap-1.5">
+                    <Paperclip className="size-3.5" /> Anexos
+                  </Label>
+                  {Array.isArray((selected.data as any).attachments) && (selected.data as any).attachments.length > 0 && (
+                    <div className="space-y-1">
+                      {(selected.data as any).attachments.map((a: any, i: number) => {
+                        const Icon = attachmentIcon(a.mime || "");
+                        return (
+                          <div key={i} className="flex items-center gap-2 p-2 rounded-md border border-border/60 bg-muted/40 text-xs">
+                            <Icon className="size-3.5 shrink-0 text-primary" />
+                            <span className="truncate flex-1" title={a.name}>{a.name}</span>
+                            <button type="button" onClick={() => removeAttachment(i)} className="text-destructive hover:opacity-70">
+                              <X className="size-3.5" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    multiple
+                    accept="image/*,audio/*,text/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                    className="hidden"
+                    onChange={(e) => handleAttach(e.target.files)}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    disabled={uploading}
+                    onClick={() => fileRef.current?.click()}
+                  >
+                    {uploading ? <Loader2 className="size-3.5 mr-2 animate-spin" /> : <Paperclip className="size-3.5 mr-2" />}
+                    Vincular arquivo (áudio, imagem, PDF, Word, texto)
+                  </Button>
+                </div>
               </div>
             )}
 
