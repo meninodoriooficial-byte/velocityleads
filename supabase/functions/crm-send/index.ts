@@ -81,14 +81,54 @@ Deno.serve(async (req) => {
     if (type === "image" || type === "video" || type === "document") {
       endpoint = `${baseUrl}/message/sendMedia/${encodeURIComponent(instance)}`;
       const mediaType = type === "image" ? "image" : type === "video" ? "video" : "document";
+      // Baixar a mídia e converter para base64 (Evolution falha ao buscar signedUrls de buckets privados)
+      let mediaPayload: string | null = mediaUrl;
+      let detectedMime = mediaMime;
+      try {
+        if (mediaUrl) {
+          const mr = await fetch(mediaUrl);
+          if (!mr.ok) throw new Error(`download_${mr.status}`);
+          detectedMime = detectedMime || mr.headers.get("content-type") || "application/octet-stream";
+          const buf = new Uint8Array(await mr.arrayBuffer());
+          let bin = "";
+          const CHUNK = 8192;
+          for (let i = 0; i < buf.length; i += CHUNK) {
+            bin += String.fromCharCode.apply(null, Array.from(buf.subarray(i, i + CHUNK)));
+          }
+          mediaPayload = btoa(bin);
+        }
+      } catch (err) {
+        console.error("crm-send media download failed", err);
+        return j({ ok: false, error: "Falha ao baixar mídia para envio: " + (err as Error).message }, 400);
+      }
       payload = {
-        number: phone, mediatype: mediaType,
-        mimetype: mediaMime, caption: text || undefined,
-        media: mediaUrl, fileName: mediaFilename || undefined,
+        number: phone,
+        mediatype: mediaType,
+        mimetype: detectedMime,
+        caption: text || undefined,
+        media: mediaPayload,
+        fileName: mediaFilename || (type === "image" ? "image.jpg" : type === "video" ? "video.mp4" : "file.bin"),
       };
     } else if (type === "audio") {
       endpoint = `${baseUrl}/message/sendWhatsAppAudio/${encodeURIComponent(instance)}`;
-      payload = { number: phone, audio: mediaUrl };
+      let audioPayload: string | null = mediaUrl;
+      try {
+        if (mediaUrl) {
+          const mr = await fetch(mediaUrl);
+          if (!mr.ok) throw new Error(`download_${mr.status}`);
+          const buf = new Uint8Array(await mr.arrayBuffer());
+          let bin = "";
+          const CHUNK = 8192;
+          for (let i = 0; i < buf.length; i += CHUNK) {
+            bin += String.fromCharCode.apply(null, Array.from(buf.subarray(i, i + CHUNK)));
+          }
+          audioPayload = btoa(bin);
+        }
+      } catch (err) {
+        console.error("crm-send audio download failed", err);
+        return j({ ok: false, error: "Falha ao baixar áudio para envio: " + (err as Error).message }, 400);
+      }
+      payload = { number: phone, audio: audioPayload };
     } else if (type === "buttons") {
       endpoint = `${baseUrl}/message/sendButtons/${encodeURIComponent(instance)}`;
       payload = {
