@@ -96,7 +96,14 @@ Deno.serve(async (req) => {
           method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
           body: JSON.stringify({ raw }),
         });
-        if (!r.ok) sendError = (await r.text()).slice(0, 500);
+        if (!r.ok) {
+          const raw = await r.text();
+          if (/Mail service not enabled|failedPrecondition/i.test(raw)) {
+            sendError = "Gmail API não está ativada no projeto Google Cloud das credenciais OAuth. Acesse https://console.cloud.google.com/apis/library/gmail.googleapis.com, selecione o projeto correto e clique em Ativar.";
+          } else {
+            sendError = raw.slice(0, 500);
+          }
+        }
       } else if (account.provider === "outlook") {
         const token = await refreshMicrosoft(account, admin);
         const r = await fetch("https://graph.microsoft.com/v1.0/me/sendMail", {
