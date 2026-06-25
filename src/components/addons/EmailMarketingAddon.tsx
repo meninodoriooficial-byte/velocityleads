@@ -385,7 +385,7 @@ export const EmailMarketingAddon = () => {
               <Label>Nome de exibição</Label>
               <Input value={form.display_name || ""} onChange={(e) => setForm({ ...form, display_name: e.target.value })} placeholder="Sua Empresa" />
             </div>
-            {form.provider === "smtp" && (
+            {(form.provider === "smtp" || form.provider === "gmail" || form.provider === "outlook") && (
               <>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1 col-span-2">
