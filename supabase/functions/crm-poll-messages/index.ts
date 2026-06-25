@@ -22,7 +22,11 @@ function extractMsg(m: any) {
   // Só importar mensagens privadas (@s.whatsapp.net). Ignorar grupos (@g.us),
   // status (status@broadcast), newsletters etc.
   const isUserChat = remoteJid.endsWith("@s.whatsapp.net");
-  const phone = isUserChat ? remoteJid.replace(/@.*/, "").replace(/\D/g, "") : "";
+  let phone = isUserChat ? remoteJid.replace(/@.*/, "").replace(/\D/g, "") : "";
+  // Garantir DDI brasileiro: se vier só com 10–11 dígitos (DDD+número), prefixar 55
+  if (phone && (phone.length === 10 || phone.length === 11)) {
+    phone = "55" + phone;
+  }
   const msg = m.message || {};
   let type = "text";
   let body: string | null = null;
