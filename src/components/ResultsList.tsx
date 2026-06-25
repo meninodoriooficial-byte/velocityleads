@@ -199,10 +199,20 @@ const getOverlay = (r: any, enr: any) => {
   }
   // CNAE principal (código + descrição)
   const cnaeCodigo =
-    brasil.cnae_principal_codigo || cdd.cnae_fiscal || ai.cnae_codigo || null;
+    brasil.cnae_principal_codigo ||
+    brasil.cnae_fiscal ||
+    brasil.raw?.cnae_fiscal ||
+    cdd.cnae_fiscal ||
+    cdd.cnae_principal_codigo ||
+    ai.cnae_codigo ||
+    ai.cnae_principal_codigo ||
+    null;
   const cnaeDescricao =
     brasil.cnae_principal_descricao ||
+    brasil.cnae_fiscal_descricao ||
+    brasil.raw?.cnae_fiscal_descricao ||
     brasil.atividade_principal ||
+    cdd.cnae_fiscal_descricao ||
     cdd.atividade_principal ||
     ai.cnae_descricao ||
     ai.atividade_principal ||
