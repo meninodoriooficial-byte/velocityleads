@@ -107,7 +107,7 @@ export const EmailMarketingAddon = () => {
   const saveAccount = async () => {
     if (!user) return;
     if (!form.email) { toast({ title: "Informe o e-mail", variant: "destructive" }); return; }
-    if (form.provider === "smtp" && (!form.smtp_host || !form.smtp_pass)) {
+    if (!form.smtp_host || !form.smtp_pass) {
       toast({ title: "Preencha host SMTP e senha", variant: "destructive" }); return;
     }
     setSaving(true);
