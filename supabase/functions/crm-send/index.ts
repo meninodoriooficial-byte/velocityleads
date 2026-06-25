@@ -163,7 +163,6 @@ Deno.serve(async (req) => {
       }
       payload = { number: phone, audio: audioPayload };
     } else if (type === "buttons") {
-      endpoint = `${baseUrl}/message/sendButtons/${encodeURIComponent(instance)}`;
       // Normaliza entrada vinda do frontend (que usa { text, id } ou objetos completos)
       const rawButtons = Array.isArray(buttons) ? buttons : [];
       const normalized = rawButtons.map((b: any, i: number) => ({
@@ -181,13 +180,28 @@ Deno.serve(async (req) => {
           details: parsed.error.issues.map((iss) => `buttons[${iss.path[0] ?? "?"}]: ${iss.message}`),
         }, 400);
       }
-      payload = {
-        number: phone,
-        title: String(body.title || ""),
-        description: text,
-        footer: String(body.footer || ""),
-        buttons: parsed.data,
-      };
+      // WhatsApp/Baileys não entrega botões interativos para contas pessoais de forma
+      // confiável (Evolution responde 200 mas a mensagem é descartada pelo WhatsApp).
+      // Fallback: enviar como texto numerado com emojis — sempre chega.
+      const EMOJI = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"];
+      const title = String(body.title || "").trim();
+      const footer = String(body.footer || "").trim();
+      const lines: string[] = [];
+      if (title) lines.push(`*${title}*`);
+      if (text) lines.push(text);
+      lines.push(""); // espaço
+      parsed.data.forEach((b, i) => {
+        let line = `${EMOJI[i] || `${i + 1}.`} ${b.displayText}`;
+        if (b.type === "url" && b.url) line += `\n   ${b.url}`;
+        if (b.type === "call" && b.phoneNumber) line += `\n   📞 ${b.phoneNumber}`;
+        if (b.type === "copy" && b.copyCode) line += `\n   \`${b.copyCode}\``;
+        if (b.type === "pix" && b.key) line += `\n   PIX (${b.keyType}): ${b.key}`;
+        lines.push(line);
+      });
+      if (footer) { lines.push(""); lines.push(`_${footer}_`); }
+
+      endpoint = `${baseUrl}/message/sendText/${encodeURIComponent(instance)}`;
+      payload = { number: phone, text: lines.join("\n") };
     }
 
     let r = await fetch(endpoint, { method: "POST", headers, body: JSON.stringify(payload) });
