@@ -33,6 +33,10 @@ interface Props {
 }
 
 export function FlowBuilder({ value, onChange }: Props) {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const [uploading, setUploading] = useState(false);
   const initial = value && value.nodes?.length ? value : DEFAULT_GRAPH;
   const [nodes, setNodes] = useState<Node[]>(initial.nodes);
   const [edges, setEdges] = useState<Edge[]>(initial.edges);
