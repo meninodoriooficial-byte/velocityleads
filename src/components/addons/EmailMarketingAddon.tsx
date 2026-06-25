@@ -107,7 +107,7 @@ export const EmailMarketingAddon = () => {
   const saveAccount = async () => {
     if (!user) return;
     if (!form.email) { toast({ title: "Informe o e-mail", variant: "destructive" }); return; }
-    if (form.provider === "smtp" && (!form.smtp_host || !form.smtp_pass)) {
+    if (!form.smtp_host || !form.smtp_pass) {
       toast({ title: "Preencha host SMTP e senha", variant: "destructive" }); return;
     }
     setSaving(true);
@@ -155,9 +155,9 @@ export const EmailMarketingAddon = () => {
   const applyPreset = (p: "gmail" | "outlook" | "smtp") => {
     setActivePreset(p);
     if (p === "gmail") {
-      setForm((f) => ({ ...f, provider: "smtp", smtp_host: "smtp.gmail.com", smtp_port: 465, smtp_secure: true, smtp_user: f.smtp_user || f.email || "" }));
+      setForm((f) => ({ ...f, provider: "gmail", smtp_host: "smtp.gmail.com", smtp_port: 465, smtp_secure: true, smtp_user: f.smtp_user || f.email || "" }));
     } else if (p === "outlook") {
-      setForm((f) => ({ ...f, provider: "smtp", smtp_host: "smtp-mail.outlook.com", smtp_port: 587, smtp_secure: false, smtp_user: f.smtp_user || f.email || "" }));
+      setForm((f) => ({ ...f, provider: "outlook", smtp_host: "smtp-mail.outlook.com", smtp_port: 587, smtp_secure: false, smtp_user: f.smtp_user || f.email || "" }));
     } else {
       setForm((f) => ({ ...f, provider: "smtp" }));
     }
@@ -385,7 +385,7 @@ export const EmailMarketingAddon = () => {
               <Label>Nome de exibição</Label>
               <Input value={form.display_name || ""} onChange={(e) => setForm({ ...form, display_name: e.target.value })} placeholder="Sua Empresa" />
             </div>
-            {form.provider === "smtp" && (
+            {(form.provider === "smtp" || form.provider === "gmail" || form.provider === "outlook") && (
               <>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1 col-span-2">
