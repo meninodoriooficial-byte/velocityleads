@@ -49,8 +49,13 @@ Deno.serve(async (req) => {
       const key = m.key || {};
       if (key.fromMe) continue; // ignorar mensagens enviadas pelo próprio usuário
       const remoteJid: string = key.remoteJid || "";
-      const phone = remoteJid.replace(/@.*/, "").replace(/\D/g, "");
-      if (!phone) continue;
+      // Só conversas privadas (ignorar grupos @g.us, status@broadcast, newsletter etc.)
+      if (!remoteJid.endsWith("@s.whatsapp.net")) continue;
+      let phone = remoteJid.replace(/@.*/, "").replace(/\D/g, "");
+      // Telefone WhatsApp válido: 10–15 dígitos (E.164)
+      if (phone.length < 10 || phone.length > 15) continue;
+      // Garantir DDI BR quando vier só DDD+número
+      if (phone.length === 10 || phone.length === 11) phone = "55" + phone;
 
       const contactName = m.pushName || null;
       const msg = m.message || {};
