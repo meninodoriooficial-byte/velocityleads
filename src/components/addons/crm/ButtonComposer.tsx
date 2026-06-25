@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ToggleLeft, Plus, X } from "lucide-react";
+import { ListOrdered, Plus, X } from "lucide-react";
 
 export type BtnDef = { id: string; text: string };
 
@@ -24,10 +24,15 @@ export function ButtonComposer({ onSend }: Props) {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button type="button" variant="ghost" size="icon" title="Enviar com botões"><ToggleLeft className="size-4" /></Button>
+        <Button type="button" variant="ghost" size="icon" title="Enviar lista numerada (1️⃣ 2️⃣ 3️⃣)">
+          <ListOrdered className="size-4" />
+        </Button>
       </PopoverTrigger>
       <PopoverContent className="w-96 space-y-3">
-        <h4 className="font-semibold text-sm">Mensagem com botões</h4>
+        <h4 className="font-semibold text-sm">Mensagem com opções numeradas</h4>
+        <p className="text-xs text-muted-foreground -mt-1">
+          Será enviada como texto com 1️⃣ 2️⃣ 3️⃣ (entrega garantida no WhatsApp).
+        </p>
         <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Título (opcional)" />
         <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="Pergunta / texto" />
         <Input value={footer} onChange={(e) => setFooter(e.target.value)} placeholder="Rodapé (opcional)" />
@@ -48,7 +53,7 @@ export function ButtonComposer({ onSend }: Props) {
             </Button>
           )}
         </div>
-        <Button onClick={submit} className="w-full">Enviar com botões</Button>
+        <Button onClick={submit} className="w-full">Enviar opções</Button>
       </PopoverContent>
     </Popover>
   );
