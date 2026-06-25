@@ -19,7 +19,10 @@ function j(d: unknown, status = 200) {
 function extractMsg(m: any) {
   const key = m.key || {};
   const remoteJid: string = key.remoteJid || m.remoteJid || "";
-  const phone = remoteJid.replace(/@.*/, "").replace(/\D/g, "");
+  // Só importar mensagens privadas (@s.whatsapp.net). Ignorar grupos (@g.us),
+  // status (status@broadcast), newsletters etc.
+  const isUserChat = remoteJid.endsWith("@s.whatsapp.net");
+  const phone = isUserChat ? remoteJid.replace(/@.*/, "").replace(/\D/g, "") : "";
   const msg = m.message || {};
   let type = "text";
   let body: string | null = null;
@@ -35,6 +38,7 @@ function extractMsg(m: any) {
   else { body = "[mensagem não suportada]"; }
   return {
     phone,
+    isUserChat,
     contactName: m.pushName || null,
     type,
     body,
