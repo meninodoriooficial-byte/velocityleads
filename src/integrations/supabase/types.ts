@@ -598,6 +598,72 @@ export type Database = {
         }
         Relationships: []
       }
+      email_history: {
+        Row: {
+          account_id: string | null
+          body_html: string | null
+          body_text: string | null
+          created_at: string
+          error: Json | null
+          id: string
+          lead_id: string | null
+          provider: string | null
+          status: string
+          subject: string
+          template_id: string | null
+          to_email: string
+          to_name: string | null
+          user_id: string
+        }
+        Insert: {
+          account_id?: string | null
+          body_html?: string | null
+          body_text?: string | null
+          created_at?: string
+          error?: Json | null
+          id?: string
+          lead_id?: string | null
+          provider?: string | null
+          status?: string
+          subject: string
+          template_id?: string | null
+          to_email: string
+          to_name?: string | null
+          user_id: string
+        }
+        Update: {
+          account_id?: string | null
+          body_html?: string | null
+          body_text?: string | null
+          created_at?: string
+          error?: Json | null
+          id?: string
+          lead_id?: string | null
+          provider?: string | null
+          status?: string
+          subject?: string
+          template_id?: string | null
+          to_email?: string
+          to_name?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_history_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "email_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_history_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "email_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_marketing_settings: {
         Row: {
           created_at: string

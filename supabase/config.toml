@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.email-oauth-start]
 verify_jwt = true
+
+[functions.email-send-user]
+verify_jwt = true
