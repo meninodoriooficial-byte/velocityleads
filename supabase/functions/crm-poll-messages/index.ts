@@ -18,11 +18,17 @@ function j(d: unknown, status = 200) {
 
 function extractMsg(m: any) {
   const key = m.key || {};
-  const remoteJid: string = key.remoteJid || m.remoteJid || "";
+  // WhatsApp pode usar LID (Linked Identifier) — nesse caso o telefone real
+  // vem em `remoteJidAlt`. Preferir o JID @s.whatsapp.net real.
+  const remoteJidRaw: string = key.remoteJid || m.remoteJid || "";
+  const remoteJidAlt: string = key.remoteJidAlt || "";
+  const realJid = remoteJidAlt.endsWith("@s.whatsapp.net")
+    ? remoteJidAlt
+    : remoteJidRaw;
   // Só importar mensagens privadas (@s.whatsapp.net). Ignorar grupos (@g.us),
-  // status (status@broadcast), newsletters etc.
-  const isUserChat = remoteJid.endsWith("@s.whatsapp.net");
-  let phone = isUserChat ? remoteJid.replace(/@.*/, "").replace(/\D/g, "") : "";
+  // status (status@broadcast), newsletters, LIDs sem alt etc.
+  const isUserChat = realJid.endsWith("@s.whatsapp.net");
+  let phone = isUserChat ? realJid.replace(/@.*/, "").replace(/\D/g, "") : "";
   // Garantir DDI brasileiro: se vier só com 10–11 dígitos (DDD+número), prefixar 55
   if (phone && (phone.length === 10 || phone.length === 11)) {
     phone = "55" + phone;
@@ -103,6 +109,10 @@ Deno.serve(async (req) => {
           : Array.isArray(raw?.messages?.records) ? raw.messages.records
           : Array.isArray(raw?.records) ? raw.records
           : Array.isArray(raw?.data) ? raw.data : [];
+        console.log(`[poll ${inst.instance_name}] findMessages returned ${list.length} records, sinceMs=${sinceMs}`);
+        if (list.length > 0) {
+          console.log(`[poll ${inst.instance_name}] sample`, JSON.stringify(list[0]).slice(0, 800));
+        }
 
         let processed = 0;
         for (const m of list) {

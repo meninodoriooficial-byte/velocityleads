@@ -48,7 +48,10 @@ Deno.serve(async (req) => {
     for (const m of msgs) {
       const key = m.key || {};
       if (key.fromMe) continue; // ignorar mensagens enviadas pelo próprio usuário
-      const remoteJid: string = key.remoteJid || "";
+      // WhatsApp pode usar LID — telefone real fica em remoteJidAlt
+      const remoteJidRaw: string = key.remoteJid || "";
+      const remoteJidAlt: string = key.remoteJidAlt || "";
+      const remoteJid = remoteJidAlt.endsWith("@s.whatsapp.net") ? remoteJidAlt : remoteJidRaw;
       // Só conversas privadas (ignorar grupos @g.us, status@broadcast, newsletter etc.)
       if (!remoteJid.endsWith("@s.whatsapp.net")) continue;
       let phone = remoteJid.replace(/@.*/, "").replace(/\D/g, "");

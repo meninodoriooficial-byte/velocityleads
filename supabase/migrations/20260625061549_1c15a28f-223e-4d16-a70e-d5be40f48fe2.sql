@@ -1,0 +1,1 @@
+UPDATE public.user_whatsapp_instances SET last_poll_at = now() - interval '30 minutes';
