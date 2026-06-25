@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
-import { Mail, Plus, Trash2, ArrowUp, ArrowDown, Loader2, Shuffle, FileText, Pencil, Eye } from "lucide-react";
+import { Mail, Plus, Trash2, ArrowUp, ArrowDown, Loader2, Shuffle, FileText, Pencil, Eye, PlugZap } from "lucide-react";
 
 type Account = {
   id: string;
@@ -51,6 +51,7 @@ export const EmailMarketingAddon = () => {
   const [loading, setLoading] = useState(true);
   const [dlgOpen, setDlgOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
   const [form, setForm] = useState<Partial<Account>>({
     provider: "smtp",
     smtp_port: 465,
@@ -139,30 +140,39 @@ export const EmailMarketingAddon = () => {
     load();
   };
 
-  const startOAuth = async (p: "gmail" | "outlook") => {
-    if (accounts.length >= MAX_ACCOUNTS) {
-      toast({ title: "Limite atingido", description: `Máximo de ${MAX_ACCOUNTS} contas.`, variant: "destructive" });
+  const applyPreset = (p: "gmail" | "outlook" | "smtp") => {
+    if (p === "gmail") {
+      setForm((f) => ({ ...f, provider: "smtp", smtp_host: "smtp.gmail.com", smtp_port: 465, smtp_secure: true, smtp_user: f.smtp_user || f.email || "" }));
+    } else if (p === "outlook") {
+      setForm((f) => ({ ...f, provider: "smtp", smtp_host: "smtp.office365.com", smtp_port: 587, smtp_secure: false, smtp_user: f.smtp_user || f.email || "" }));
+    } else {
+      setForm((f) => ({ ...f, provider: "smtp" }));
+    }
+  };
+
+  const testConnection = async () => {
+    if (!form.smtp_host || !form.smtp_pass || !(form.smtp_user || form.email)) {
+      toast({ title: "Preencha host, usuário/e-mail e senha", variant: "destructive" });
       return;
     }
-    const provider = p === "gmail" ? "google" : "microsoft";
-    const { data, error } = await supabase.functions.invoke("email-oauth-start", { body: { provider } });
-    if (error || !data?.url) {
-      toast({ title: "Não foi possível iniciar OAuth", description: error?.message || data?.error || "Verifique se o admin configurou as credenciais.", variant: "destructive" });
+    setTesting(true);
+    const { data, error } = await supabase.functions.invoke("email-smtp-test", {
+      body: {
+        host: form.smtp_host,
+        port: form.smtp_port || 465,
+        secure: form.smtp_secure ?? true,
+        user: form.smtp_user || form.email,
+        pass: form.smtp_pass,
+        from: form.email,
+        to: form.email,
+      },
+    });
+    setTesting(false);
+    if (error || !data?.ok) {
+      toast({ title: "Falha no teste de conexão", description: data?.error || error?.message || "Erro desconhecido", variant: "destructive" });
       return;
     }
-    const win = window.open(data.url, "oauth", "width=560,height=720");
-    if (!win) {
-      toast({ title: "Popup bloqueado", description: "Permita popups e tente novamente.", variant: "destructive" });
-      return;
-    }
-    const onMsg = (ev: MessageEvent) => {
-      if (ev.data?.type === "email-oauth-done") {
-        window.removeEventListener("message", onMsg);
-        toast({ title: "✓ Conta conectada" });
-        load();
-      }
-    };
-    window.addEventListener("message", onMsg);
+    toast({ title: "✓ Conexão OK", description: `E-mail de teste enviado para ${data.sent_to}` });
   };
 
   const openTplNew = () => {
@@ -328,10 +338,13 @@ export const EmailMarketingAddon = () => {
         <DialogContent className="sm:max-w-md">
           <DialogHeader><DialogTitle>Nova conta de e-mail</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div className="grid grid-cols-3 gap-2">
-              <Button variant={form.provider === "gmail" ? "default" : "outline"} onClick={() => startOAuth("gmail")}>Gmail</Button>
-              <Button variant={form.provider === "outlook" ? "default" : "outline"} onClick={() => startOAuth("outlook")}>Outlook</Button>
-              <Button variant={form.provider === "smtp" ? "default" : "outline"} onClick={() => setForm({ ...form, provider: "smtp" })}>SMTP</Button>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Preencher automaticamente</Label>
+              <div className="grid grid-cols-3 gap-2">
+                <Button type="button" variant="outline" onClick={() => applyPreset("gmail")}>Gmail</Button>
+                <Button type="button" variant="outline" onClick={() => applyPreset("outlook")}>Outlook</Button>
+                <Button type="button" variant="outline" onClick={() => applyPreset("smtp")}>SMTP genérico</Button>
+              </div>
             </div>
             <div className="space-y-1">
               <Label>E-mail *</Label>
@@ -370,7 +383,9 @@ export const EmailMarketingAddon = () => {
                 <div className="space-y-1">
                   <Label>Senha de app *</Label>
                   <Input type="password" value={form.smtp_pass || ""} onChange={(e) => setForm({ ...form, smtp_pass: e.target.value })} />
-                  <p className="text-[10px] text-muted-foreground">No Gmail use uma "senha de app". No Outlook, gere em conta.live.com / Segurança.</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    No Gmail é obrigatório usar uma <a className="underline" href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer">Senha de App</a> (com verificação em 2 etapas ativada). No Outlook, gere em conta.live.com / Segurança.
+                  </p>
                 </div>
               </>
             )}
@@ -380,8 +395,11 @@ export const EmailMarketingAddon = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDlgOpen(false)} disabled={saving}>Cancelar</Button>
-            <Button onClick={saveAccount} disabled={saving}>
+            <Button variant="outline" onClick={() => setDlgOpen(false)} disabled={saving || testing}>Cancelar</Button>
+            <Button type="button" variant="secondary" onClick={testConnection} disabled={testing || saving}>
+              {testing ? <Loader2 className="size-4 mr-2 animate-spin" /> : <PlugZap className="size-4 mr-2" />} Testar conexão
+            </Button>
+            <Button onClick={saveAccount} disabled={saving || testing}>
               {saving ? <Loader2 className="size-4 mr-2 animate-spin" /> : null} Salvar
             </Button>
           </DialogFooter>
