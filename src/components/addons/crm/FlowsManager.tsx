@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
-import { Plus, Trash2, Save, Zap } from "lucide-react";
+import { Plus, Trash2, Save, Zap, Maximize2, X } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { FlowBuilder, type FlowGraph } from "./flow/FlowBuilder";
 
 type Flow = { id: string; name: string; is_active: boolean; trigger: any; steps: any[] };
@@ -21,6 +22,7 @@ export function FlowsManager() {
   const [graph, setGraph] = useState<FlowGraph | undefined>(undefined);
   const [compiled, setCompiled] = useState<{ trigger: any; steps: any[] }>({ trigger: { type: "first_inbound" }, steps: [] });
   const [builderKey, setBuilderKey] = useState(0);
+  const [editorOpen, setEditorOpen] = useState(false);
 
   const load = async () => {
     if (!user) return;
@@ -86,11 +88,42 @@ export function FlowsManager() {
           <div className="space-y-1"><Label>Ativo</Label><div className="h-10 flex items-center"><Switch checked={active} onCheckedChange={setActive} /></div></div>
           <Button onClick={save}><Save className="size-4 mr-2" /> {sel ? "Salvar" : "Criar fluxo"}</Button>
         </div>
-        <FlowBuilder key={builderKey} value={graph} onChange={(g, c) => { setGraph(g); setCompiled(c); }} />
-        <p className="text-xs text-muted-foreground">
-          {compiled.steps.length} passo(s) compilado(s) · Arraste das alças (●) para conectar blocos · Variáveis: {"{{nome}}"}, {"{{telefone}}"}
-        </p>
+        <div className="rounded-lg border border-dashed border-border/60 bg-muted/20 p-6 flex flex-col items-center justify-center gap-3">
+          <p className="text-sm text-muted-foreground text-center">
+            {compiled.steps.length} passo(s) compilado(s) · Variáveis: {"{{nome}}"}, {"{{telefone}}"}
+          </p>
+          <Button onClick={() => setEditorOpen(true)} variant="default">
+            <Maximize2 className="size-4 mr-2" /> Abrir editor visual de fluxos
+          </Button>
+        </div>
       </div>
+
+      <Dialog open={editorOpen} onOpenChange={setEditorOpen}>
+        <DialogContent className="max-w-[95vw] w-[95vw] h-[92vh] p-0 flex flex-col gap-0 sm:rounded-lg overflow-hidden">
+          <DialogHeader className="px-4 py-3 border-b border-border/60 flex-row items-center justify-between space-y-0">
+            <DialogTitle className="flex items-center gap-2">
+              <Zap className="size-4 text-primary" />
+              Editor visual de fluxos {name ? `· ${name}` : ""}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <FlowBuilder key={builderKey} value={graph} onChange={(g, c) => { setGraph(g); setCompiled(c); }} />
+          </div>
+          <DialogFooter className="px-4 py-3 border-t border-border/60 flex-row sm:justify-between items-center gap-3">
+            <p className="text-xs text-muted-foreground">
+              {compiled.steps.length} passo(s) · Arraste das alças (●) para conectar blocos
+            </p>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setEditorOpen(false)}>
+                <X className="size-4 mr-2" /> Fechar
+              </Button>
+              <Button onClick={async () => { await save(); setEditorOpen(false); }}>
+                <Save className="size-4 mr-2" /> Salvar fluxo
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
