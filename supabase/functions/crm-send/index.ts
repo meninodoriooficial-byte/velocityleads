@@ -62,8 +62,16 @@ Deno.serve(async (req) => {
     const mediaMime = body.mediaMime || null;
     const mediaFilename = body.mediaFilename || null;
     const buttons = body.buttons || null;
-    const phone = conv.phone;
+    const phone = String(conv.phone || "").replace(/\D/g, "");
     const instance = inst.instance_name;
+
+    // Validar telefone (E.164: 10–15 dígitos) antes de qualquer envio
+    if (type !== "note" && (phone.length < 10 || phone.length > 15)) {
+      return j({
+        ok: false,
+        error: `Número inválido (${conv.phone}). Use formato com DDI + DDD + número (ex.: 5511999998888).`,
+      }, 400);
+    }
 
     // Nota interna: só salva no DB
     if (type === "note") {
