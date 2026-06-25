@@ -153,7 +153,7 @@ Deno.serve(async (req) => {
     const msg = (e as Error).message || String(e);
     let hint = "";
     if (/auth|535|5\.7\.3|5\.7\.8|credential|password|senha/i.test(msg)) {
-      hint = " — verifique usuário/senha. No Gmail use Senha de App; no Outlook use uma Senha de App e confirme se SMTP AUTH está habilitado para a conta.";
+      hint = " — A Microsoft/Google rejeitou a autenticação. É OBRIGATÓRIO usar uma Senha de App (não a senha da conta): Outlook/Hotmail pessoal → ative verificação em 2 etapas em account.live.com/proofs/Manage e gere a senha em account.live.com/proofs/AppPassword; Gmail → myaccount.google.com/apppasswords. Cole a senha de 16 caracteres sem espaços.";
     } else if (/timeout|ECONN|ENOTFOUND|getaddrinfo|conectar/i.test(msg)) {
       hint = " — verifique host/porta. Para Outlook pessoal use smtp-mail.outlook.com na porta 587 com SSL desativado; para Microsoft 365 use smtp.office365.com.";
     } else if (/tls|ssl|starttls|certificate/i.test(msg)) {
