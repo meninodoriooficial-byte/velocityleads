@@ -170,7 +170,9 @@ Deno.serve(async (req) => {
     session?.close();
     const msg = (e as Error).message || String(e);
     let hint = "";
-    if (/auth|535|5\.7\.3|5\.7\.8|credential|password|senha/i.test(msg)) {
+    if (/5\.7\.139|SmtpClientAuthentication is disabled/i.test(msg)) {
+      hint = " — A Microsoft DESATIVOU o SMTP básico nesta caixa de correio. Soluções: (1) se for Microsoft 365/corporativo, peça ao admin para habilitar 'Authenticated SMTP' em admin.microsoft.com → Usuários → Email apps; (2) se a conta tem alias @gmail.com vinculado, use o preset GMAIL com smtp.gmail.com:465 e uma Senha de App do Google; (3) crie uma conta @outlook.com nova ou use outro provedor. Detalhes: https://aka.ms/smtp_auth_disabled";
+    } else if (/auth|535|5\.7\.3|5\.7\.8|credential|password|senha/i.test(msg)) {
       hint = " — A Microsoft/Google rejeitou a autenticação. É OBRIGATÓRIO usar uma Senha de App (não a senha da conta): Outlook/Hotmail pessoal → ative verificação em 2 etapas em account.live.com/proofs/Manage e gere a senha em account.live.com/proofs/AppPassword; Gmail → myaccount.google.com/apppasswords. Cole a senha de 16 caracteres sem espaços.";
     } else if (/timeout|ECONN|ENOTFOUND|getaddrinfo|conectar/i.test(msg)) {
       hint = " — verifique host/porta. Para Outlook pessoal use smtp-mail.outlook.com na porta 587 com SSL desativado; para Microsoft 365 use smtp.office365.com.";
