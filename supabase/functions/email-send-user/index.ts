@@ -148,7 +148,17 @@ Deno.serve(async (req) => {
       provider: account.provider, status, error: sendError ? { message: sendError } : null,
     });
 
-    if (sendError) return new Response(JSON.stringify({ ok: false, error: sendError }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (sendError) {
+      const isGmailApiDisabled = /Gmail API não está ativada|Mail service not enabled|failedPrecondition/i.test(sendError);
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: sendError,
+          code: isGmailApiDisabled ? "GMAIL_API_NOT_ENABLED" : "EMAIL_SEND_FAILED",
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     // increment sent_today (reset daily)
     const today = new Date().toISOString().slice(0, 10);
