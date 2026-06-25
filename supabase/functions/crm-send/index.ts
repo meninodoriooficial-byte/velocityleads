@@ -164,14 +164,29 @@ Deno.serve(async (req) => {
       payload = { number: phone, audio: audioPayload };
     } else if (type === "buttons") {
       endpoint = `${baseUrl}/message/sendButtons/${encodeURIComponent(instance)}`;
+      // Normaliza entrada vinda do frontend (que usa { text, id } ou objetos completos)
+      const rawButtons = Array.isArray(buttons) ? buttons : [];
+      const normalized = rawButtons.map((b: any, i: number) => ({
+        type: typeof b?.type === "string" ? b.type : "reply",
+        displayText: String(b?.displayText ?? b?.text ?? ""),
+        id: b?.id ? String(b.id) : `btn_${i}`,
+        url: b?.url, copyCode: b?.copyCode, phoneNumber: b?.phoneNumber,
+        currency: b?.currency, name: b?.name, keyType: b?.keyType, key: b?.key,
+      }));
+      const parsed = ButtonsPayloadSchema.safeParse(normalized);
+      if (!parsed.success) {
+        return j({
+          ok: false,
+          error: "Botões inválidos",
+          details: parsed.error.issues.map((iss) => `buttons[${iss.path[0] ?? "?"}]: ${iss.message}`),
+        }, 400);
+      }
       payload = {
-        number: phone, title: body.title || "", description: text,
-        footer: body.footer || "",
-        buttons: (buttons || []).map((b: any, i: number) => ({
-          type: "reply",
-          displayText: b.text,
-          id: b.id || `btn_${i}`,
-        })),
+        number: phone,
+        title: String(body.title || ""),
+        description: text,
+        footer: String(body.footer || ""),
+        buttons: parsed.data,
       };
     }
 
