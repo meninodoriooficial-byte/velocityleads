@@ -66,12 +66,12 @@ class SmtpSession {
     await withTimeout(this.writer.write(encoder.encode(raw)), 6_000, "Timeout ao enviar comando SMTP", () => this.close());
   }
 
-  async readResponse(label: string) {
+  async readResponse(label: string, timeoutMs = 8_000) {
     const lines: string[] = [];
     while (true) {
       let idx = this.buffer.indexOf("\n");
       while (idx < 0) {
-        const result = await withTimeout(this.reader.read(), 8_000, `Timeout aguardando resposta SMTP (${label})`, () => this.close());
+        const result = await withTimeout(this.reader.read(), timeoutMs, `Timeout aguardando resposta SMTP (${label})`, () => this.close());
         if (result.done) throw new Error(`Servidor encerrou a conexão durante ${label}`);
         this.buffer += decoder.decode(result.value, { stream: true });
         idx = this.buffer.indexOf("\n");
@@ -88,9 +88,9 @@ class SmtpSession {
     }
   }
 
-  async command(raw: string, expected: number[], label: string) {
+  async command(raw: string, expected: number[], label: string, timeoutMs = 8_000) {
     await this.write(`${raw}\r\n`);
-    const response = await this.readResponse(label);
+    const response = await this.readResponse(label, timeoutMs);
     if (!expected.includes(response.code)) {
       throw new Error(`${label}: ${response.text}`);
     }
@@ -116,7 +116,7 @@ Deno.serve(async (req) => {
 
     const hostname = String(host).trim();
     const username = String(user).trim();
-    const password = String(pass);
+    const password = String(pass).trim().replace(/\s+/g, "");
     const sender = cleanAddress(String(from || user));
     const target = cleanAddress(String(to || from || user));
     const useImplicitTls = secure ?? p === 465;
@@ -141,43 +141,21 @@ Deno.serve(async (req) => {
 
     await session.command("AUTH LOGIN", [334], "Autenticação");
     await session.command(b64(username), [334], "Usuário SMTP");
-    await session.command(b64(password), [235], "Senha SMTP");
-
-    await session.command(`MAIL FROM:<${sender}>`, [250], "Remetente");
-    await session.command(`RCPT TO:<${target}>`, [250, 251], "Destinatário");
-    await session.command("DATA", [354], "Início do envio");
-
-    const now = new Date().toUTCString();
-    await session.write([
-      `From: <${sender}>`,
-      `To: <${target}>`,
-      "Subject: Teste de conexão SMTP - Lovable",
-      `Date: ${now}`,
-      "MIME-Version: 1.0",
-      "Content-Type: text/plain; charset=utf-8",
-      "",
-      "Se você recebeu este e-mail, a configuração SMTP está funcionando corretamente.",
-      ".",
-      "",
-    ].join("\r\n"));
-
-    await session.readResponse("confirmação do envio").then((response) => {
-      if (response.code !== 250) throw new Error(`Confirmação do envio: ${response.text}`);
-    });
+    await session.command(b64(password), [235], "Senha SMTP", 50_000);
 
     try { await session.command("QUIT", [221], "Encerrar conexão"); } catch { /* noop */ }
     session.close();
     session = null;
 
-    return json({ ok: true, sent_to: target });
+    return json({ ok: true, sent_to: target, authenticated: true });
   } catch (e) {
     session?.close();
     const msg = (e as Error).message || String(e);
     let hint = "";
     if (/auth|535|5\.7\.3|5\.7\.8|credential|password|senha/i.test(msg)) {
-      hint = " — verifique usuário/senha. No Gmail use Senha de App; no Outlook confirme se SMTP AUTH está habilitado para a conta.";
+      hint = " — verifique usuário/senha. No Gmail use Senha de App; no Outlook use uma Senha de App e confirme se SMTP AUTH está habilitado para a conta.";
     } else if (/timeout|ECONN|ENOTFOUND|getaddrinfo|conectar/i.test(msg)) {
-      hint = " — verifique host/porta. Para Outlook use smtp.office365.com na porta 587 com SSL desativado (STARTTLS automático).";
+      hint = " — verifique host/porta. Para Outlook pessoal use smtp-mail.outlook.com na porta 587 com SSL desativado; para Microsoft 365 use smtp.office365.com.";
     } else if (/tls|ssl|starttls|certificate/i.test(msg)) {
       hint = " — confira o modo de segurança: 465 com SSL ativado ou 587 com SSL desativado.";
     }
