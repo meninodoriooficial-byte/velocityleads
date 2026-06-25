@@ -147,8 +147,9 @@ Deno.serve(async (req) => {
         number: phone, title: body.title || "", description: text,
         footer: body.footer || "",
         buttons: (buttons || []).map((b: any, i: number) => ({
-          buttonId: b.id || `btn_${i}`, buttonText: { displayText: b.text },
-          type: 1,
+          type: "reply",
+          displayText: b.text,
+          id: b.id || `btn_${i}`,
         })),
       };
     }
