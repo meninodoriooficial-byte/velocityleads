@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
-import { Plus, Trash2, Save, Zap, Maximize2, X } from "lucide-react";
+import { Plus, Trash2, Save, Zap, Maximize2, X, Pencil } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { FlowBuilder, type FlowGraph } from "./flow/FlowBuilder";
 
@@ -76,7 +76,10 @@ export function FlowsManager() {
             className={`p-3 rounded-lg border cursor-pointer ${sel?.id === f.id ? "border-primary bg-primary/5" : "border-border/60 hover:bg-muted/40"}`}>
             <div className="flex items-center justify-between">
               <span className="font-semibold text-sm flex items-center gap-2"><Zap className="size-3.5" /> {f.name}</span>
-              <Button variant="ghost" size="icon-sm" onClick={(e) => { e.stopPropagation(); remove(f); }}><Trash2 className="size-3.5" /></Button>
+              <div className="flex items-center gap-1">
+                <Button variant="ghost" size="icon-sm" title="Editar fluxo" onClick={(e) => { e.stopPropagation(); startEdit(f); setEditorOpen(true); }}><Pencil className="size-3.5" /></Button>
+                <Button variant="ghost" size="icon-sm" title="Excluir fluxo" onClick={(e) => { e.stopPropagation(); remove(f); }}><Trash2 className="size-3.5" /></Button>
+              </div>
             </div>
             <div className="text-xs text-muted-foreground mt-1">{f.trigger?.type} · {f.steps?.length || 0} passo(s) · {f.is_active ? "ativo" : "inativo"}</div>
           </div>
