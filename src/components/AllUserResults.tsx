@@ -24,10 +24,12 @@ import {
   MapPin,
   MessageCircle,
   Kanban,
+  Mail as MailIcon,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { SendWhatsAppDialog } from "@/components/SendWhatsAppDialog";
+import { SendEmailDialog } from "@/components/SendEmailDialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -74,10 +76,12 @@ export const AllUserResults = () => {
   const [rows, setRows] = useState<LeadRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [waLead, setWaLead] = useState<LeadRow | null>(null);
+  const [emailLead, setEmailLead] = useState<LeadRow | null>(null);
   const [confirmLead, setConfirmLead] = useState<LeadRow | null>(null);
   const [responders, setResponders] = useState<Set<string>>(new Set());
   const [contacted, setContacted] = useState<Set<string>>(new Set());
   const [notWhats, setNotWhats] = useState<Set<string>>(new Set());
+  const [emailedTo, setEmailedTo] = useState<Set<string>>(new Set());
 
   // Filtros
   const [filter, setFilter] = useState("");
@@ -156,6 +160,17 @@ export const AllUserResults = () => {
     setNotWhats(nw);
   };
   useEffect(() => { fetchContacted(); }, [user?.id]);
+
+  const fetchEmailed = async () => {
+    if (!user) return;
+    const { data } = await (supabase as any)
+      .from("email_history")
+      .select("to_email,status")
+      .eq("user_id", user.id)
+      .eq("status", "sent");
+    setEmailedTo(new Set((data || []).map((m: any) => String(m.to_email || "").toLowerCase())));
+  };
+  useEffect(() => { fetchEmailed(); }, [user?.id]);
 
   // Opções dinâmicas
   const uniqStates = useMemo(
@@ -469,6 +484,7 @@ export const AllUserResults = () => {
                   <TableHead className="min-w-[180px]">Nome</TableHead>
                   <TableHead>Telefone</TableHead>
                   <TableHead>Email</TableHead>
+                  <TableHead className="w-12 text-center">E-mail</TableHead>
                   <TableHead className="w-12 text-center">Site</TableHead>
                   <TableHead className="w-12 text-center">End.</TableHead>
                   <TableHead className="w-12 text-center">WhatsApp</TableHead>
@@ -510,6 +526,24 @@ export const AllUserResults = () => {
                       {r.email ? (
                         <a href={`mailto:${r.email}`} className="text-primary hover:underline">{r.email}</a>
                       ) : <span className="text-muted-foreground">—</span>}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {r.email ? (() => {
+                        const wasEmailed = emailedTo.has(r.email.toLowerCase());
+                        return (
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => setEmailLead(r)}
+                            title={wasEmailed ? "Já enviado — clique para enviar novamente" : "Enviar e-mail"}
+                          >
+                            <MailIcon
+                              className={wasEmailed ? "size-4 text-white" : "size-4 text-primary"}
+                              fill={wasEmailed ? "#2563eb" : "none"}
+                            />
+                          </Button>
+                        );
+                      })() : <span className="text-muted-foreground text-xs">—</span>}
                     </TableCell>
                     <TableCell className="text-center">
                       {r.website ? (
@@ -588,6 +622,25 @@ export const AllUserResults = () => {
             estado: waLead.searches?.state,
             bairro: waLead.searches?.neighborhood,
             ramo: waLead.searches?.category,
+          }}
+        />
+      )}
+
+      {emailLead && (
+        <SendEmailDialog
+          open={!!emailLead}
+          onOpenChange={(o) => { if (!o) { setEmailLead(null); fetchEmailed(); } }}
+          onSent={fetchEmailed}
+          lead={{
+            id: emailLead.id,
+            nome: emailLead.business_name,
+            telefone: emailLead.phone,
+            email: emailLead.email,
+            site: emailLead.website,
+            cidade: emailLead.searches?.city,
+            estado: emailLead.searches?.state,
+            bairro: emailLead.searches?.neighborhood,
+            ramo: emailLead.searches?.category,
           }}
         />
       )}
