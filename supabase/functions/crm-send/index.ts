@@ -62,7 +62,11 @@ Deno.serve(async (req) => {
     const mediaMime = body.mediaMime || null;
     const mediaFilename = body.mediaFilename || null;
     const buttons = body.buttons || null;
-    const phone = String(conv.phone || "").replace(/\D/g, "");
+    let phone = String(conv.phone || "").replace(/\D/g, "");
+    // Garantir DDI brasileiro: se vier só com 10–11 dígitos (DDD+número), prefixar 55
+    if (phone.length === 10 || phone.length === 11) {
+      phone = "55" + phone;
+    }
     const instance = inst.instance_name;
 
     // Validar telefone (E.164: 10–15 dígitos) antes de qualquer envio
