@@ -530,6 +530,43 @@ export const EmailMarketingAddon = () => {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={outlookWarnOpen} onOpenChange={setOutlookWarnOpen}>
+        <DialogContent className="sm:max-w-md z-[100]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-400">
+              <AlertTriangle className="size-5" /> SMTP do Outlook está bloqueado
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm leading-relaxed">
+            <p>
+              Desde <strong>setembro/2024</strong>, a Microsoft <strong>desativou</strong> a autenticação SMTP básica
+              para contas pessoais <code>@outlook.com</code> / <code>@hotmail.com</code> / <code>@live.com</code> —
+              mesmo com Senha de App e verificação em 2 etapas ativadas.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Erro retornado pelo servidor: <code>535 5.7.139 SmtpClientAuthentication is disabled</code>.
+            </p>
+            <div className="rounded-lg border border-primary/30 bg-primary/10 p-3 text-xs space-y-1">
+              <p className="font-semibold">✅ Solução recomendada:</p>
+              <p>Conecte sua conta Outlook via <strong>OAuth</strong> (método oficial da Microsoft para contas pessoais).</p>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Alternativas: use uma conta <strong>Gmail</strong> com Senha de App, ou peça ao admin do Microsoft 365
+              corporativo para liberar "Authenticated SMTP".
+            </p>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" onClick={() => setOutlookWarnOpen(false)} disabled={connectingOAuth}>
+              Fechar
+            </Button>
+            <Button onClick={connectOutlookOAuth} disabled={connectingOAuth}>
+              {connectingOAuth ? <Loader2 className="size-4 mr-2 animate-spin" /> : null}
+              Conectar com Outlook (OAuth)
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!sendTestAcc} onOpenChange={(o) => !o && !sendingTest && setSendTestAcc(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
