@@ -103,7 +103,9 @@ Deno.serve(async (req) => {
         let processed = 0;
         for (const m of list) {
           const x = extractMsg(m);
-          if (!x.phone || x.fromMe) continue;
+          if (!x.isUserChat || !x.phone || x.fromMe) continue;
+          // Telefones válidos no WhatsApp têm 10–15 dígitos (E.164)
+          if (x.phone.length < 10 || x.phone.length > 15) continue;
           if (x.ts && x.ts < sinceMs) continue;
           if (!x.evoId) continue;
 
