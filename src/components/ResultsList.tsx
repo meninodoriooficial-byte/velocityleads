@@ -893,6 +893,16 @@ export const ResultsList = ({ results, isLoading }: ResultsListProps) => {
                     )}
                   </div>
                 )}
+                {ov.cnae && (
+                  <div className="flex items-start gap-2 text-xs">
+                    <Badge variant="outline" className="text-[10px] shrink-0">CNAE</Badge>
+                    <span className="text-muted-foreground leading-snug">
+                      {ov.cnae.codigo && <span className="font-mono font-semibold text-foreground">{ov.cnae.codigo}</span>}
+                      {ov.cnae.codigo && ov.cnae.descricao && " — "}
+                      {ov.cnae.descricao}
+                    </span>
+                  </div>
+                )}
                 {r.address && (
                   <div className="flex items-start gap-2 text-muted-foreground">
                     <div className="size-6 rounded-md bg-muted flex items-center justify-center shrink-0 mt-0.5">
