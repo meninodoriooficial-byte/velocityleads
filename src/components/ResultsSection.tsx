@@ -21,6 +21,9 @@ export const ResultsSection = ({ searchData }: ResultsSectionProps) => {
   const [batchNumber, setBatchNumber] = useState(0);
   const [isFetchingBatch, setIsFetchingBatch] = useState(false);
   const [enriching, setEnriching] = useState(false);
+  const [batchBaseline, setBatchBaseline] = useState<number | null>(null);
+  const BATCH_TARGET = 100;
+  const MAX_BATCH_ATTEMPTS = 6;
 
   useEffect(() => {
     if (searchData?.id) {
@@ -124,6 +127,10 @@ export const ResultsSection = ({ searchData }: ResultsSectionProps) => {
 
   const loadMoreResults = () => {
     if (!loading && hasMore) {
+      // Marca o ponto de partida deste lote — o efeito abaixo vai
+      // continuar disparando páginas até somar 100 novos leads (ou
+      // esgotar / bater no plano).
+      setBatchBaseline(allResults.length);
       setCurrentPage(prev => prev + 1);
     }
   };
@@ -134,6 +141,26 @@ export const ResultsSection = ({ searchData }: ResultsSectionProps) => {
       fetchResults(false);
     }
   }, [currentPage]);
+
+  // Retomar automaticamente: se o lote atual ainda não atingiu 100 novos leads
+  // e o backend indicou hasMore, dispara a próxima página com queries rotacionadas.
+  useEffect(() => {
+    if (batchBaseline === null) return;
+    if (loading || isFetchingBatch) return;
+    const gained = allResults.length - batchBaseline;
+    const attempts = currentPage - 1; // aproximação de tentativas neste lote
+    if (gained >= BATCH_TARGET || !hasMore || attempts >= MAX_BATCH_ATTEMPTS) {
+      if (gained > 0 && gained < BATCH_TARGET && hasMore) {
+        toast.info("Lote parcial", {
+          description: `Captura retomada trouxe ${gained} novo(s) lead(s). Clique em "Capturar mais 100" para continuar.`,
+        });
+      }
+      setBatchBaseline(null);
+      return;
+    }
+    // Ainda faltam leads para completar 100 — dispara próxima página
+    setCurrentPage((p) => p + 1);
+  }, [allResults.length, loading, isFetchingBatch, hasMore]);
 
   const exportToCSV = () => {
     if (allResults.length === 0) return;
