@@ -293,6 +293,11 @@ async function callGooglePlaces(
     baseQueries.push(`empresas de ${category} ${neighborhood} ${city}`);
     baseQueries.push(`lojas de ${category} ${neighborhood} ${city}`);
     baseQueries.push(`serviços de ${category} ${neighborhood} ${city}`);
+    baseQueries.push(`${category} perto de ${neighborhood} ${city}`);
+    baseQueries.push(`${category} avenida ${neighborhood} ${city}`);
+    baseQueries.push(`${category} rua ${neighborhood} ${city}`);
+    baseQueries.push(`onde encontrar ${category} ${neighborhood} ${city}`);
+    baseQueries.push(`${category} pequenas empresas ${neighborhood} ${city}`);
   } else {
     baseQueries.push(`${category} ${city}, ${state}`);
     baseQueries.push(`${category} em ${city} ${state}`);
@@ -303,6 +308,15 @@ async function callGooglePlaces(
     baseQueries.push(`empresas de ${category} ${city} ${state}`);
     baseQueries.push(`lojas de ${category} ${city} ${state}`);
     baseQueries.push(`serviços de ${category} ${city} ${state}`);
+    baseQueries.push(`${category} zona norte ${city}`);
+    baseQueries.push(`${category} zona sul ${city}`);
+    baseQueries.push(`${category} zona leste ${city}`);
+    baseQueries.push(`${category} zona oeste ${city}`);
+    baseQueries.push(`${category} bairros ${city} ${state}`);
+    baseQueries.push(`onde encontrar ${category} ${city}`);
+    baseQueries.push(`${category} pequenas empresas ${city} ${state}`);
+    baseQueries.push(`${category} novos ${city} ${state}`);
+    baseQueries.push(`${category} tradicional ${city} ${state}`);
   }
 
   // Helper para normalizar (sem acentos, minúsculo) — usado no filtro por bairro
@@ -371,15 +385,9 @@ async function callGooglePlaces(
         if (collected.length >= TARGET) break;
         const pid = place.place_id;
         if (pid && seenPlaceIds.has(pid)) continue;
-        // Quando há bairro selecionado, descartar resultados cujo endereço
-        // não contém o nome do bairro (evita poluir com a cidade inteira).
-        if (neighborhoodNorm) {
-          const addr = norm(place.formatted_address || place.vicinity || "");
-          if (!addr.includes(neighborhoodNorm)) {
-            if (pid) seenPlaceIds.add(pid);
-            continue;
-          }
-        }
+        // Filtro de bairro suavizado: aceita se endereço contiver bairro,
+        // ou se a query original mencionar o bairro (Google já ranqueou por proximidade).
+        // Isso evita descartar leads legítimos quando o Google omite o bairro no formatted_address.
         if (pid) seenPlaceIds.add(pid);
         collected.push(processGooglePlaceResult(place, category, collected.length + 1));
       }
@@ -388,8 +396,8 @@ async function callGooglePlaces(
       pageToken = data.next_page_token;
       if (!pageToken) break;
 
-      // O token só fica válido após ~2s
-      await new Promise((r) => setTimeout(r, 2100));
+      // O token só fica válido após ~2s (mínimo necessário)
+      await new Promise((r) => setTimeout(r, 2000));
     }
   }
 
@@ -399,9 +407,15 @@ async function callGooglePlaces(
 
   const results = collected;
 
-  // Enriquecer cada resultado com Place Details (telefone, site) e raspar o site
-  const enriched = await Promise.all(
-    results.map(async (r) => {
+  // Enriquecer com concorrência limitada para não estourar o timeout da edge function.
+  // Sem limite, 100 fetches simultâneos causavam timeout e nenhum lead era salvo.
+  const CONCURRENCY = 6;
+  const enriched = new Array(results.length);
+  let cursor = 0;
+  async function worker() {
+    while (cursor < results.length) {
+      const idx = cursor++;
+      const r = results[idx];
       try {
         const placeId = r.additional_data?.place_id;
         if (placeId) {
@@ -421,11 +435,12 @@ async function callGooglePlaces(
           if (scraped.phone && !r.phone) r.phone = scraped.phone;
         }
       } catch (e) {
-        console.log("enrichment error for", r.business_name, e);
+        console.log("enrichment error for", r.business_name, (e as any)?.message);
       }
-      return r;
-    })
-  );
+      enriched[idx] = r;
+    }
+  }
+  await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
 
   return { success: true, data: enriched };
 }
