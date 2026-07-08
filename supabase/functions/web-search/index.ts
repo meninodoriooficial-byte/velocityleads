@@ -132,7 +132,11 @@ serve(async (req) => {
     console.log(`Search completed: ${searchResults.length} new results found, ${totalCount} total${warning ? ` (warning: ${warning})` : ''}`);
 
     const total = totalCount || 0;
-    const hasMore = searchResults.length >= targetThisBatch && total < planLimit;
+    // hasMore = ainda cabe mais no plano. Mesmo que este lote tenha vindo
+    // parcial (Google exauriu a rotação atual de queries), permitimos ao
+    // frontend chamar novamente com page+1 para rotacionar queries e
+    // completar o alvo de 100 novos leads.
+    const hasMore = total < planLimit;
 
     return new Response(
       JSON.stringify({
