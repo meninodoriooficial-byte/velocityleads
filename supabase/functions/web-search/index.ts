@@ -490,7 +490,7 @@ async function scrapeWebsite(rawUrl: string) {
     if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
 
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 8000);
+    const timer = setTimeout(() => ctrl.abort(), 5000);
     const resp = await fetch(url, {
       signal: ctrl.signal,
       headers: {
