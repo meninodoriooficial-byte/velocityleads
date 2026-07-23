@@ -8,17 +8,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2, ShieldCheck } from "lucide-react";
-
-const SUPER_ADMIN_EMAIL = "superadmin@admin.com";
-const SUPER_ADMIN_PASSWORD = "SuperAdmin@2026";
+import { Loader2 } from "lucide-react";
 
 export default function Auth() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
-  const [autoLoading, setAutoLoading] = useState(false);
   const [session, setSession] = useState(null);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const navigate = useNavigate();
@@ -136,34 +132,6 @@ export default function Auth() {
     }
   };
 
-  const handleAutoLoginSuperAdmin = async () => {
-    setAutoLoading(true);
-    try {
-      // Ensure the super admin exists / password is in sync (idempotent).
-      const { error: bootErr } = await supabase.functions.invoke("bootstrap-admin");
-      if (bootErr) throw bootErr;
-
-      const { error } = await supabase.auth.signInWithPassword({
-        email: SUPER_ADMIN_EMAIL,
-        password: SUPER_ADMIN_PASSWORD,
-      });
-      if (error) throw error;
-
-      toast({
-        title: "Autologin Super Admin",
-        description: "Sessão iniciada como Super Admin.",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Erro no autologin",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setAutoLoading(false);
-    }
-  };
-
   if (session) {
     return null; // Will redirect
   }
@@ -180,27 +148,6 @@ export default function Auth() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="mb-4 space-y-2">
-            <Button
-              type="button"
-              variant="volt"
-              className="w-full"
-              onClick={handleAutoLoginSuperAdmin}
-              disabled={autoLoading || loading}
-            >
-              {autoLoading ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <ShieldCheck className="mr-2 h-4 w-4" />
-              )}
-              Autologin Super Admin
-            </Button>
-            <p className="text-[11px] text-muted-foreground text-center leading-tight">
-              Acesso rápido apenas para desenvolvimento — cria/sincroniza o usuário{" "}
-              <span className="font-mono">{SUPER_ADMIN_EMAIL}</span>.
-            </p>
-          </div>
-
           {showForgotPassword ? (
             <form onSubmit={handleForgotPassword} className="space-y-4">
               <div className="space-y-2">
