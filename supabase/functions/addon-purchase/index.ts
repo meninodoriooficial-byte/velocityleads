@@ -35,6 +35,18 @@ Deno.serve(async (req) => {
 
     const admin = createClient(SUPABASE_URL, SERVICE);
 
+    // Verifica se o ambiente está habilitado pelo admin
+    const { data: envSetting } = await admin
+      .from("system_settings")
+      .select("setting_value")
+      .eq("setting_key", "payments_env_toggles")
+      .maybeSingle();
+    const envVal = (envSetting?.setting_value as any) || {};
+    const enabled = mode === "live" ? envVal.live_enabled === true : envVal.test_enabled !== false;
+    if (!enabled) {
+      return j({ error: "env_disabled", message: `Ambiente de ${mode === "live" ? "produção" : "teste"} está desligado pelo admin.` }, 400);
+    }
+
     const { data: addon } = await admin.from("addons").select("*").eq("slug", slug).eq("is_active", true).maybeSingle();
     if (!addon) return j({ error: "addon_not_found" }, 404);
 
