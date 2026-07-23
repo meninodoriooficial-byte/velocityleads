@@ -252,6 +252,49 @@ export function PaymentsConfig() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Ambientes ativos</CardTitle>
+          <CardDescription>
+            Ligue ou desligue rapidamente cada ambiente. Quando desligado, o checkout não pode ser iniciado naquele modo.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between gap-4 rounded-lg border p-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30">
+                  Teste (sandbox)
+                </Badge>
+                {testEnabled ? (
+                  <Badge className="bg-success text-white">Ligado</Badge>
+                ) : (
+                  <Badge variant="outline">Desligado</Badge>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">Usa o Access Token de teste. Sem cobranças reais.</p>
+            </div>
+            <Switch checked={testEnabled} onCheckedChange={toggleTest} disabled={togglingEnv === "test"} />
+          </div>
+          <div className="flex items-center justify-between gap-4 rounded-lg border p-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="bg-success/10 text-success border-success/30">
+                  Produção
+                </Badge>
+                {liveEnabled ? (
+                  <Badge className="bg-success text-white">Ligado</Badge>
+                ) : (
+                  <Badge variant="outline">Desligado</Badge>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">Cobranças reais usando o Access Token de produção.</p>
+            </div>
+            <Switch checked={liveEnabled} onCheckedChange={toggleLive} disabled={togglingEnv === "live"} />
+          </div>
+        </CardContent>
+      </Card>
+
       {loading ? (
         <div className="flex items-center justify-center py-12 text-muted-foreground">
           <Loader2 className="size-5 animate-spin mr-2" /> Carregando...
