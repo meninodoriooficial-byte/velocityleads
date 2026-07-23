@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2, ExternalLink, CreditCard, ShieldCheck } from "lucide-react";
 
@@ -72,12 +73,17 @@ const MP_KEYS: MpKey[] = [
   },
 ];
 
+const ENV_SETTING_KEY = "payments_env_toggles";
+
 export function PaymentsConfig() {
   const { toast } = useToast();
   const [configs, setConfigs] = useState<Record<string, ConfigRow | null>>({});
   const [values, setValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [testEnabled, setTestEnabled] = useState(true);
+  const [liveEnabled, setLiveEnabled] = useState(false);
+  const [togglingEnv, setTogglingEnv] = useState<"test" | "live" | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -100,7 +106,47 @@ export function PaymentsConfig() {
 
   useEffect(() => {
     load();
+    (async () => {
+      const { data } = await supabase
+        .from("system_settings")
+        .select("setting_value")
+        .eq("setting_key", ENV_SETTING_KEY)
+        .maybeSingle();
+      const val = (data?.setting_value as any) || {};
+      setTestEnabled(val.test_enabled !== false);
+      setLiveEnabled(val.live_enabled === true);
+    })();
   }, []);
+
+  const persistEnv = async (next: { test_enabled: boolean; live_enabled: boolean }, which: "test" | "live") => {
+    setTogglingEnv(which);
+    const { error } = await supabase
+      .from("system_settings")
+      .upsert(
+        { setting_key: ENV_SETTING_KEY, setting_value: next as any, description: "Habilitação dos ambientes de pagamento (Mercado Pago)" },
+        { onConflict: "setting_key" },
+      );
+    setTogglingEnv(null);
+    if (error) {
+      toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
+      return false;
+    }
+    toast({ title: "Ambiente atualizado" });
+    return true;
+  };
+
+  const toggleTest = async (v: boolean) => {
+    const prev = testEnabled;
+    setTestEnabled(v);
+    const ok = await persistEnv({ test_enabled: v, live_enabled: liveEnabled }, "test");
+    if (!ok) setTestEnabled(prev);
+  };
+  const toggleLive = async (v: boolean) => {
+    const prev = liveEnabled;
+    setLiveEnabled(v);
+    const ok = await persistEnv({ test_enabled: testEnabled, live_enabled: v }, "live");
+    if (!ok) setLiveEnabled(prev);
+  };
 
   const ensureRow = async (key: typeof MP_KEYS[number]): Promise<string> => {
     const existing = configs[key.key_name];
@@ -202,6 +248,49 @@ export function PaymentsConfig() {
           <div className="flex items-center gap-2 pt-2 text-xs text-muted-foreground">
             <ShieldCheck className="size-3.5 text-success" />
             As credenciais são criptografadas no banco e só ficam acessíveis ao backend.
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Ambientes ativos</CardTitle>
+          <CardDescription>
+            Ligue ou desligue rapidamente cada ambiente. Quando desligado, o checkout não pode ser iniciado naquele modo.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between gap-4 rounded-lg border p-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30">
+                  Teste (sandbox)
+                </Badge>
+                {testEnabled ? (
+                  <Badge className="bg-success text-white">Ligado</Badge>
+                ) : (
+                  <Badge variant="outline">Desligado</Badge>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">Usa o Access Token de teste. Sem cobranças reais.</p>
+            </div>
+            <Switch checked={testEnabled} onCheckedChange={toggleTest} disabled={togglingEnv === "test"} />
+          </div>
+          <div className="flex items-center justify-between gap-4 rounded-lg border p-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="bg-success/10 text-success border-success/30">
+                  Produção
+                </Badge>
+                {liveEnabled ? (
+                  <Badge className="bg-success text-white">Ligado</Badge>
+                ) : (
+                  <Badge variant="outline">Desligado</Badge>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">Cobranças reais usando o Access Token de produção.</p>
+            </div>
+            <Switch checked={liveEnabled} onCheckedChange={toggleLive} disabled={togglingEnv === "live"} />
           </div>
         </CardContent>
       </Card>

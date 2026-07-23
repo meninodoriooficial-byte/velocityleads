@@ -73,6 +73,24 @@ Deno.serve(async (req) => {
     // Service role para ler pacote e criar pedido
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+    // Verifica se o ambiente está habilitado pelo admin
+    const { data: envSetting } = await admin
+      .from("system_settings")
+      .select("setting_value")
+      .eq("setting_key", "payments_env_toggles")
+      .maybeSingle();
+    const envVal = (envSetting?.setting_value as any) || {};
+    const envEnabled = mode === "live" ? envVal.live_enabled === true : envVal.test_enabled !== false;
+    if (!envEnabled) {
+      return new Response(
+        JSON.stringify({
+          error: "env_disabled",
+          message: `Ambiente de ${mode === "live" ? "produção" : "teste"} está desligado pelo admin.`,
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     const { data: pkg, error: pkgErr } = await admin
       .from("search_packages")
       .select("*")
