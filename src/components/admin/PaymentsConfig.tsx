@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2, ExternalLink, CreditCard, ShieldCheck } from "lucide-react";
 
@@ -72,12 +73,17 @@ const MP_KEYS: MpKey[] = [
   },
 ];
 
+const ENV_SETTING_KEY = "payments_env_toggles";
+
 export function PaymentsConfig() {
   const { toast } = useToast();
   const [configs, setConfigs] = useState<Record<string, ConfigRow | null>>({});
   const [values, setValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [testEnabled, setTestEnabled] = useState(true);
+  const [liveEnabled, setLiveEnabled] = useState(false);
+  const [togglingEnv, setTogglingEnv] = useState<"test" | "live" | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -100,7 +106,47 @@ export function PaymentsConfig() {
 
   useEffect(() => {
     load();
+    (async () => {
+      const { data } = await supabase
+        .from("system_settings")
+        .select("setting_value")
+        .eq("setting_key", ENV_SETTING_KEY)
+        .maybeSingle();
+      const val = (data?.setting_value as any) || {};
+      setTestEnabled(val.test_enabled !== false);
+      setLiveEnabled(val.live_enabled === true);
+    })();
   }, []);
+
+  const persistEnv = async (next: { test_enabled: boolean; live_enabled: boolean }, which: "test" | "live") => {
+    setTogglingEnv(which);
+    const { error } = await supabase
+      .from("system_settings")
+      .upsert(
+        { setting_key: ENV_SETTING_KEY, setting_value: next as any, description: "Habilitação dos ambientes de pagamento (Mercado Pago)" },
+        { onConflict: "setting_key" },
+      );
+    setTogglingEnv(null);
+    if (error) {
+      toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
+      return false;
+    }
+    toast({ title: "Ambiente atualizado" });
+    return true;
+  };
+
+  const toggleTest = async (v: boolean) => {
+    const prev = testEnabled;
+    setTestEnabled(v);
+    const ok = await persistEnv({ test_enabled: v, live_enabled: liveEnabled }, "test");
+    if (!ok) setTestEnabled(prev);
+  };
+  const toggleLive = async (v: boolean) => {
+    const prev = liveEnabled;
+    setLiveEnabled(v);
+    const ok = await persistEnv({ test_enabled: testEnabled, live_enabled: v }, "live");
+    if (!ok) setLiveEnabled(prev);
+  };
 
   const ensureRow = async (key: typeof MP_KEYS[number]): Promise<string> => {
     const existing = configs[key.key_name];
