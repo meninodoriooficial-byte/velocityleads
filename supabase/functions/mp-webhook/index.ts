@@ -153,12 +153,6 @@ Deno.serve(async (req) => {
           .eq("slug", order.addon_slug)
           .maybeSingle();
         const now = new Date();
-        const expires =
-          addonDef?.billing_period === "yearly"
-            ? new Date(now.getTime() + 365 * 24 * 3600 * 1000)
-            : addonDef?.billing_period === "monthly"
-              ? new Date(now.getTime() + 30 * 24 * 3600 * 1000)
-              : null;
 
         // Renova ou cria
         const { data: existing } = await admin
@@ -168,6 +162,25 @@ Deno.serve(async (req) => {
           .eq("addon_slug", order.addon_slug)
           .maybeSingle();
 
+        // Base para calcular a nova validade: se o add-on ainda está válido
+        // (expires_at no futuro), soma o período ao tempo restante (renovação
+        // acumulativa). Caso contrário, conta a partir de agora.
+        const addDays =
+          addonDef?.billing_period === "yearly"
+            ? 365
+            : addonDef?.billing_period === "monthly"
+              ? 30
+              : null;
+        let baseDate = now;
+        if (existing?.expires_at) {
+          const currentExp = new Date(existing.expires_at);
+          if (currentExp.getTime() > now.getTime()) baseDate = currentExp;
+        }
+        const expires =
+          addDays != null
+            ? new Date(baseDate.getTime() + addDays * 24 * 3600 * 1000)
+            : null;
+
         if (existing) {
           await admin
             .from("user_addons")
@@ -176,7 +189,6 @@ Deno.serve(async (req) => {
               activated_at: now.toISOString(),
               expires_at: expires?.toISOString() || null,
               monthly_quota: addonDef?.monthly_quota ?? existing.monthly_quota,
-              monthly_used: 0,
               quota_reset_at: new Date(
                 now.getFullYear(),
                 now.getMonth() + 1,
