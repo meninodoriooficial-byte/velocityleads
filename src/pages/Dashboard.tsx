@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/components/ui/use-toast";
 import { SearchForm } from "@/components/SearchForm";
-import { TrendingUp, Users, Sparkles, CheckCircle2, KeyRound, History, AlertTriangle, Package, CreditCard, Zap, Target, ArrowUpRight, Bot, MessageCircle, Mail } from "lucide-react";
+import { TrendingUp, Users, Sparkles, CheckCircle2, KeyRound, History, AlertTriangle, Package, CreditCard, Zap, Target, ArrowUpRight, Bot, MessageCircle, Mail, Download } from "lucide-react";
 import { ResultsSection } from "@/components/ResultsSection";
 import { ApiConfigManager } from "@/components/admin/ApiConfigManager";
 import { ApiErrorLogs } from "@/components/admin/ApiErrorLogs";
@@ -19,6 +19,7 @@ import { PackagesManager } from "@/components/admin/PackagesManager";
 import { PaymentsConfig } from "@/components/admin/PaymentsConfig";
 import { EvolutionApiConfig } from "@/components/admin/EvolutionApiConfig";
 import { EmailOAuthConfig } from "@/components/admin/EmailOAuthConfig";
+import { DataExport } from "@/components/admin/DataExport";
 import { PurchasesHistory } from "@/components/PurchasesHistory";
 import { AddonsMarketplace } from "@/components/addons/AddonsMarketplace";
 import { WhatsAppAddon } from "@/components/addons/WhatsAppAddon";
@@ -561,7 +562,7 @@ export default function Dashboard() {
 
             {activeTab === "admin" && isAdmin && (
               <Tabs defaultValue="users" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 md:grid-cols-9 h-auto p-1.5 bg-muted/60 border border-border/60 rounded-xl mb-6">
+                <TabsList className="grid w-full grid-cols-2 md:grid-cols-10 h-auto p-1.5 bg-muted/60 border border-border/60 rounded-xl mb-6">
                   <TabsTrigger value="users" className="gap-2 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg font-semibold">
                     <Users className="w-4 h-4" />
                     <span className="hidden sm:inline">Usuários</span>
@@ -597,6 +598,10 @@ export default function Dashboard() {
                   <TabsTrigger value="errors" className="gap-2 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg font-semibold">
                     <AlertTriangle className="w-4 h-4" />
                     <span className="hidden sm:inline">Erros</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="export" className="gap-2 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg font-semibold">
+                    <Download className="w-4 h-4" />
+                    <span className="hidden sm:inline">Exportar</span>
                   </TabsTrigger>
                 </TabsList>
 
@@ -749,6 +754,23 @@ export default function Dashboard() {
                     </CardHeader>
                     <CardContent>
                       <ApiErrorLogs keyName="GOOGLE_MAPS_API_KEY" />
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="export" className="mt-0">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Download className="w-5 h-5" />
+                        Exportar dados do sistema (SQL)
+                      </CardTitle>
+                      <CardDescription>
+                        Gera um arquivo <code>.sql</code> com <code>INSERT</code>s de todas as tabelas de dados do sistema para backup ou migração.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <DataExport />
                     </CardContent>
                   </Card>
                 </TabsContent>
