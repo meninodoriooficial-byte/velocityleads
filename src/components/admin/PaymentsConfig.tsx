@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2, ExternalLink, CreditCard, ShieldCheck } from "lucide-react";
+import { Loader2, ExternalLink, CreditCard, ShieldCheck, Eye, EyeOff, Copy } from "lucide-react";
 
 type ConfigRow = {
   id: string;
@@ -84,6 +84,47 @@ export function PaymentsConfig() {
   const [testEnabled, setTestEnabled] = useState(true);
   const [liveEnabled, setLiveEnabled] = useState(false);
   const [togglingEnv, setTogglingEnv] = useState<"test" | "live" | null>(null);
+  const [revealed, setRevealed] = useState<Record<string, string>>({});
+  const [revealingKey, setRevealingKey] = useState<string | null>(null);
+
+  const revealKey = async (keyName: string) => {
+    if (revealed[keyName]) {
+      setRevealed((p) => {
+        const n = { ...p };
+        delete n[keyName];
+        return n;
+      });
+      return;
+    }
+    setRevealingKey(keyName);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-reveal-key", {
+        body: { key_name: keyName },
+      });
+      if (error || !data?.ok) {
+        toast({
+          title: "Não foi possível revelar",
+          description: data?.error || error?.message || "Erro",
+          variant: "destructive",
+        });
+        return;
+      }
+      setRevealed((p) => ({ ...p, [keyName]: data.value as string }));
+    } finally {
+      setRevealingKey(null);
+    }
+  };
+
+  const copyRevealed = async (keyName: string) => {
+    const val = revealed[keyName];
+    if (!val) return;
+    try {
+      await navigator.clipboard.writeText(val);
+      toast({ title: "Copiado" });
+    } catch {
+      toast({ title: "Falha ao copiar", variant: "destructive" });
+    }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -349,6 +390,39 @@ export function PaymentsConfig() {
                       }
                     />
                   </div>
+                  {last4 && (
+                    <div className="space-y-2">
+                      <Label className="text-xs text-muted-foreground">Credencial atual</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          readOnly
+                          value={revealed[key.key_name] ?? `••••••••••••${last4}`}
+                          className="font-mono text-muted-foreground"
+                        />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          type="button"
+                          onClick={() => revealKey(key.key_name)}
+                          disabled={revealingKey === key.key_name}
+                          title={revealed[key.key_name] ? "Ocultar" : "Mostrar chave"}
+                        >
+                          {revealingKey === key.key_name ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : revealed[key.key_name] ? (
+                            <EyeOff className="w-4 h-4" />
+                          ) : (
+                            <Eye className="w-4 h-4" />
+                          )}
+                        </Button>
+                        {revealed[key.key_name] && (
+                          <Button variant="outline" size="sm" type="button" onClick={() => copyRevealed(key.key_name)} title="Copiar">
+                            <Copy className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2">
                     <Button
                       onClick={() => saveKey(key)}
