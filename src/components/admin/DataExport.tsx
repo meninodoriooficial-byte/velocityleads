@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Download, Loader2, Database } from "lucide-react";
+import { Download, Loader2, Database, Settings, FileCode } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -16,16 +16,18 @@ const INCLUDED = [
   "Logs de erro de API",
 ];
 
-export const DataExport = () => {
-  const [loading, setLoading] = useState(false);
+type Mode = "full" | "config" | "config-with-schema";
 
-  const handleExport = async () => {
-    setLoading(true);
+export const DataExport = () => {
+  const [loading, setLoading] = useState<Mode | null>(null);
+
+  const handleExport = async (mode: Mode) => {
+    setLoading(mode);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Sessão não encontrada");
 
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-export-sql`;
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-export-sql?mode=${mode}`;
       const res = await fetch(url, {
         method: "POST",
         headers: {
@@ -41,7 +43,8 @@ export const DataExport = () => {
       const href = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = href;
-      a.download = `velocityleads-export-${new Date().toISOString().slice(0, 10)}.sql`;
+      const base = mode === "full" ? "velocityleads-export" : mode === "config" ? "velocityleads-config" : "velocityleads-config-schema";
+      a.download = `${base}-${new Date().toISOString().slice(0, 10)}.sql`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -50,7 +53,7 @@ export const DataExport = () => {
     } catch (e: any) {
       toast.error("Falha ao exportar", { description: e?.message || String(e) });
     } finally {
-      setLoading(false);
+      setLoading(null);
     }
   };
 
@@ -68,10 +71,32 @@ export const DataExport = () => {
           O dump contém apenas comandos <code>INSERT</code> — a estrutura (tabelas) não é recriada.
         </p>
       </div>
-      <Button onClick={handleExport} disabled={loading} className="gap-2">
-        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-        {loading ? "Gerando dump..." : "Exportar dados (.sql)"}
-      </Button>
+
+      <div className="rounded-lg border border-border/60 bg-muted/30 p-4">
+        <div className="flex items-center gap-2 mb-2 text-sm font-semibold">
+          <Settings className="w-4 h-4" /> Exportação de configurações
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Exporta apenas as configurações do sistema: APIs, IA, pagamentos, WhatsApp, e-mail OAuth (system_settings),
+          pacotes de busca e add-ons. Ideal para restaurar configurações após perda ou migrar para outro ambiente.
+          Os <code>INSERT</code>s usam <code>ON CONFLICT</code> para atualizar registros existentes com segurança.
+        </p>
+      </div>
+
+      <div className="flex flex-wrap gap-3">
+        <Button onClick={() => handleExport("full")} disabled={!!loading} className="gap-2">
+          {loading === "full" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+          {loading === "full" ? "Gerando dump..." : "Exportar dados (.sql)"}
+        </Button>
+        <Button onClick={() => handleExport("config")} disabled={!!loading} variant="secondary" className="gap-2">
+          {loading === "config" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Settings className="w-4 h-4" />}
+          {loading === "config" ? "Gerando..." : "Exportar só configurações (.sql)"}
+        </Button>
+        <Button onClick={() => handleExport("config-with-schema")} disabled={!!loading} variant="outline" className="gap-2">
+          {loading === "config-with-schema" ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileCode className="w-4 h-4" />}
+          {loading === "config-with-schema" ? "Gerando..." : "Exportar configurações + estrutura (.sql)"}
+        </Button>
+      </div>
     </div>
   );
 };
