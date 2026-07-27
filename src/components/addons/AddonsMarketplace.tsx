@@ -4,7 +4,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { CheckCircle2, MessageCircle, Loader2, Sparkles } from "lucide-react";
+import { CheckCircle2, MessageCircle, Loader2, Sparkles, RefreshCw } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface Props {
   onOpenAddon?: (slug: string) => void;
@@ -14,6 +22,7 @@ interface Props {
 export const AddonsMarketplace = ({ onOpenAddon, paymentMode = "test" }: Props) => {
   const { catalog, isActive, loading, active } = useUserAddons();
   const [buyingId, setBuyingId] = useState<string | null>(null);
+  const [renewTarget, setRenewTarget] = useState<{ slug: string; name: string; price: string; expires_at: string | null } | null>(null);
   const { toast } = useToast();
 
   const buy = async (slug: string) => {
@@ -53,6 +62,7 @@ export const AddonsMarketplace = ({ onOpenAddon, paymentMode = "test" }: Props) 
     return <p className="text-sm text-muted-foreground">Nenhum add-on disponível no momento.</p>;
 
   return (
+    <>
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
       {catalog.map((a) => {
         const activeRecord = active.find((u) => u.addon_slug === a.slug);
@@ -97,9 +107,31 @@ export const AddonsMarketplace = ({ onOpenAddon, paymentMode = "test" }: Props) 
               </p>
             )}
             {on ? (
-              <Button onClick={() => onOpenAddon?.(a.slug)} className="w-full" variant="default">
-                <Sparkles className="size-4 mr-2" /> Gerenciar
-              </Button>
+              <div className="flex flex-col gap-2">
+                <Button onClick={() => onOpenAddon?.(a.slug)} className="w-full" variant="default">
+                  <Sparkles className="size-4 mr-2" /> Gerenciar
+                </Button>
+                <Button
+                  onClick={() =>
+                    setRenewTarget({
+                      slug: a.slug,
+                      name: a.name,
+                      price,
+                      expires_at: activeRecord?.expires_at ?? null,
+                    })
+                  }
+                  disabled={buyingId === a.slug}
+                  className="w-full"
+                  variant="outline"
+                >
+                  {buyingId === a.slug ? (
+                    <Loader2 className="size-4 mr-2 animate-spin" />
+                  ) : (
+                    <RefreshCw className="size-4 mr-2" />
+                  )}
+                  Renovar +30 dias
+                </Button>
+              </div>
             ) : (
               <Button
                 onClick={() => buy(a.slug)}
@@ -113,6 +145,56 @@ export const AddonsMarketplace = ({ onOpenAddon, paymentMode = "test" }: Props) 
           </div>
         );
       })}
-    </div>
+      </div>
+
+      <Dialog open={!!renewTarget} onOpenChange={(o) => !o && setRenewTarget(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="size-5 text-green-600" />
+              Add-on já ativo
+            </DialogTitle>
+            <DialogDescription className="pt-1">
+              Você já tem o <strong>{renewTarget?.name}</strong> ativo
+              {renewTarget?.expires_at && (
+                <> até{" "}
+                  <strong>
+                    {new Date(renewTarget.expires_at).toLocaleDateString("pt-BR")}
+                  </strong>
+                </>
+              )}
+              . Deseja renovar por mais 30 dias? O tempo é somado à validade atual.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-lg border border-border/60 bg-muted/40 p-4 flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Renovação (30 dias)</span>
+            <span className="text-2xl font-bold tabular-nums">{renewTarget?.price}</span>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" onClick={() => setRenewTarget(null)}>
+              Cancelar
+            </Button>
+            <Button
+              className="btn-volt"
+              disabled={buyingId === renewTarget?.slug}
+              onClick={() => {
+                if (renewTarget) {
+                  const slug = renewTarget.slug;
+                  setRenewTarget(null);
+                  buy(slug);
+                }
+              }}
+            >
+              {buyingId === renewTarget?.slug ? (
+                <Loader2 className="size-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="size-4 mr-2" />
+              )}
+              Renovar e pagar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
