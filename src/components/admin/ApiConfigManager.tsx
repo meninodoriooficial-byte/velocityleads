@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
-import { Key, Save, Plus, Trash2, CheckCircle2, Pencil, X, Zap, AlertCircle, Loader2, Lock, BookOpen } from "lucide-react";
+import { Key, Save, Plus, Trash2, CheckCircle2, Pencil, X, Zap, AlertCircle, Loader2, Lock, BookOpen, Eye, EyeOff, Copy } from "lucide-react";
 import { ApiManualDialog } from "./ApiManualDialog";
 import { explainEdgeError } from "@/lib/edgeFunction";
 
@@ -36,6 +36,8 @@ export const ApiConfigManager = () => {
   const [savedId, setSavedId] = useState<string | null>(null);
   const [testingId, setTestingId] = useState<string | null>(null);
   const [testResults, setTestResults] = useState<Record<string, { ok: boolean; message: string; details?: string }>>({});
+  const [revealed, setRevealed] = useState<Record<string, string>>({});
+  const [revealingId, setRevealingId] = useState<string | null>(null);
   const [newConfig, setNewConfig] = useState({ key_name: "", display_name: "", description: "", api_key: "" });
   const [newProvider, setNewProvider] = useState<string>("google_places");
   const [newPriority, setNewPriority] = useState<number>(100);
@@ -218,6 +220,45 @@ export const ApiConfigManager = () => {
       delete next[id];
       return next;
     });
+  };
+
+  const revealKey = async (config: ApiConfig) => {
+    if (revealed[config.id]) {
+      setRevealed((prev) => {
+        const next = { ...prev };
+        delete next[config.id];
+        return next;
+      });
+      return;
+    }
+    setRevealingId(config.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-reveal-key", {
+        body: { key_name: config.key_name },
+      });
+      if (error || !data?.ok) {
+        toast({
+          title: "Não foi possível revelar",
+          description: data?.error || error?.message || "Erro desconhecido",
+          variant: "destructive",
+        });
+        return;
+      }
+      setRevealed((prev) => ({ ...prev, [config.id]: data.value as string }));
+    } finally {
+      setRevealingId(null);
+    }
+  };
+
+  const copyRevealed = async (id: string) => {
+    const val = revealed[id];
+    if (!val) return;
+    try {
+      await navigator.clipboard.writeText(val);
+      toast({ title: "Chave copiada" });
+    } catch {
+      toast({ title: "Falha ao copiar", variant: "destructive" });
+    }
   };
 
   const testApi = async (config: ApiConfig) => {
@@ -428,7 +469,7 @@ export const ApiConfigManager = () => {
                   <Label className="flex items-center gap-2">
                     Chave de API
                     <span className="text-xs text-muted-foreground font-normal flex items-center gap-1">
-                      <Lock className="w-3 h-3" /> criptografada — não pode ser visualizada
+                      <Lock className="w-3 h-3" /> criptografada — clique no olho para revelar
                     </span>
                   </Label>
                   {isEditingThisKey ? (
@@ -447,10 +488,33 @@ export const ApiConfigManager = () => {
                     <div className="flex gap-2">
                       <Input
                         readOnly
-                        value={maskedPreview(config.api_key_last4)}
+                        value={revealed[config.id] ?? maskedPreview(config.api_key_last4)}
                         placeholder="Nenhuma chave configurada"
                         className="font-mono text-muted-foreground"
                       />
+                      {hasKey && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => revealKey(config)}
+                          type="button"
+                          disabled={revealingId === config.id}
+                          title={revealed[config.id] ? "Ocultar chave" : "Mostrar chave"}
+                        >
+                          {revealingId === config.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : revealed[config.id] ? (
+                            <EyeOff className="w-4 h-4" />
+                          ) : (
+                            <Eye className="w-4 h-4" />
+                          )}
+                        </Button>
+                      )}
+                      {revealed[config.id] && (
+                        <Button variant="outline" size="sm" onClick={() => copyRevealed(config.id)} type="button" title="Copiar">
+                          <Copy className="w-4 h-4" />
+                        </Button>
+                      )}
                       <Button variant="outline" size="sm" onClick={() => startEditingKey(config.id)} type="button">
                         <Pencil className="w-4 h-4 mr-2" />
                         {hasKey ? "Substituir" : "Adicionar"}
