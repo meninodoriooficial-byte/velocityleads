@@ -120,7 +120,17 @@ export default function Dashboard() {
           returnUrl: `${window.location.origin}/payment/return`,
         },
       });
-      if (error) throw error;
+      if (error) {
+        let friendly = error.message as string;
+        try {
+          const body = await error.context?.json?.();
+          if (body?.message) friendly = body.message;
+          else if (body?.error) friendly = body.error;
+        } catch {
+          // corpo não-JSON: mantém a mensagem original
+        }
+        throw new Error(friendly);
+      }
       if (!data?.initPoint) throw new Error("URL de checkout não retornada");
       window.location.href = data.initPoint;
     } catch (e: any) {
