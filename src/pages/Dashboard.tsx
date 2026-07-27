@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/components/ui/use-toast";
 import { SearchForm } from "@/components/SearchForm";
-import { TrendingUp, Users, Sparkles, CheckCircle2, KeyRound, History, AlertTriangle, Package, CreditCard, Zap, Target, ArrowUpRight, Bot, MessageCircle, Mail, Download } from "lucide-react";
+import { TrendingUp, Users, Sparkles, CheckCircle2, KeyRound, History, AlertTriangle, Package, CreditCard, Zap, Target, ArrowUpRight, Bot, MessageCircle, Mail, Download, Puzzle } from "lucide-react";
 import { ResultsSection } from "@/components/ResultsSection";
 import { ApiConfigManager } from "@/components/admin/ApiConfigManager";
 import { ApiErrorLogs } from "@/components/admin/ApiErrorLogs";
@@ -16,6 +16,7 @@ import { AiPromptManager } from "@/components/admin/AiPromptManager";
 import { AllUserResults } from "@/components/AllUserResults";
 import { UserManager } from "@/components/admin/UserManager";
 import { PackagesManager } from "@/components/admin/PackagesManager";
+import { AddonsManager } from "@/components/admin/AddonsManager";
 import { PaymentsConfig } from "@/components/admin/PaymentsConfig";
 import { EvolutionApiConfig } from "@/components/admin/EvolutionApiConfig";
 import { EmailOAuthConfig } from "@/components/admin/EmailOAuthConfig";
@@ -571,6 +572,10 @@ export default function Dashboard() {
                     <Package className="w-4 h-4" />
                     <span className="hidden sm:inline">Pacotes</span>
                   </TabsTrigger>
+                  <TabsTrigger value="addons" className="gap-2 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg font-semibold">
+                    <Puzzle className="w-4 h-4" />
+                    <span className="hidden sm:inline">Add-ons</span>
+                  </TabsTrigger>
                   <TabsTrigger value="apis" className="gap-2 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg font-semibold">
                     <KeyRound className="w-4 h-4" />
                     <span className="hidden sm:inline">APIs</span>
@@ -635,6 +640,23 @@ export default function Dashboard() {
                     </CardHeader>
                     <CardContent>
                       <PackagesManager />
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="addons" className="mt-0">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Puzzle className="w-5 h-5" />
+                        Add-ons
+                      </CardTitle>
+                      <CardDescription>
+                        Crie, edite, defina valores e especificações dos add-ons oferecidos aos usuários.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <AddonsManager />
                     </CardContent>
                   </Card>
                 </TabsContent>
