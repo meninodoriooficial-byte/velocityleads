@@ -469,7 +469,7 @@ export const ApiConfigManager = () => {
                   <Label className="flex items-center gap-2">
                     Chave de API
                     <span className="text-xs text-muted-foreground font-normal flex items-center gap-1">
-                      <Lock className="w-3 h-3" /> criptografada — não pode ser visualizada
+                      <Lock className="w-3 h-3" /> criptografada — clique no olho para revelar
                     </span>
                   </Label>
                   {isEditingThisKey ? (
