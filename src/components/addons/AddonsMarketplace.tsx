@@ -26,7 +26,19 @@ export const AddonsMarketplace = ({ onOpenAddon, paymentMode = "test" }: Props) 
           returnUrl: `${window.location.origin}/payment/return`,
         },
       });
-      if (error) throw error;
+      if (error) {
+        // A Edge Function retorna a mensagem real no corpo da resposta (error.context),
+        // não em error.message (que é sempre o genérico "non-2xx status code").
+        let friendly = error.message as string;
+        try {
+          const body = await error.context?.json?.();
+          if (body?.message) friendly = body.message;
+          else if (body?.error) friendly = body.error;
+        } catch {
+          // corpo não-JSON: mantém a mensagem original
+        }
+        throw new Error(friendly);
+      }
       if (!data?.initPoint) throw new Error("Checkout não retornado");
       window.location.href = data.initPoint;
     } catch (e: any) {
