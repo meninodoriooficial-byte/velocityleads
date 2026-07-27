@@ -6,7 +6,7 @@ const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 // Tables to export (in dependency-friendly order). Sensitive/binary columns are stripped below.
-const TABLES = [
+const TABLES_FULL = [
   'profiles',
   'user_roles',
   'search_packages',
@@ -37,6 +37,65 @@ const TABLES = [
   'crm_quick_replies',
 ];
 
+// Somente configurações do sistema: APIs, IA, pagamentos, WhatsApp (config), e-mail OAuth (system_settings), pacotes e add-ons.
+const TABLES_CONFIG = [
+  'api_configs',
+  'system_settings',
+  'search_packages',
+  'addons',
+];
+
+// DDL para as tabelas de configuração (usado no modo config-with-schema).
+const CONFIG_DDL = `-- Estrutura das tabelas de configuração
+CREATE TABLE IF NOT EXISTS public.api_configs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  key_name text NOT NULL,
+  display_name text NOT NULL,
+  description text,
+  is_active boolean NOT NULL DEFAULT true,
+  provider text,
+  priority integer NOT NULL DEFAULT 0,
+  api_key_encrypted bytea,
+  api_key_nonce bytea,
+  api_key_last4 text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.system_settings (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  setting_key text NOT NULL UNIQUE,
+  setting_value jsonb NOT NULL,
+  description text,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.search_packages (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  description text,
+  price numeric NOT NULL,
+  searches_limit integer NOT NULL,
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.addons (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  slug text NOT NULL UNIQUE,
+  name text NOT NULL,
+  description text,
+  icon text,
+  price_cents integer NOT NULL,
+  billing_period text NOT NULL,
+  monthly_quota integer,
+  sort_order integer NOT NULL DEFAULT 0,
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+`;
+
 // Columns removed from export (secrets / binary / oauth tokens).
 const REDACT: Record<string, string[]> = {
   api_configs: ['api_key_encrypted', 'api_key_nonce'],
@@ -57,6 +116,16 @@ function sqlLiteral(v: unknown): string {
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
+    const url = new URL(req.url);
+    const mode = (url.searchParams.get('mode') || 'full').toLowerCase();
+    // full = todos os dados; config = só configs (INSERTs); config-with-schema = configs + CREATE TABLE
+    const isConfig = mode === 'config' || mode === 'config-with-schema';
+    const withSchema = mode === 'config-with-schema';
+    const TABLES = isConfig ? TABLES_CONFIG : TABLES_FULL;
+    const filenameBase = isConfig
+      ? (withSchema ? 'velocityleads-config-schema' : 'velocityleads-config')
+      : 'velocityleads-export';
+
     const authHeader = req.headers.get('Authorization') || '';
     const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
@@ -79,8 +148,12 @@ Deno.serve(async (req) => {
 
     const lines: string[] = [];
     lines.push(`-- Dump gerado em ${new Date().toISOString()}`);
-    lines.push(`-- Sistema: VelocityLeads (dados de aplicação, schema public)`);
+    lines.push(`-- Sistema: VelocityLeads (${isConfig ? 'apenas configurações' : 'dados de aplicação'}, schema public)`);
     lines.push(`-- Observação: colunas sensíveis (chaves criptografadas, tokens OAuth, senhas SMTP) foram removidas.`);
+    if (withSchema) {
+      lines.push('');
+      lines.push(CONFIG_DDL);
+    }
     lines.push(`SET session_replication_role = replica;`);
     lines.push('');
 
@@ -102,7 +175,15 @@ Deno.serve(async (req) => {
       const cols = Object.keys(data[0]).filter((c) => !redact.includes(c));
       for (const row of data) {
         const values = cols.map((c) => sqlLiteral((row as any)[c])).join(', ');
-        lines.push(`INSERT INTO public.${table} (${cols.map((c) => `"${c}"`).join(', ')}) VALUES (${values});`);
+        const colList = cols.map((c) => `"${c}"`).join(', ');
+        // Em modo config usamos UPSERT por setting_key/slug/id para permitir reimportar sobre dados existentes.
+        let conflict = '';
+        if (isConfig) {
+          if (table === 'system_settings') conflict = ` ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value, description = EXCLUDED.description, updated_at = now()`;
+          else if (table === 'addons') conflict = ` ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description, price_cents = EXCLUDED.price_cents, billing_period = EXCLUDED.billing_period, monthly_quota = EXCLUDED.monthly_quota, sort_order = EXCLUDED.sort_order, is_active = EXCLUDED.is_active, updated_at = now()`;
+          else conflict = ` ON CONFLICT (id) DO NOTHING`;
+        }
+        lines.push(`INSERT INTO public.${table} (${colList}) VALUES (${values})${conflict};`);
       }
       lines.push('');
     }
@@ -115,7 +196,7 @@ Deno.serve(async (req) => {
       headers: {
         ...corsHeaders,
         'Content-Type': 'application/sql; charset=utf-8',
-        'Content-Disposition': `attachment; filename="velocityleads-export-${new Date().toISOString().slice(0, 10)}.sql"`,
+        'Content-Disposition': `attachment; filename="${filenameBase}-${new Date().toISOString().slice(0, 10)}.sql"`,
       },
     });
   } catch (e) {
