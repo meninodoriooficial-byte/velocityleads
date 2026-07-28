@@ -1,35 +1,50 @@
-import { Search, Database, Download, Shield, Zap, Layers } from "lucide-react";
+import { Search, Database, Sparkles, MessageCircle, Mail, Kanban, Download, Zap, Wallet } from "lucide-react";
 
 const features = [
   {
     icon: Search,
-    title: "Busca por ramo + localização",
-    desc: "Filtre por categoria, estado, cidade e até bairro para gerar listas hiper-segmentadas.",
+    title: "Busca cirúrgica por ramo + local",
+    desc: "Filtre por categoria, estado, cidade e até bairro. Nada de listas genéricas: só quem realmente pode comprar de você.",
   },
   {
     icon: Database,
-    title: "Dados completos por lead",
-    desc: "Nome, endereço, telefone, e-mail, site, redes sociais, avaliações e localização.",
+    title: "O contato completo, na mão",
+    desc: "Nome, endereço, telefone, e-mail, site, redes sociais e avaliações. Tudo o que você precisa para abordar sem rodeios.",
   },
   {
-    icon: Layers,
-    title: "Múltiplas fontes integradas",
-    desc: "Cruzamos Google Places, casadosdados e enriquecimento web em uma só busca.",
+    icon: Sparkles,
+    title: "Enriquecimento com IA",
+    desc: "A inteligência artificial completa os dados que faltam e qualifica cada lead — você fala com quem tem mais chance de fechar.",
+  },
+  {
+    icon: MessageCircle,
+    title: "Prospecção por WhatsApp",
+    desc: "Conecte seu número, crie modelos e dispare mensagens personalizadas em massa. Do lead ao primeiro contato em um clique.",
+  },
+  {
+    icon: Mail,
+    title: "E-mail marketing integrado",
+    desc: "Conecte suas contas de e-mail e envie campanhas com limites diários e rodízio inteligente para não cair em spam.",
+  },
+  {
+    icon: Kanban,
+    title: "CRM Kanban embutido",
+    desc: "Arraste cada oportunidade pelo funil, acompanhe conversas e nunca mais perca um lead no meio do caminho.",
   },
   {
     icon: Download,
-    title: "Exporte em CSV ou XLS",
-    desc: "Baixe a lista completa e leve direto para seu CRM, planilha ou cadência.",
+    title: "Exporte quando quiser",
+    desc: "Baixe a lista completa em CSV ou XLS e leve para onde precisar. Seus dados são seus, sem amarras.",
   },
   {
     icon: Zap,
     title: "Resultados em segundos",
-    desc: "Buscas processadas em paralelo. Você recebe os primeiros leads em menos de 10s.",
+    desc: "Buscas processadas em paralelo. Os primeiros leads aparecem em menos de 10 segundos — não em horas.",
   },
   {
-    icon: Shield,
-    title: "Pague apenas o que usar",
-    desc: "Pacotes flexíveis sem mensalidade obrigatória. Compre buscas conforme a demanda.",
+    icon: Wallet,
+    title: "Pague só pelo que usar",
+    desc: "Sem mensalidade obrigatória. Compre pacotes de buscas e ative add-ons conforme a sua demanda cresce.",
   },
 ];
 
@@ -42,10 +57,10 @@ export const Features = () => {
             Recursos
           </span>
           <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight mb-4 text-balance">
-            Tudo que você precisa para prospectar mais rápido
+            Da lista fria ao cliente fechado — tudo em um só lugar
           </h2>
           <p className="text-lg text-muted-foreground text-pretty">
-            Uma plataforma completa para gerar leads B2B no Brasil sem depender de planilhas ou APIs caras.
+            Encontrar o lead é só o começo. O VelocityLeads te leva do primeiro contato ao fechamento sem precisar de cinco ferramentas diferentes.
           </p>
         </div>
 
