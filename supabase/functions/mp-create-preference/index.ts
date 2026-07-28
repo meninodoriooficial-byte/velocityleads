@@ -59,7 +59,6 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const packageId: string | undefined = body.packageId;
-    const mode: Mode = body.mode === "live" ? "live" : "test";
     const returnUrl: string =
       body.returnUrl || `${req.headers.get("origin") || ""}/payment/return`;
 
@@ -72,6 +71,14 @@ Deno.serve(async (req) => {
 
     // Service role para ler pacote e criar pedido
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // O modo (test/live) é configuração GLOBAL do admin, não vem do cliente.
+    const { data: modeSetting } = await admin
+      .from("system_settings")
+      .select("setting_value")
+      .eq("setting_key", "payments_mode")
+      .maybeSingle();
+    const mode: Mode = modeSetting?.setting_value === "live" ? "live" : "test";
 
     // Verifica se o ambiente está habilitado pelo admin
     const { data: envSetting } = await admin
