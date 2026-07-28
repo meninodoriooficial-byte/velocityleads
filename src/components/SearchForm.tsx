@@ -61,6 +61,8 @@ export const SearchForm = ({ onSearch, selectedSearch }: SearchFormProps) => {
   const [neighborhood, setNeighborhood] = useState("");
   const [cities, setCities] = useState<string[]>([]);
   const [loadingCities, setLoadingCities] = useState(false);
+  const [cityIdMap, setCityIdMap] = useState<Record<string, number>>({});
+  const cityIbgeId = city ? cityIdMap[city] : undefined;
   const [neighborhoods, setNeighborhoods] = useState<string[]>([]);
   const [loadingNeighborhoods, setLoadingNeighborhoods] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
@@ -75,6 +77,12 @@ export const SearchForm = ({ onSearch, selectedSearch }: SearchFormProps) => {
     fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${selectedState}/municipios`)
       .then((r) => r.json())
       .then((data: any[]) => {
+        // Guarda o mapa nome -> id do IBGE (usado como fallback de bairros)
+        const idMap: Record<string, number> = {};
+        (data || []).forEach((m: any) => {
+          if (m?.nome && m?.id) idMap[m.nome] = m.id;
+        });
+        setCityIdMap(idMap);
         const sorted = (data || [])
           .map((m) => m.nome)
           .sort((a: string, b: string) => a.localeCompare(b, 'pt-BR'));
@@ -110,12 +118,12 @@ export const SearchForm = ({ onSearch, selectedSearch }: SearchFormProps) => {
 
     const loadNeighborhoods = async () => {
       // Cache local por 7 dias para evitar refazer a query lenta do Overpass
-      const cacheKey = `nb:${selectedState}:${city}`;
+      const cacheKey = `nb2:${selectedState}:${city}`;
       try {
         const raw = localStorage.getItem(cacheKey);
         if (raw) {
           const { at, names } = JSON.parse(raw);
-          if (Date.now() - at < 7 * 24 * 60 * 60 * 1000 && Array.isArray(names)) {
+          if (Date.now() - at < 7 * 24 * 60 * 60 * 1000 && Array.isArray(names) && names.length > 0) {
             setNeighborhoods(names);
             setLoadingNeighborhoods(false);
             return;
@@ -123,13 +131,21 @@ export const SearchForm = ({ onSearch, selectedSearch }: SearchFormProps) => {
         }
       } catch {}
 
-      // Query enxuta com timeout curto
-      const query = `[out:json][timeout:10];
-area["ISO3166-2"="BR-${selectedState}"]->.s;
-area["name"="${city}"]["admin_level"~"8|9|10"](area.s)->.a;
+      // Query Overpass robusta: timeout maior, busca a área do município de
+      // forma tolerante (com e sem admin_level), e inclui nós, ways e relations
+      // de todos os tipos de bairro/subdivisão para trazer a lista completa.
+      const esc = city.replace(/"/g, '\\"');
+      const query = `[out:json][timeout:60];
+area["ISO3166-2"="BR-${selectedState}"]->.st;
 (
-  node["place"~"suburb|neighbourhood|quarter|city_block"](area.a);
-  relation["place"~"suburb|neighbourhood|quarter"](area.a);
+  area["name"="${esc}"]["admin_level"~"^(8|9|10)$"](area.st);
+  area["name"="${esc}"]["boundary"="administrative"](area.st);
+)->.a;
+(
+  node["place"~"suburb|neighbourhood|quarter|city_block|borough|hamlet"](area.a);
+  way["place"~"suburb|neighbourhood|quarter|city_block|borough"](area.a);
+  relation["place"~"suburb|neighbourhood|quarter|borough"](area.a);
+  relation["boundary"="administrative"]["admin_level"~"^(10|11)$"](area.a);
 );
 out tags;`;
 
@@ -139,49 +155,87 @@ out tags;`;
         "https://overpass.private.coffee/api/interpreter",
       ];
 
-      let elements: any[] = [];
+      const fetchOne = (url: string) =>
+        fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain" },
+          body: "data=" + encodeURIComponent(query),
+          signal: controller.signal,
+        }).then(async (res) => {
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const data = await res.json();
+          return (data?.elements || []) as any[];
+        });
+
+      // Fallback: distritos oficiais do IBGE (sempre disponível, nunca vazio
+      // para municípios com subdivisão). Não são "bairros" exatos, mas cobrem
+      // quando o Overpass falha ou está incompleto.
+      const loadIbgeDistricts = async (): Promise<string[]> => {
+        try {
+          const cityId = cityIbgeId;
+          if (!cityId) return [];
+          const r = await fetch(
+            `https://servicodados.ibge.gov.br/api/v1/localidades/municipios/${cityId}/distritos`,
+            { signal: controller.signal }
+          );
+          const d = await r.json();
+          return (Array.isArray(d) ? d : []).map((x: any) => x?.nome).filter(Boolean);
+        } catch {
+          return [];
+        }
+      };
+
       try {
-        // Corrida paralela: usa o primeiro endpoint que responder com sucesso
-        const fetchOne = (url: string) =>
-          fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "text/plain" },
-            body: "data=" + encodeURIComponent(query),
-            signal: controller.signal,
-          }).then(async (res) => {
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
-            return (data?.elements || []) as any[];
-          });
-        elements = await new Promise<any[]>((resolve) => {
+        // Corre os 3 endpoints do Overpass em paralelo; usa o primeiro que trouxer
+        // resultado não-vazio. Se todos falharem/vazios, cai no IBGE.
+        const overpassNames = await new Promise<string[]>((resolve) => {
           let pending = endpoints.length;
-          let done = false;
+          let settled = false;
+          const finish = (names: string[]) => {
+            if (settled) return;
+            settled = true;
+            resolve(names);
+          };
           endpoints.map(fetchOne).forEach((p) => {
             p.then((els) => {
-              if (done) return;
-              done = true;
-              resolve(els);
+              const names = Array.from(
+                new Set(
+                  els
+                    .map((el: any) => el?.tags?.name)
+                    .filter((n: any): n is string => typeof n === "string" && n.trim().length > 0)
+                )
+              );
+              if (names.length > 0) finish(names);
+              else if (--pending === 0) finish([]);
             }).catch(() => {
-              if (--pending === 0 && !done) { done = true; resolve([]); }
+              if (--pending === 0) finish([]);
             });
           });
         });
 
-        const names = Array.from(
-          new Set(
-            elements
-              .map((el: any) => el?.tags?.name)
-              .filter((n: any): n is string => typeof n === "string" && n.trim().length > 0)
-          )
-        ).sort((a, b) => (a as string).localeCompare(b as string, "pt-BR"));
+        let names = overpassNames;
+        if (names.length === 0) {
+          // Overpass não retornou nada — usa distritos do IBGE
+          names = await loadIbgeDistricts();
+        }
+
+        names = Array.from(new Set(names)).sort((a, b) =>
+          a.localeCompare(b, "pt-BR")
+        );
 
         console.log(`[Bairros] ${city}/${selectedState}: ${names.length} encontrados`);
-        setNeighborhoods(names as string[]);
-        try { localStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), names })); } catch {}
+        setNeighborhoods(names);
+        if (names.length > 0) {
+          try { localStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), names })); } catch {}
+        }
       } catch (err: any) {
         if (err?.name !== "AbortError") {
           console.error("Erro ao carregar bairros:", err);
-          setNeighborhoods([]);
+          // Última tentativa: IBGE
+          const fallback = await loadIbgeDistricts();
+          setNeighborhoods(
+            Array.from(new Set(fallback)).sort((a, b) => a.localeCompare(b, "pt-BR"))
+          );
         }
       } finally {
         setLoadingNeighborhoods(false);
@@ -190,7 +244,7 @@ out tags;`;
 
     loadNeighborhoods();
     return () => controller.abort();
-  }, [city, selectedState]);
+  }, [city, selectedState, cityIbgeId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
