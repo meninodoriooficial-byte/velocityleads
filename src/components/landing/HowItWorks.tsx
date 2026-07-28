@@ -1,20 +1,20 @@
-import { UserPlus, Search, Download } from "lucide-react";
+import { Search, Send, TrendingUp } from "lucide-react";
 
 const steps = [
   {
-    icon: UserPlus,
-    title: "1. Crie sua conta",
-    desc: "Cadastro em 30 segundos. Plano básico já vem com buscas inclusas para você experimentar.",
-  },
-  {
     icon: Search,
-    title: "2. Faça uma busca",
-    desc: "Escolha o ramo, estado, cidade e bairro. Em segundos você vê empresas reais com contatos completos.",
+    title: "1. Busque em segundos",
+    desc: "Escolha o ramo, o estado, a cidade e o bairro. Em instantes, uma lista de empresas reais com contatos completos aparece na sua tela.",
   },
   {
-    icon: Download,
-    title: "3. Exporte e prospecte",
-    desc: "Baixe a lista, importe no seu CRM ou cadência e comece a abordar imediatamente.",
+    icon: Send,
+    title: "2. Dispare a abordagem",
+    desc: "Envie mensagens no WhatsApp ou campanhas de e-mail direto da plataforma — com modelos personalizados e envio em massa.",
+  },
+  {
+    icon: TrendingUp,
+    title: "3. Feche mais negócios",
+    desc: "Acompanhe cada oportunidade no CRM Kanban, organize o funil e transforme leads em clientes sem deixar nada escapar.",
   },
 ];
 
@@ -27,8 +27,11 @@ export const HowItWorks = () => {
             Como funciona
           </span>
           <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight mb-4 text-balance">
-            Do cadastro ao primeiro lead em 1 minuto
+            Três passos entre você e a próxima venda
           </h2>
+          <p className="text-lg text-muted-foreground text-pretty">
+            Sem instalação, sem planilhas, sem curva de aprendizado. Do cadastro ao primeiro contato em menos de um minuto.
+          </p>
         </div>
 
         <div className="grid md:grid-cols-3 gap-5 max-w-5xl mx-auto">
