@@ -22,15 +22,22 @@ Deno.serve(async (req) => {
     const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const ANON = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-    const userClient = createClient(SUPABASE_URL, ANON, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsErr } = await userClient.auth.getClaims(token);
-    if (claimsErr || !claimsData?.claims?.sub) return j({ ok: false, error: "invalid_session" }, 401);
-    const userId = claimsData.claims.sub as string;
-
+    const token = authHeader.replace("Bearer ", "").trim();
     const admin = createClient(SUPABASE_URL, SERVICE);
+
+    let userId: string | null = null;
+    const { data: userData } = await admin.auth.getUser(token);
+    userId = userData?.user?.id ?? null;
+
+    if (!userId) {
+      const userClient = createClient(SUPABASE_URL, ANON, {
+        global: { headers: { Authorization: `Bearer ${token}` } },
+      });
+      const { data: claimsData } = await userClient.auth.getClaims(token);
+      userId = (claimsData?.claims?.sub as string) ?? null;
+    }
+    if (!userId) return j({ ok: false, error: "invalid_session" }, 401);
+
     const { data: roleRow } = await admin
       .from("user_roles")
       .select("role")
