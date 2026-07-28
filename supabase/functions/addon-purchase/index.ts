@@ -29,11 +29,20 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const slug = String(body.addonSlug || "");
-    const mode: "test" | "live" = body.mode === "live" ? "live" : "test";
     const returnUrl = body.returnUrl || `${req.headers.get("origin") || ""}/payment/return`;
     if (!slug) return j({ error: "missing_addonSlug" }, 400);
 
     const admin = createClient(SUPABASE_URL, SERVICE);
+
+    // O modo de pagamento (test/live) é uma configuração GLOBAL definida pelo
+    // admin em system_settings.payments_mode — nunca é escolhido pelo cliente.
+    const { data: modeSetting } = await admin
+      .from("system_settings")
+      .select("setting_value")
+      .eq("setting_key", "payments_mode")
+      .maybeSingle();
+    const mode: "test" | "live" =
+      modeSetting?.setting_value === "live" ? "live" : "test";
 
     // Verifica se o ambiente está habilitado pelo admin
     const { data: envSetting } = await admin
