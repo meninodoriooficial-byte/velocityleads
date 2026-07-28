@@ -34,10 +34,10 @@ export const Pricing = () => {
             Preços
           </span>
           <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight mb-4 text-balance">
-            Pacotes que cabem no seu volume
+            Um único cliente fechado já paga o pacote
           </h2>
           <p className="text-lg text-muted-foreground text-pretty">
-            Sem mensalidade obrigatória. Compre buscas conforme a necessidade da sua operação.
+            Sem mensalidade, sem fidelidade, sem pegadinha. Você compra buscas conforme a sua operação cresce — e cada busca pode virar dezenas de oportunidades.
           </p>
         </div>
 
@@ -92,6 +92,10 @@ export const Pricing = () => {
             );
           })}
         </div>
+
+        <p className="text-center text-sm text-muted-foreground mt-10 max-w-xl mx-auto text-pretty">
+          Pagamento seguro via Mercado Pago. Seus créditos não expiram no meio do caminho — use no seu ritmo, quando o cliente certo aparecer.
+        </p>
       </div>
     </section>
   );
