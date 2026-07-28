@@ -16,10 +16,9 @@ import {
 
 interface Props {
   onOpenAddon?: (slug: string) => void;
-  paymentMode?: "test" | "live";
 }
 
-export const AddonsMarketplace = ({ onOpenAddon, paymentMode = "test" }: Props) => {
+export const AddonsMarketplace = ({ onOpenAddon }: Props) => {
   const { catalog, isActive, loading, active } = useUserAddons();
   const [buyingId, setBuyingId] = useState<string | null>(null);
   const [renewTarget, setRenewTarget] = useState<{ slug: string; name: string; price: string; expires_at: string | null } | null>(null);
@@ -31,7 +30,6 @@ export const AddonsMarketplace = ({ onOpenAddon, paymentMode = "test" }: Props) 
       const { data, error } = await supabase.functions.invoke("addon-purchase", {
         body: {
           addonSlug: slug,
-          mode: paymentMode,
           returnUrl: `${window.location.origin}/payment/return`,
         },
       });
