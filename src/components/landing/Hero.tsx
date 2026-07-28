@@ -20,27 +20,28 @@ export const Hero = () => {
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-card border border-border shadow-soft mb-6">
               <span className="size-1.5 rounded-full bg-success animate-pulse" />
               <span className="text-xs font-semibold tracking-wide">
-                Nova fonte de dados PIX + casadosdados ativa
+                Enquanto você lê isto, seu concorrente já está ligando
               </span>
             </div>
 
             <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.02] mb-6 text-balance">
-              Encontre <span className="relative inline-block">
-                <span className="relative z-10">empresas reais</span>
+              Seu próximo cliente é uma{" "}
+              <span className="relative inline-block">
+                <span className="relative z-10">busca</span>
                 <span className="absolute inset-x-0 bottom-1 h-3 bg-accent -z-0 -rotate-1" />
               </span>{" "}
-              no Brasil em segundos.
+              de distância.
             </h1>
 
             <p className="text-lg md:text-xl text-muted-foreground max-w-xl mx-auto lg:mx-0 mb-8 text-pretty">
-              Busque por <strong className="text-foreground">ramo</strong>, <strong className="text-foreground">estado</strong>, <strong className="text-foreground">cidade</strong> e <strong className="text-foreground">bairro</strong>. Receba leads com telefone, e-mail, redes sociais e endereço — prontos para abordagem.
+              Pare de garimpar contatos no Google. Escolha o <strong className="text-foreground">ramo</strong>, o <strong className="text-foreground">estado</strong>, a <strong className="text-foreground">cidade</strong> e o <strong className="text-foreground">bairro</strong> — e receba em segundos empresas reais com telefone, e-mail e WhatsApp. Depois dispare a abordagem sem sair da plataforma.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start mb-10">
+            <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start mb-6">
               <Button asChild size="lg" className="btn-volt h-12 px-7 text-base">
                 <Link to="/auth">
                   <Sparkles className="size-4 mr-2" />
-                  Criar conta grátis
+                  Gerar meus primeiros leads grátis
                 </Link>
               </Button>
               <Button asChild variant="outline" size="lg" className="h-12 px-7 text-base font-semibold">
@@ -51,6 +52,10 @@ export const Hero = () => {
               </Button>
             </div>
 
+            <p className="text-xs text-muted-foreground mb-10 lg:mb-8">
+              Sem cartão de crédito • Buscas inclusas no cadastro • Comece em 30 segundos
+            </p>
+
             <div className="flex items-center gap-6 justify-center lg:justify-start text-sm">
               <div className="flex items-center gap-1.5">
                 {[...Array(5)].map((_, i) => (
@@ -58,7 +63,7 @@ export const Hero = () => {
                 ))}
               </div>
               <span className="text-muted-foreground font-medium">
-                +2.000 prospecções por dia
+                +2.000 prospecções geradas por dia
               </span>
             </div>
           </div>
