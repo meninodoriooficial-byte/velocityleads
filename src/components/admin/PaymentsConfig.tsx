@@ -84,6 +84,8 @@ export function PaymentsConfig() {
   const [testEnabled, setTestEnabled] = useState(true);
   const [liveEnabled, setLiveEnabled] = useState(false);
   const [togglingEnv, setTogglingEnv] = useState<"test" | "live" | null>(null);
+  const [paymentMode, setPaymentMode] = useState<"test" | "live">("test");
+  const [savingMode, setSavingMode] = useState(false);
   const [revealed, setRevealed] = useState<Record<string, string>>({});
   const [revealingKey, setRevealingKey] = useState<string | null>(null);
 
@@ -156,8 +158,44 @@ export function PaymentsConfig() {
       const val = (data?.setting_value as any) || {};
       setTestEnabled(val.test_enabled !== false);
       setLiveEnabled(val.live_enabled === true);
+      // Modo de pagamento global
+      const { data: modeData } = await supabase
+        .from("system_settings")
+        .select("setting_value")
+        .eq("setting_key", "payments_mode")
+        .maybeSingle();
+      setPaymentMode(modeData?.setting_value === "live" ? "live" : "test");
     })();
   }, []);
+
+  const saveMode = async (next: "test" | "live") => {
+    setSavingMode(true);
+    const prev = paymentMode;
+    setPaymentMode(next);
+    const { error } = await supabase
+      .from("system_settings")
+      .upsert(
+        {
+          setting_key: "payments_mode",
+          setting_value: next as any,
+          description: "Modo de pagamento global do Mercado Pago (test ou live)",
+        },
+        { onConflict: "setting_key" },
+      );
+    setSavingMode(false);
+    if (error) {
+      setPaymentMode(prev);
+      toast({ title: "Erro ao salvar modo", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({
+      title: next === "live" ? "Modo PRODUÇÃO ativado" : "Modo TESTE ativado",
+      description:
+        next === "live"
+          ? "Todos os pagamentos agora são reais e cobram de verdade."
+          : "Pagamentos em sandbox — nenhuma cobrança real.",
+    });
+  };
 
   const persistEnv = async (next: { test_enabled: boolean; live_enabled: boolean }, which: "test" | "live") => {
     setTogglingEnv(which);
@@ -253,6 +291,46 @@ export function PaymentsConfig() {
 
   return (
     <div className="space-y-6">
+      <Card className={paymentMode === "live" ? "border-success/50 bg-success/5" : "border-amber-500/40 bg-amber-500/5"}>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <ShieldCheck className="size-4" /> Modo de pagamento (global)
+          </CardTitle>
+          <CardDescription>
+            Define o ambiente usado por <strong>todos os clientes</strong> ao comprar pacotes e add-ons. Em Produção, as cobranças são reais.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-4">
+            <div className="inline-flex p-1 rounded-xl bg-muted border border-border/60">
+              <button
+                onClick={() => saveMode("test")}
+                disabled={savingMode}
+                className={`px-4 py-2 rounded-lg font-semibold transition-all ${paymentMode === "test" ? "bg-card shadow-sm text-amber-700 dark:text-amber-400" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                Teste (sandbox)
+              </button>
+              <button
+                onClick={() => saveMode("live")}
+                disabled={savingMode}
+                className={`px-4 py-2 rounded-lg font-semibold transition-all ${paymentMode === "live" ? "bg-card shadow-sm text-success" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                Produção (real)
+              </button>
+            </div>
+            {savingMode && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
+            <Badge variant={paymentMode === "live" ? "default" : "secondary"}>
+              {paymentMode === "live" ? "Cobrando de verdade" : "Sem cobrança real"}
+            </Badge>
+          </div>
+          {paymentMode === "live" && (
+            <p className="text-xs text-success mt-3">
+              Atenção: o modo produção está ativo. Todo pagamento feito pelos clientes será cobrado de verdade.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
       <Card className="border-accent/30 bg-accent/5">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
