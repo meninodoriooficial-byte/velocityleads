@@ -14,7 +14,7 @@ SELECT cron.schedule(
   '* * * * *',
   $cron$
   SELECT net.http_post(
-    url := 'https://gtoifsgptdchbmupbkvi.supabase.co/functions/v1/crm-flow-run',
+    url := 'https://lwnonjpnbshssqphohvc.supabase.co/functions/v1/crm-flow-run',
     headers := '{"Content-Type":"application/json"}'::jsonb,
     body := '{}'::jsonb
   );

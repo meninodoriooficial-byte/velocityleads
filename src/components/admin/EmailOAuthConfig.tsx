@@ -12,7 +12,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Loader2, Save, Copy, ExternalLink, Mail, Info, CheckCircle2, XCircle, PlugZap } from "lucide-react";
 
 const SETTING_KEY = "email_oauth";
-const PROJECT_REF = "gtoifsgptdchbmupbkvi";
+const PROJECT_REF = "lwnonjpnbshssqphohvc";
 const REDIRECT_BASE = `https://${PROJECT_REF}.supabase.co/functions/v1/email-oauth-callback`;
 const GOOGLE_REDIRECT = `${REDIRECT_BASE}?provider=google`;
 const MICROSOFT_REDIRECT = `${REDIRECT_BASE}?provider=microsoft`;
