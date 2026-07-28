@@ -74,7 +74,22 @@ Deno.serve(async (req) => {
       const r = await fetch(`${baseUrl}/instance/connectionState/${encodeURIComponent(inst.instance_name)}`, { headers });
       const t = await r.text();
       let p: any = null; try { p = JSON.parse(t); } catch {}
-      const state = p?.instance?.state || p?.state || (r.status === 404 ? "not_found" : "unknown");
+      let state = p?.instance?.state || p?.state || (r.status === 404 ? "not_found" : "unknown");
+
+      // O endpoint connectionState às vezes reporta "connecting" mesmo quando a
+      // instância já está "open" (conectada). Quando o estado não é definitivo,
+      // consultamos fetchInstances, que reporta o connectionStatus real.
+      if (state !== "open" && state !== "not_found") {
+        try {
+          const fr = await fetch(`${baseUrl}/instance/fetchInstances?instanceName=${encodeURIComponent(inst.instance_name)}`, { headers });
+          const ft = await fr.text();
+          let fp: any = null; try { fp = JSON.parse(ft); } catch {}
+          const arr = Array.isArray(fp) ? fp : (fp?.instance ? [fp.instance] : fp ? [fp] : []);
+          const match = arr.find((x: any) => (x?.name || x?.instanceName || x?.instance?.instanceName) === inst.instance_name) || arr[0];
+          const realStatus = match?.connectionStatus || match?.instance?.status || match?.status;
+          if (realStatus === "open") state = "open";
+        } catch (e) { console.error("fetchInstances state fallback failed", e); }
+      }
 
       let profile: any = null;
       if (state === "open") {
