@@ -499,7 +499,7 @@ async function scrapeWebsite(rawUrl: string) {
       signal: ctrl.signal,
       headers: {
         "User-Agent":
-          "Mozilla/5.0 (compatible; LeadFinderBot/1.0; +https://lovable.dev)",
+          "Mozilla/5.0 (compatible; VelocityLeadsBot/1.0; +https://vl.atitudedesucesso.com.br)",
         Accept: "text/html,application/xhtml+xml",
       },
       redirect: "follow",
