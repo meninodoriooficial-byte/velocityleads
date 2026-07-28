@@ -17,6 +17,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useUserAddons } from "@/hooks/useUserAddons";
 import { Mail } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useState } from "react";
+import { ProfileDialog } from "@/components/ProfileDialog";
 
 export type DashboardTab =
   | "search"
@@ -55,6 +57,7 @@ export function AppSidebar({ active, onChange, isAdmin }: AppSidebarProps) {
   const { user, profile, signOut } = useAuth();
   const { active: activeAddons } = useUserAddons();
   const collapsed = state === "collapsed";
+  const [profileOpen, setProfileOpen] = useState(false);
 
   const main = navItems.filter((i) => i.group === "main");
   const manage = navItems.filter((i) => i.group === "manage");
@@ -193,16 +196,23 @@ export function AppSidebar({ active, onChange, isAdmin }: AppSidebarProps) {
 
       <SidebarFooter className="p-3 border-t border-sidebar-border">
         <div className={`flex items-center gap-3 p-2 rounded-xl bg-secondary/40 ${collapsed ? "justify-center !bg-transparent" : ""}`}>
-          <div className="relative size-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm shrink-0">
-            {(profile?.full_name || user?.email || "?").charAt(0).toUpperCase()}
-            <span className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full bg-success border-2 border-sidebar-background" />
-          </div>
-          {!collapsed && (
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold truncate">{profile?.full_name || "Usuário"}</div>
-              <div className="text-xs text-muted-foreground truncate">{user?.email}</div>
+          <button
+            type="button"
+            onClick={() => setProfileOpen(true)}
+            className={`flex items-center gap-3 min-w-0 flex-1 rounded-lg transition-colors hover:bg-secondary/70 ${collapsed ? "justify-center" : "text-left"}`}
+            title="Editar perfil"
+          >
+            <div className="relative size-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm shrink-0">
+              {(profile?.full_name || user?.email || "?").charAt(0).toUpperCase()}
+              <span className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full bg-success border-2 border-sidebar-background" />
             </div>
-          )}
+            {!collapsed && (
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-semibold truncate">{profile?.full_name || "Usuário"}</div>
+                <div className="text-xs text-muted-foreground truncate">{user?.email}</div>
+              </div>
+            )}
+          </button>
           {!collapsed && (
             <Button variant="ghost" size="icon" onClick={signOut} className="shrink-0 hover:bg-destructive/10 hover:text-destructive" title="Sair">
               <LogOut className="size-4" />
@@ -210,6 +220,8 @@ export function AppSidebar({ active, onChange, isAdmin }: AppSidebarProps) {
           )}
         </div>
       </SidebarFooter>
+
+      <ProfileDialog open={profileOpen} onOpenChange={setProfileOpen} />
     </Sidebar>
   );
 }
