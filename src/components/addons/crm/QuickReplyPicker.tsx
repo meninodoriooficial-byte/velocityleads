@@ -18,23 +18,27 @@ export function QuickReplyPicker({ onPick }: Props) {
 
   useEffect(() => {
     if (!user) return;
-    supabase.from("crm_quick_replies").select("id,shortcut,title,body").eq("user_id", user.id).order("sort_order").then(({ data }) => {
+    supabase.from("crm_quick_replies").select("id,shortcut,title,body").eq("user_id", user.id).order("sort_order").then(({ data, error }) => {
+      if (error) {
+        console.error("QuickReply fetch error:", error);
+        return;
+      }
       setItems((data || []) as any);
     });
   }, [user, open]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Tooltip>
-          <TooltipTrigger asChild>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <PopoverTrigger asChild>
             <Button type="button" variant="ghost" size="icon">
               <Zap className="size-4" />
             </Button>
-          </TooltipTrigger>
-          <TooltipContent>Respostas rápidas</TooltipContent>
-        </Tooltip>
-      </PopoverTrigger>
+          </PopoverTrigger>
+        </TooltipTrigger>
+        <TooltipContent>Respostas rápidas</TooltipContent>
+      </Tooltip>
       <PopoverContent className="p-0 w-80" align="start">
         <Command>
           <CommandInput placeholder="Buscar resposta rápida..." />

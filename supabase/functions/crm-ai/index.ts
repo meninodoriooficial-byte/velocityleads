@@ -1,5 +1,6 @@
 // IA do CRM: sugerir resposta para um lead OU resumir a conversa.
-// Usa Lovable AI Gateway (LOVABLE_API_KEY) com modelo gratuito google/gemini-2.5-flash.
+// Usa OpenAI API diretamente (gpt-4o-mini, econômico e rápido).
+// A chave OPENAI_API_KEY deve estar configurada nas secrets do projeto.
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -39,8 +40,14 @@ Deno.serve(async (req) => {
       return `[${who}] ${m.body || `(${m.type})`}`;
     }).join("\n");
 
-    const apiKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!apiKey) return j({ ok: false, error: "LOVABLE_API_KEY ausente" }, 500);
+    // Buscar chave OpenAI: primeiro env var, depois api_configs (criptografada, decrypt via service_role)
+    let apiKey = Deno.env.get("OPENAI_API_KEY");
+    if (!apiKey) {
+      const { data: decrypted, error: rpcErr } = await admin.rpc("get_api_key_decrypted", { _key_name: "OPENAI_API_KEY" });
+      if (rpcErr) console.error("get_api_key_decrypted error:", rpcErr);
+      if (decrypted) apiKey = decrypted;
+    }
+    if (!apiKey) return j({ ok: false, error: "OPENAI_API_KEY não configurada. Adicione a chave em Configurações > Chaves de API." }, 500);
 
     const sysSuggest = `Você é um vendedor consultivo brasileiro respondendo via WhatsApp para "${conv.contact_name || conv.phone}".
 Regras: 1-3 frases, tom cordial, evite jargões, chame pelo primeiro nome quando souber, faça uma pergunta de avanço quando útil.
@@ -53,19 +60,26 @@ Responda APENAS o texto da mensagem, sem aspas, sem assinatura, sem prefixos.`;
 - Próximo passo recomendado
 Use no máximo 6 bullets.`;
 
-    const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const r = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "gpt-4o-mini",
         messages: [
           { role: "system", content: mode === "summary" ? sysSummary : sysSuggest },
           { role: "user", content: transcript || "(sem mensagens ainda)" },
         ],
+        max_tokens: 500,
+        temperature: 0.7,
       }),
     });
-    if (r.status === 429) return j({ ok: false, error: "Limite de IA atingido. Tente em instantes." }, 429);
-    if (r.status === 402) return j({ ok: false, error: "Créditos de IA esgotados." }, 402);
+
+    if (r.status === 429) return j({ ok: false, error: "Limite de requisições da OpenAI. Tente em instantes." }, 429);
+    if (!r.ok) {
+      const errBody = await r.text().catch(() => "");
+      return j({ ok: false, error: `OpenAI retornou status ${r.status}: ${errBody.slice(0, 200)}` }, r.status);
+    }
+
     const data = await r.json();
     const text = data?.choices?.[0]?.message?.content?.trim() || "";
     return j({ ok: true, text });

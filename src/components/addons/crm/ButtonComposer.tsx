@@ -24,17 +24,17 @@ export function ButtonComposer({ onSend }: Props) {
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Tooltip>
-          <TooltipTrigger asChild>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <PopoverTrigger asChild>
             <Button type="button" variant="ghost" size="icon">
               <ListOrdered className="size-4" />
             </Button>
-          </TooltipTrigger>
-          <TooltipContent>Enviar lista numerada (1️⃣ 2️⃣ 3️⃣)</TooltipContent>
-        </Tooltip>
-      </PopoverTrigger>
-      <PopoverContent className="w-96 space-y-3">
+          </PopoverTrigger>
+        </TooltipTrigger>
+        <TooltipContent>Enviar lista numerada (1️⃣ 2️⃣ 3️⃣)</TooltipContent>
+      </Tooltip>
+      <PopoverContent className="w-96 space-y-3" align="start">
         <h4 className="font-semibold text-sm">Mensagem com opções numeradas</h4>
         <p className="text-xs text-muted-foreground -mt-1">
           Será enviada como texto com 1️⃣ 2️⃣ 3️⃣ (entrega garantida no WhatsApp).

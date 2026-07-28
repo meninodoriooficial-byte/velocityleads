@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
-import { Plus, Trash2, Save } from "lucide-react";
+import { Plus, Trash2, Save, AlertCircle } from "lucide-react";
 
 type Q = { id: string; shortcut: string; title: string; body: string };
 
@@ -15,13 +15,18 @@ export function QuickRepliesManager() {
   const { toast } = useToast();
   const [items, setItems] = useState<Q[]>([]);
   const [sel, setSel] = useState<Q | null>(null);
-  const [shortcut, setShortcut] = useState("");
+  const [shortcut, setShortcut] = useState("/");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const load = async () => {
     if (!user) return;
-    const { data } = await supabase.from("crm_quick_replies").select("*").eq("user_id", user.id).order("sort_order");
+    const { data, error } = await supabase.from("crm_quick_replies").select("*").eq("user_id", user.id).order("sort_order");
+    if (error) {
+      toast({ title: "Erro ao carregar", description: error.message, variant: "destructive" });
+      return;
+    }
     setItems((data || []) as any);
   };
   useEffect(() => { load(); }, [user]);
@@ -30,17 +35,37 @@ export function QuickRepliesManager() {
   const startEdit = (q: Q) => { setSel(q); setShortcut(q.shortcut); setTitle(q.title); setBody(q.body); };
 
   const save = async () => {
-    if (!user || !shortcut.trim() || !body.trim()) { toast({ title: "Preencha atalho e corpo", variant: "destructive" }); return; }
-    const payload = { user_id: user.id, shortcut: shortcut.trim(), title: title.trim() || shortcut.trim(), body };
-    const res = sel ? await supabase.from("crm_quick_replies").update(payload).eq("id", sel.id) : await supabase.from("crm_quick_replies").insert(payload);
-    if (res.error) { toast({ title: "Erro", description: res.error.message, variant: "destructive" }); return; }
+    if (!user) { toast({ title: "Faça login primeiro", variant: "destructive" }); return; }
+    if (!shortcut.trim()) { toast({ title: "Preencha o atalho", variant: "destructive" }); return; }
+    if (!body.trim()) { toast({ title: "Preencha o corpo da resposta", variant: "destructive" }); return; }
+
+    setSaving(true);
+    const payload = { user_id: user.id, shortcut: shortcut.trim(), title: title.trim() || shortcut.trim(), body: body.trim() };
+    const res = sel
+      ? await supabase.from("crm_quick_replies").update(payload).eq("id", sel.id)
+      : await supabase.from("crm_quick_replies").insert(payload);
+    setSaving(false);
+
+    if (res.error) {
+      console.error("QuickReply save error:", res.error);
+      let msg = res.error.message;
+      if (res.error.code === "23505") msg = "Já existe uma resposta com este atalho.";
+      if (res.error.code === "42501") msg = "Permissão negada. Verifique se está logado corretamente.";
+      toast({ title: "Erro ao salvar", description: msg, variant: "destructive" });
+      return;
+    }
     toast({ title: "✓ Salvo" });
-    await load(); startNew();
+    await load();
+    startNew();
   };
 
   const remove = async (q: Q) => {
     if (!confirm(`Remover "${q.title}"?`)) return;
-    await supabase.from("crm_quick_replies").delete().eq("id", q.id);
+    const res = await supabase.from("crm_quick_replies").delete().eq("id", q.id);
+    if (res.error) {
+      toast({ title: "Erro ao remover", description: res.error.message, variant: "destructive" });
+      return;
+    }
     if (sel?.id === q.id) startNew();
     await load();
   };
@@ -72,7 +97,9 @@ export function QuickRepliesManager() {
           <Textarea rows={6} value={body} onChange={(e) => setBody(e.target.value)} placeholder="Olá {{nome}}, segue nossa proposta..." />
           <p className="text-xs text-muted-foreground">Suporta tags como {"{{nome}}"}, {"{{telefone}}"}.</p>
         </div>
-        <Button onClick={save}><Save className="size-4 mr-2" /> {sel ? "Salvar alterações" : "Criar resposta"}</Button>
+        <Button onClick={save} disabled={saving}>
+          {saving ? "Salvando..." : <><Save className="size-4 mr-2" /> {sel ? "Salvar alterações" : "Criar resposta"}</>}
+        </Button>
       </div>
     </div>
   );

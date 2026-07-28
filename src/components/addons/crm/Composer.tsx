@@ -21,8 +21,9 @@ interface Props {
 async function uploadFile(userId: string, conversationId: string, file: Blob, ext: string): Promise<{ url: string; mime: string; size: number } | null> {
   const path = `${userId}/${conversationId}/${crypto.randomUUID()}.${ext}`;
   const up = await supabase.storage.from("crm-media").upload(path, file, { contentType: (file as File).type || "application/octet-stream", upsert: false });
-  if (up.error) { console.error(up.error); return null; }
-  const { data } = await supabase.storage.from("crm-media").createSignedUrl(path, 60 * 60 * 24 * 7);
+  if (up.error) { console.error("Upload error:", up.error); return null; }
+  const { data, error: signedError } = await supabase.storage.from("crm-media").createSignedUrl(path, 60 * 60 * 24 * 7);
+  if (signedError) { console.error("Signed URL error:", signedError); return null; }
   return data?.signedUrl ? { url: data.signedUrl, mime: (file as File).type, size: file.size } : null;
 }
 
@@ -65,21 +66,32 @@ export function Composer({ conversationId, contactName, phone, onSent }: Props) 
     const f = e.target.files?.[0];
     if (!f || !user) return;
     setBusy(true);
-    const ext = (f.name.split(".").pop() || "bin").toLowerCase();
-    const up = await uploadFile(user.id, conversationId, f, ext);
-    if (!up) { setBusy(false); toast({ title: "Upload falhou", variant: "destructive" }); return; }
-    const type = f.type.startsWith("image/") ? "image" : f.type.startsWith("video/") ? "video" : "document";
-    await call({ type, text: renderTemplate(text, ctx), mediaUrl: up.url, mediaMime: up.mime, mediaFilename: f.name });
-    setText("");
+    try {
+      const ext = (f.name.split(".").pop() || "bin").toLowerCase();
+      const up = await uploadFile(user.id, conversationId, f, ext);
+      if (!up) { toast({ title: "Upload falhou", description: "O bucket de mídia pode não estar configurado. Entre em contato com o suporte.", variant: "destructive" }); setBusy(false); return; }
+      const type = f.type.startsWith("image/") ? "image" : f.type.startsWith("video/") ? "video" : "document";
+      await call({ type, text: renderTemplate(text, ctx), mediaUrl: up.url, mediaMime: up.mime, mediaFilename: f.name });
+      setText("");
+    } catch (err) {
+      toast({ title: "Erro no upload", description: String(err), variant: "destructive" });
+    }
     if (fileRef.current) fileRef.current.value = "";
+    setBusy(false);
   };
 
   const onAudio = async (blob: Blob, mime: string, durationMs: number) => {
     if (!user) return;
-    const ext = mime.includes("webm") ? "webm" : mime.includes("ogg") ? "ogg" : "mp3";
-    const up = await uploadFile(user.id, conversationId, blob, ext);
-    if (!up) { toast({ title: "Upload de áudio falhou", variant: "destructive" }); return; }
-    await call({ type: "audio", mediaUrl: up.url, mediaMime: mime, duration_ms: durationMs });
+    setBusy(true);
+    try {
+      const ext = mime.includes("webm") ? "webm" : mime.includes("ogg") ? "ogg" : "mp3";
+      const up = await uploadFile(user.id, conversationId, blob, ext);
+      if (!up) { toast({ title: "Upload de áudio falhou", description: "O bucket de mídia pode não estar configurado.", variant: "destructive" }); setBusy(false); return; }
+      await call({ type: "audio", mediaUrl: up.url, mediaMime: mime, duration_ms: durationMs });
+    } catch (err) {
+      toast({ title: "Erro no upload de áudio", description: String(err), variant: "destructive" });
+    }
+    setBusy(false);
   };
 
   const onQuickReply = (q: QuickReply) => {
@@ -95,7 +107,7 @@ export function Composer({ conversationId, contactName, phone, onSent }: Props) 
     const { data, error } = await supabase.functions.invoke("crm-ai", { body: { conversationId, mode: "suggest" } });
     setAiBusy(false);
     if (error || !data?.ok) {
-      toast({ title: "IA indisponível", description: data?.error || error?.message, variant: "destructive" });
+      toast({ title: "IA indisponível", description: data?.error || error?.message || "Erro de conexão. Verifique se a chave LOVABLE_API_KEY está configurada no Supabase.", variant: "destructive" });
       return;
     }
     setText(data.text || "");
