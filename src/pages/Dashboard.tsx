@@ -38,7 +38,6 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<DashboardTab>("search");
   const [selectedSearch, setSelectedSearch] = useState(null);
   const [purchasingId, setPurchasingId] = useState<string | null>(null);
-  const [paymentMode, setPaymentMode] = useState<"test" | "live">("test");
   const [leadsStats, setLeadsStats] = useState<{ total: number; enriched: number }>({ total: 0, enriched: 0 });
   const { toast } = useToast();
 
@@ -116,7 +115,6 @@ export default function Dashboard() {
       const { data, error } = await supabase.functions.invoke("mp-create-preference", {
         body: {
           packageId: pkg.id,
-          mode: paymentMode,
           returnUrl: `${window.location.origin}/payment/return`,
         },
       });
@@ -459,23 +457,6 @@ export default function Dashboard() {
 
             {activeTab === "plans" && (
               <div className="space-y-6">
-                <div className="flex items-center justify-end gap-3 text-xs">
-                  <span className="text-muted-foreground font-medium">Modo de pagamento</span>
-                  <div className="inline-flex p-1 rounded-xl bg-muted border border-border/60">
-                    <button
-                      onClick={() => setPaymentMode("test")}
-                      className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${paymentMode === "test" ? "bg-card shadow-sm text-amber-700 dark:text-amber-400" : "text-muted-foreground hover:text-foreground"}`}
-                    >
-                      Teste
-                    </button>
-                    <button
-                      onClick={() => setPaymentMode("live")}
-                      className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${paymentMode === "live" ? "bg-card shadow-sm text-success" : "text-muted-foreground hover:text-foreground"}`}
-                    >
-                      Produção
-                    </button>
-                  </div>
-                </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {packages.map((pkg: any) => {
                   const isCurrent = pkg.name.toLowerCase() === profile?.plan;
@@ -558,7 +539,6 @@ export default function Dashboard() {
 
             {activeTab === "addons" && (
               <AddonsMarketplace
-                paymentMode={paymentMode}
                 onOpenAddon={(slug) => {
                   if (slug === "whatsapp") setActiveTab("addon-whatsapp");
                   if (slug === "whatsapp_crm") setActiveTab("addon-crm");
