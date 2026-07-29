@@ -3,6 +3,18 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
+// Extrai o QR code (string base64) de várias formas de resposta da Evolution API.
+// Só retorna se for uma STRING não-vazia — quando o servidor não gera o QR ele
+// devolve objetos como { count: 0 }, que NÃO devem ser tratados como QR (isso
+// quebrava o frontend ao chamar qr.startsWith()).
+function extractQr(p: any): string | null {
+  const candidates = [p?.base64, p?.qrcode?.base64, p?.qrcode?.code, p?.code, p?.qrcode];
+  for (const c of candidates) {
+    if (typeof c === "string" && c.trim().length > 20) return c;
+  }
+  return null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -146,7 +158,7 @@ Deno.serve(async (req) => {
       if (!r.ok && !exists) {
         return json({ ok: false, status: r.status, error: p?.message || p?.response?.message || t.slice(0, 400) });
       }
-      const qr = p?.qrcode?.base64 || p?.qrcode || null;
+      const qr = extractQr(p);
       await admin
         .from("user_whatsapp_instances")
         .update({ last_qr_at: qr ? new Date().toISOString() : null, connection_state: "connecting" })
@@ -178,7 +190,7 @@ Deno.serve(async (req) => {
       const t = await r.text();
       let p: any = null; try { p = JSON.parse(t); } catch {}
       if (!r.ok) return json({ ok: false, status: r.status, error: p?.message || t.slice(0, 400) });
-      const qr = p?.base64 || p?.qrcode?.base64 || p?.qrcode || null;
+      const qr = extractQr(p);
       await admin.from("user_whatsapp_instances").update({ last_qr_at: new Date().toISOString(), connection_state: "connecting" }).eq("id", inst.id);
       return json({ ok: true, qr });
     }
