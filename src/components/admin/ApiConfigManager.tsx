@@ -26,6 +26,26 @@ interface ApiConfig {
 // Campos editáveis em api_configs (não inclui chave criptografada)
 type EditableFields = Pick<ApiConfig, "display_name" | "description" | "is_active" | "provider" | "priority">;
 
+// Transforma URLs no texto em links clicáveis (para os mini tutoriais das APIs).
+function renderWithLinks(text: string) {
+  const parts = text.split(/(https?:\/\/[^\s]+)/g);
+  return parts.map((part, i) =>
+    /^https?:\/\//.test(part) ? (
+      <a
+        key={i}
+        href={part}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-primary underline underline-offset-2 hover:opacity-80 break-all"
+      >
+        {part}
+      </a>
+    ) : (
+      <span key={i}>{part}</span>
+    )
+  );
+}
+
 export const ApiConfigManager = () => {
   const [configs, setConfigs] = useState<ApiConfig[]>([]);
   const [loading, setLoading] = useState(true);
@@ -458,8 +478,13 @@ export const ApiConfigManager = () => {
                     </CardTitle>
                     <CardDescription className="mt-1">
                       <code className="text-xs">{config.key_name}</code>
-                      {config.description && ` — ${config.description}`}
                     </CardDescription>
+                    {config.description && (
+                      <div className="mt-2 flex items-start gap-2 rounded-md bg-muted/40 border border-border/50 p-2.5 text-xs text-muted-foreground leading-relaxed">
+                        <BookOpen className="size-3.5 mt-0.5 shrink-0 text-primary" />
+                        <p className="text-pretty">{renderWithLinks(config.description)}</p>
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <Switch
