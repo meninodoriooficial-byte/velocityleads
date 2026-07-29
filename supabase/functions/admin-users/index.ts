@@ -170,15 +170,16 @@ Deno.serve(async (req) => {
           const dur = Math.max(1, Number(months || 1));
           const expires = new Date(); expires.setMonth(expires.getMonth() + dur);
           if (existing) {
-            await admin.from("user_addons").update({
+            const { error: actErr } = await admin.from("user_addons").update({
               status: "active",
               activated_at: existing.activated_at || new Date().toISOString(),
               expires_at: expires.toISOString(),
               monthly_quota: catalog.monthly_quota,
               monthly_used: 0,
             }).eq("id", existing.id);
+            if (actErr) return json({ error: `Falha ao ativar: ${actErr.message}` }, 500);
           } else {
-            await admin.from("user_addons").insert({
+            const { error: insErr } = await admin.from("user_addons").insert({
               user_id, addon_slug,
               status: "active",
               activated_at: new Date().toISOString(),
@@ -186,13 +187,20 @@ Deno.serve(async (req) => {
               monthly_quota: catalog.monthly_quota,
               monthly_used: 0,
             });
+            if (insErr) return json({ error: `Falha ao ativar: ${insErr.message}` }, 500);
           }
           // Seed pipeline padrão para CRM
           if (addon_slug === "whatsapp_crm") {
             try { await admin.rpc("crm_seed_default_pipeline", { _user_id: user_id }); } catch (e) { console.error(e); }
           }
         } else if (existing) {
-          await admin.from("user_addons").update({ status: "inactive" }).eq("id", existing.id);
+          // "canceled" é o status permitido pela constraint da tabela para
+          // add-on desativado pelo admin ("inactive" não é aceito e falhava).
+          const { error: deacErr } = await admin
+            .from("user_addons")
+            .update({ status: "canceled" })
+            .eq("id", existing.id);
+          if (deacErr) return json({ error: `Falha ao desativar: ${deacErr.message}` }, 500);
         }
         return json({ ok: true });
       }
