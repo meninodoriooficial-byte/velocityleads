@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
-import { Key, Save, Plus, Trash2, CheckCircle2, Pencil, X, Zap, AlertCircle, Loader2, Lock, BookOpen, Eye, EyeOff, Copy } from "lucide-react";
+import { Key, Save, Plus, Trash2, CheckCircle2, Pencil, X, Zap, AlertCircle, Loader2, Lock, BookOpen, Eye, EyeOff, Copy, ChevronDown } from "lucide-react";
 import { ApiManualDialog } from "./ApiManualDialog";
 import { explainEdgeError } from "@/lib/edgeFunction";
 
@@ -56,6 +56,7 @@ export const ApiConfigManager = () => {
   const [savedId, setSavedId] = useState<string | null>(null);
   const [testingId, setTestingId] = useState<string | null>(null);
   const [testResults, setTestResults] = useState<Record<string, { ok: boolean; message: string; details?: string }>>({});
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [revealed, setRevealed] = useState<Record<string, string>>({});
   const [revealingId, setRevealingId] = useState<string | null>(null);
   const [newConfig, setNewConfig] = useState({ key_name: "", display_name: "", description: "", api_key: "" });
@@ -443,7 +444,7 @@ export const ApiConfigManager = () => {
           const hasKey = !!config.api_key_last4;
           return (
             <Card key={config.id}>
-              <CardHeader className="pb-3">
+              <CardHeader className="pb-3 cursor-pointer" onClick={() => setExpandedId((cur) => cur === config.id ? null : config.id)}>
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <CardTitle className="text-base flex items-center gap-2">
@@ -486,14 +487,19 @@ export const ApiConfigManager = () => {
                       </div>
                     )}
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                     <Switch
                       checked={!!getValue(config, "is_active")}
                       onCheckedChange={(v) => updateField(config.id, "is_active", v)}
                     />
+                    <ChevronDown
+                      className={`w-5 h-5 text-muted-foreground transition-transform cursor-pointer ${expandedId === config.id ? "rotate-180" : ""}`}
+                      onClick={() => setExpandedId((cur) => cur === config.id ? null : config.id)}
+                    />
                   </div>
                 </div>
               </CardHeader>
+              {expandedId === config.id && (
               <CardContent className="space-y-3">
                 <div>
                   <Label className="flex items-center gap-2">
@@ -640,6 +646,7 @@ export const ApiConfigManager = () => {
                   </div>
                 </div>
               </CardContent>
+              )}
             </Card>
           );
         })}
