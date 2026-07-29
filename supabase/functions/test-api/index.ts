@@ -62,7 +62,9 @@ serve(async (req) => {
       .maybeSingle();
     if (cfg) {
       isActive = !!cfg.is_active;
-      if (isActive && cfg.api_key_last4) {
+      // Descriptografa mesmo se inativa: o admin precisa poder testar a chave
+      // ANTES de ativar. A ativação é uma etapa separada.
+      if (cfg.api_key_last4) {
         const { data: decrypted, error: rpcErr } = await supabase.rpc('get_api_key_decrypted', {
           _key_name: keyName,
         });
@@ -76,9 +78,6 @@ serve(async (req) => {
 
     if (!apiKey) {
       return jsonResponse({ ok: false, status: 'no_key', message: 'Nenhuma chave configurada para esta API.' });
-    }
-    if (!isActive) {
-      return jsonResponse({ ok: false, status: 'inactive', message: 'A chave existe, mas está marcada como inativa.' });
     }
 
     if (keyName === 'GOOGLE_MAPS_API_KEY') {
@@ -136,6 +135,19 @@ serve(async (req) => {
         }
       }
       return jsonResponse(result);
+    }
+
+    if (keyName === 'CNPJA_TOKEN') {
+      return jsonResponse(await testCnpja(apiKey));
+    }
+    if (keyName === 'RECEITAWS_TOKEN') {
+      return jsonResponse(await testReceitaWs(apiKey));
+    }
+    if (keyName === 'ECONODATA_TOKEN') {
+      return jsonResponse(await testEconodata(apiKey));
+    }
+    if (keyName === 'BRASILAPI_ENABLED') {
+      return jsonResponse(await testBrasilApi());
     }
 
     return jsonResponse({
@@ -300,6 +312,91 @@ async function testCasaDosDados(apiKey: string) {
       elapsed_ms: elapsed,
       key_configured: !!apiKey,
     };
+  } catch (e: any) {
+    return { ok: false, status: 'network_error', message: `Erro de rede: ${e.message}` };
+  }
+}
+// ---- Testes das APIs de enriquecimento ----
+const TEST_CNPJ = "00000000000191"; // Banco do Brasil (CNPJ público conhecido)
+
+async function testCnpja(apiKey: string) {
+  const start = Date.now();
+  try {
+    const res = await fetch(`https://api.cnpja.com/office/${TEST_CNPJ}`, {
+      headers: { Authorization: apiKey },
+    });
+    const elapsed = Date.now() - start;
+    if (res.status === 401 || res.status === 403) {
+      return { ok: false, status: 'auth_error', http: res.status, message: 'Token inválido ou sem permissão na CNPJá.', elapsed_ms: elapsed };
+    }
+    if (!res.ok) {
+      return { ok: false, status: 'http_error', http: res.status, message: `HTTP ${res.status} ao chamar CNPJá.`, elapsed_ms: elapsed };
+    }
+    const data = await res.json();
+    const nome = data?.company?.name || data?.name || null;
+    return { ok: true, status: 'success', message: `CNPJá OK${nome ? ` — ${nome}` : ''}`, elapsed_ms: elapsed };
+  } catch (e: any) {
+    return { ok: false, status: 'network_error', message: `Erro de rede: ${e.message}` };
+  }
+}
+
+async function testReceitaWs(apiKey: string) {
+  const start = Date.now();
+  try {
+    const res = await fetch(`https://receitaws.com.br/v1/cnpj/${TEST_CNPJ}`, {
+      headers: { Authorization: `Bearer ${apiKey}`, Accept: 'application/json' },
+    });
+    const elapsed = Date.now() - start;
+    if (res.status === 401 || res.status === 403) {
+      return { ok: false, status: 'auth_error', http: res.status, message: 'Token inválido na ReceitaWS.', elapsed_ms: elapsed };
+    }
+    if (res.status === 429) {
+      return { ok: false, status: 'rate_limit', http: 429, message: 'Limite de requisições atingido (3/min no plano grátis).', elapsed_ms: elapsed };
+    }
+    if (!res.ok) {
+      return { ok: false, status: 'http_error', http: res.status, message: `HTTP ${res.status} ao chamar ReceitaWS.`, elapsed_ms: elapsed };
+    }
+    const data = await res.json();
+    if (data?.status === 'ERROR') {
+      return { ok: false, status: 'api_error', message: data?.message || 'Erro na ReceitaWS.', elapsed_ms: elapsed };
+    }
+    return { ok: true, status: 'success', message: `ReceitaWS OK${data?.nome ? ` — ${data.nome}` : ''}`, elapsed_ms: elapsed };
+  } catch (e: any) {
+    return { ok: false, status: 'network_error', message: `Erro de rede: ${e.message}` };
+  }
+}
+
+async function testEconodata(apiKey: string) {
+  const start = Date.now();
+  try {
+    const res = await fetch(`https://api.econodata.com.br/v1/empresa/${TEST_CNPJ}`, {
+      headers: { 'x-api-token': apiKey, 'Content-Type': 'application/json' },
+    });
+    const elapsed = Date.now() - start;
+    if (res.status === 401 || res.status === 403) {
+      return { ok: false, status: 'auth_error', http: res.status, message: 'Token inválido na Econodata.', elapsed_ms: elapsed };
+    }
+    if (!res.ok) {
+      return { ok: false, status: 'http_error', http: res.status, message: `HTTP ${res.status} ao chamar Econodata.`, elapsed_ms: elapsed };
+    }
+    return { ok: true, status: 'success', message: 'Econodata OK — token válido.', elapsed_ms: elapsed };
+  } catch (e: any) {
+    return { ok: false, status: 'network_error', message: `Erro de rede: ${e.message}` };
+  }
+}
+
+async function testBrasilApi() {
+  const start = Date.now();
+  try {
+    const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${TEST_CNPJ}`, {
+      headers: { Accept: 'application/json' },
+    });
+    const elapsed = Date.now() - start;
+    if (!res.ok) {
+      return { ok: false, status: 'http_error', http: res.status, message: `HTTP ${res.status} ao chamar BrasilAPI.`, elapsed_ms: elapsed };
+    }
+    const data = await res.json();
+    return { ok: true, status: 'success', message: `BrasilAPI OK${data?.razao_social ? ` — ${data.razao_social}` : ''}`, elapsed_ms: elapsed };
   } catch (e: any) {
     return { ok: false, status: 'network_error', message: `Erro de rede: ${e.message}` };
   }
