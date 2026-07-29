@@ -13,6 +13,7 @@ import { MessageCircle, QrCode, Loader2, CheckCircle2, AlertCircle, Power, FileT
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MessageTemplatesManager } from "./MessageTemplatesManager";
 import { MessageHistoryList } from "./MessageHistoryList";
+import { WhatsAppConnectDialog } from "./WhatsAppConnectDialog";
 
 export const WhatsAppAddon = () => {
   const { user } = useAuth();
@@ -24,6 +25,7 @@ export const WhatsAppAddon = () => {
   const [state, setState] = useState<string>("unknown");
   const [qr, setQr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [connectOpen, setConnectOpen] = useState(false);
   const [profile, setProfile] = useState<{ name?: string | null; picture?: string | null; number?: string | null } | null>(null);
   const pollRef = useRef<number | null>(null);
   const heartbeatRef = useRef<number | null>(null);
@@ -225,29 +227,15 @@ export const WhatsAppAddon = () => {
             <Badge variant="secondary" className="capitalize">
               {state === "open" ? "✓ Conectado" : state === "connecting" ? "Conectando..." : state === "not_found" ? "Não criado" : state}
             </Badge>
-            <Button onClick={() => createOrReconnect("create")} disabled={busy} variant="outline">
-              {busy ? <Loader2 className="size-4 mr-2 animate-spin" /> : <Power className="size-4 mr-2" />}
+            <Button onClick={() => setConnectOpen(true)} disabled={state === "open"} variant="outline">
+              <Power className="size-4 mr-2" />
               Criar / Conectar
             </Button>
-            <Button onClick={() => createOrReconnect("connect")} disabled={busy || !instanceName} variant="outline">
+            <Button onClick={() => setConnectOpen(true)} disabled={state === "open"} variant="outline">
               <QrCode className="size-4 mr-2" /> Gerar novo QR Code
             </Button>
             <Button onClick={fetchStatus} variant="ghost" size="sm">Atualizar status</Button>
           </div>
-
-          {typeof qr === "string" && qr.length > 20 && (
-            <div className="rounded-lg border border-border/60 p-4 bg-muted/30 inline-block">
-              <p className="text-sm font-semibold mb-2 flex items-center gap-2">
-                <QrCode className="size-4" /> Escaneie no WhatsApp → Aparelhos conectados
-              </p>
-              <img
-                src={qr.startsWith("data:") ? qr : `data:image/png;base64,${qr}`}
-                alt="QR Code"
-                className="w-64 h-64 rounded bg-white p-3"
-              />
-              <p className="text-xs text-muted-foreground mt-2">O QR expira em ~40s. Gere outro se precisar.</p>
-            </div>
-          )}
 
           {state === "open" && (
             <div className="flex items-start gap-2 text-sm text-green-700 dark:text-green-400 bg-green-500/10 rounded-md p-3">
@@ -271,6 +259,12 @@ export const WhatsAppAddon = () => {
           <MessageHistoryList />
         </TabsContent>
       </Tabs>
+
+      <WhatsAppConnectDialog
+        open={connectOpen}
+        onOpenChange={setConnectOpen}
+        onConnected={() => { setState("open"); fetchStatus(); refresh(); }}
+      />
     </div>
   );
 };
