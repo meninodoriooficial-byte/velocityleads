@@ -151,6 +151,7 @@ serve(async (req) => {
 
     // 4) Complementar/Fallback com Lovable AI
     const lovableKey = Deno.env.get("LOVABLE_API_KEY");
+    let aiError: string | null = null;
     if (lovableKey) {
       try {
         const customPrompt = await getSystemSetting(supabase, "ai_enrichment_prompt");
@@ -159,18 +160,25 @@ serve(async (req) => {
           enrichment.ai = aiData;
           sourceUsed = sourceUsed ? `${sourceUsed}+ai` : "ai";
         }
-      } catch (e) {
+      } catch (e: any) {
+        aiError = e?.message || String(e);
         console.error("AI enrichment error:", e);
       }
+    } else {
+      aiError = "LOVABLE_API_KEY não configurada";
     }
 
     if (!sourceUsed) {
       return new Response(
         JSON.stringify({
+          success: false,
+          source: "none",
           error:
-            "Nenhuma fonte de enriquecimento disponível. Configure CASADOSDADOS_API_KEY ou LOVABLE_API_KEY.",
+            aiError
+              ? `Não foi possível enriquecer este lead: ${aiError}`
+              : "Nenhum dado adicional encontrado para este lead nas fontes públicas.",
         }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -724,7 +732,7 @@ Faça a varredura conforme suas instruções e devolva os dados estruturados via
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "google/gemini-3-flash-preview",
+      model: "google/gemini-3.6-flash",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: prompt },
@@ -779,7 +787,7 @@ Faça a varredura conforme suas instruções e devolva os dados estruturados via
     if (resp.status === 402) throw new Error("Créditos esgotados no workspace Lovable AI.");
     const t = await resp.text();
     console.log("AI gateway error", resp.status, t);
-    return null;
+    throw new Error(`Lovable AI ${resp.status}: ${t.slice(0, 200)}`);
   }
   const data = await resp.json();
   const toolCall = data?.choices?.[0]?.message?.tool_calls?.[0];
