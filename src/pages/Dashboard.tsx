@@ -36,6 +36,7 @@ export default function Dashboard() {
   const [searches, setSearches] = useState([]);
   const [packages, setPackages] = useState([]);
   const [activeTab, setActiveTab] = useState<DashboardTab>("search");
+  const [adminSection, setAdminSection] = useState<string | null>(null);
   const [selectedSearch, setSelectedSearch] = useState(null);
   const [purchasingId, setPurchasingId] = useState<string | null>(null);
   const [leadsStats, setLeadsStats] = useState<{ total: number; enriched: number }>({ total: 0, enriched: 0 });
@@ -248,7 +249,7 @@ export default function Dashboard() {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
-        <AppSidebar active={activeTab} onChange={setActiveTab} isAdmin={isAdmin} />
+        <AppSidebar active={activeTab} onChange={(t) => { setActiveTab(t); setAdminSection(null); }} isAdmin={isAdmin} />
 
         <div className="flex-1 flex flex-col min-w-0">
           <header className="h-16 sticky top-0 z-20 bg-background/75 backdrop-blur-xl border-b border-border/70 flex items-center px-4 md:px-8 gap-4">
@@ -551,243 +552,89 @@ export default function Dashboard() {
             {activeTab === "addon-crm" && <WhatsAppCrmAddon />}
             {activeTab === "addon-email" && <EmailMarketingAddon />}
 
-            {activeTab === "admin" && isAdmin && (
-              <Tabs defaultValue="users" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 md:grid-cols-10 h-auto p-1.5 bg-muted/60 border border-border/60 rounded-xl mb-6">
-                  <TabsTrigger value="users" className="gap-2 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg font-semibold">
-                    <Users className="w-4 h-4" />
-                    <span className="hidden sm:inline">Usuários</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="packages" className="gap-2 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg font-semibold">
-                    <Package className="w-4 h-4" />
-                    <span className="hidden sm:inline">Pacotes</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="addons" className="gap-2 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg font-semibold">
-                    <Puzzle className="w-4 h-4" />
-                    <span className="hidden sm:inline">Add-ons</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="apis" className="gap-2 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg font-semibold">
-                    <KeyRound className="w-4 h-4" />
-                    <span className="hidden sm:inline">APIs</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="ai" className="gap-2 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg font-semibold">
-                    <Bot className="w-4 h-4" />
-                    <span className="hidden sm:inline">IA</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="payments" className="gap-2 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg font-semibold">
-                    <CreditCard className="w-4 h-4" />
-                    <span className="hidden sm:inline">Pagamentos</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="whatsapp" className="gap-2 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg font-semibold">
-                    <MessageCircle className="w-4 h-4" />
-                    <span className="hidden sm:inline">WhatsApp</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="email-oauth" className="gap-2 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg font-semibold">
-                    <Mail className="w-4 h-4" />
-                    <span className="hidden sm:inline">E-mail OAuth</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="history" className="gap-2 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg font-semibold">
-                    <History className="w-4 h-4" />
-                    <span className="hidden sm:inline">Histórico</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="errors" className="gap-2 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg font-semibold">
-                    <AlertTriangle className="w-4 h-4" />
-                    <span className="hidden sm:inline">Erros</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="export" className="gap-2 py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg font-semibold">
-                    <Download className="w-4 h-4" />
-                    <span className="hidden sm:inline">Exportar</span>
-                  </TabsTrigger>
-                </TabsList>
+            {activeTab === "admin" && isAdmin && (() => {
+              const adminSections = [
+                { key: "users", label: "Usuários", icon: Users, title: "Gerenciar Usuários", desc: "Visualize, edite permissões e gerencie os usuários da plataforma.", el: <UserManager /> },
+                { key: "packages", label: "Pacotes", icon: Package, title: "Pacotes de busca", desc: "Crie, edite e remova pacotes oferecidos aos usuários.", el: <PackagesManager /> },
+                { key: "addons", label: "Add-ons", icon: Puzzle, title: "Add-ons", desc: "Crie, edite, defina valores e especificações dos add-ons.", el: <AddonsManager /> },
+                { key: "apis", label: "APIs", icon: KeyRound, title: "Configurações de APIs", desc: "Gerencie chaves, prioridades e fallback das integrações externas.", el: <ApiConfigManager /> },
+                { key: "ai", label: "IA", icon: Bot, title: "Prompt de Enriquecimento por IA", desc: "Configure como a IA pesquisa e estrutura os dados dos leads.", el: <AiPromptManager /> },
+                { key: "payments", label: "Pagamentos", icon: CreditCard, title: "Pagamentos — Mercado Pago", desc: "Configure credenciais e modo de cobrança.", el: <PaymentsConfig /> },
+                { key: "whatsapp", label: "WhatsApp", icon: MessageCircle, title: "Evolution API (WhatsApp)", desc: "Configure o servidor da Evolution API.", el: <EvolutionApiConfig /> },
+                { key: "email-oauth", label: "E-mail OAuth", icon: Mail, title: "Credenciais OAuth — Gmail e Microsoft", desc: "Configure as credenciais de conexão de e-mail dos clientes.", el: <EmailOAuthConfig /> },
+                { key: "history", label: "Histórico", icon: History, title: "Histórico de fontes", desc: "Acompanhe quais APIs foram usadas em cada busca recente.", el: <SourceHistory /> },
+                { key: "errors", label: "Erros", icon: AlertTriangle, title: "Logs de erros das APIs", desc: "Falhas registradas das integrações para diagnóstico rápido.", el: <ApiErrorLogs keyName="GOOGLE_MAPS_API_KEY" /> },
+                { key: "export", label: "Exportar", icon: Download, title: "Exportar dados do sistema (SQL)", desc: "Gera um arquivo .sql com INSERTs de todas as tabelas.", el: <DataExport /> },
+              ];
+              const current = adminSections.find((s) => s.key === adminSection) || null;
 
-                <TabsContent value="users" className="mt-0">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Users className="w-5 h-5" />
-                        Gerenciar Usuários
-                      </CardTitle>
-                      <CardDescription>
-                        Visualize, edite permissões e gerencie os usuários da plataforma.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <UserManager />
-                    </CardContent>
-                  </Card>
-                </TabsContent>
+              return (
+                <div className="flex flex-col lg:flex-row gap-6">
+                  {/* Navegação lateral do admin */}
+                  <aside className="lg:w-56 shrink-0 space-y-3">
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start gap-2"
+                      onClick={() => { setAdminSection(null); setActiveTab("search"); }}
+                    >
+                      <ArrowUpRight className="w-4 h-4 rotate-[225deg]" />
+                      Voltar ao dashboard
+                    </Button>
+                    <nav className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible p-1.5 bg-muted/60 border border-border/60 rounded-xl">
+                      {adminSections.map((s) => {
+                        const Icon = s.icon;
+                        const active = adminSection === s.key;
+                        return (
+                          <button
+                            key={s.key}
+                            onClick={() => setAdminSection(s.key)}
+                            className={`flex items-center gap-2 py-2.5 px-3 rounded-lg font-semibold text-sm whitespace-nowrap transition-all text-left ${active ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-card/50"}`}
+                          >
+                            <Icon className="w-4 h-4 shrink-0" />
+                            <span>{s.label}</span>
+                          </button>
+                        );
+                      })}
+                    </nav>
+                  </aside>
 
-                <TabsContent value="packages" className="mt-0">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Package className="w-5 h-5" />
-                        Pacotes de busca
-                      </CardTitle>
-                      <CardDescription>
-                        Crie, edite e remova pacotes oferecidos aos usuários.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <PackagesManager />
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="addons" className="mt-0">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Puzzle className="w-5 h-5" />
-                        Add-ons
-                      </CardTitle>
-                      <CardDescription>
-                        Crie, edite, defina valores e especificações dos add-ons oferecidos aos usuários.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <AddonsManager />
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="apis" className="mt-0">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <KeyRound className="w-5 h-5" />
-                        Configurações de APIs
-                      </CardTitle>
-                      <CardDescription>
-                        Gerencie chaves, prioridades e fallback das integrações externas.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <ApiConfigManager />
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="ai" className="mt-0">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Bot className="w-5 h-5" />
-                        Prompt de Enriquecimento por IA
-                      </CardTitle>
-                      <CardDescription>
-                        Configure como a IA deve pesquisar e estruturar os dados dos leads (redes sociais, e-mails, CNPJ, etc.).
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <AiPromptManager />
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="payments" className="mt-0">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <CreditCard className="w-5 h-5" />
-                        Pagamentos — Mercado Pago
-                      </CardTitle>
-                      <CardDescription>
-                        Configure as credenciais para emitir cobranças e receber confirmações.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <PaymentsConfig />
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="whatsapp" className="mt-0">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <MessageCircle className="w-5 h-5" />
-                        Evolution API (WhatsApp)
-                      </CardTitle>
-                      <CardDescription>
-                        Configure o servidor da Evolution API usado pelo módulo de envio de WhatsApp.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <EvolutionApiConfig />
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="email-oauth" className="mt-0">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Mail className="w-5 h-5" />
-                        Credenciais OAuth — Gmail e Microsoft
-                      </CardTitle>
-                      <CardDescription>
-                        Configure as credenciais que permitem aos clientes conectar suas contas Gmail e Outlook/Hotmail no add-on Email Marketing.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <EmailOAuthConfig />
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="history" className="mt-0">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <History className="w-5 h-5" />
-                        Histórico de fontes
-                      </CardTitle>
-                      <CardDescription>
-                        Acompanhe quais APIs foram usadas em cada busca recente.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <SourceHistory />
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="errors" className="mt-0">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <AlertTriangle className="w-5 h-5" />
-                        Logs de erros das APIs
-                      </CardTitle>
-                      <CardDescription>
-                        Falhas registradas das integrações para diagnóstico rápido.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <ApiErrorLogs keyName="GOOGLE_MAPS_API_KEY" />
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="export" className="mt-0">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Download className="w-5 h-5" />
-                        Exportar dados do sistema (SQL)
-                      </CardTitle>
-                      <CardDescription>
-                        Gera um arquivo <code>.sql</code> com <code>INSERT</code>s de todas as tabelas de dados do sistema para backup ou migração.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <DataExport />
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              </Tabs>
-            )}
+                  {/* Conteúdo */}
+                  <div className="flex-1 min-w-0">
+                    {current ? (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <current.icon className="w-5 h-5" />
+                            {current.title}
+                          </CardTitle>
+                          <CardDescription>{current.desc}</CardDescription>
+                        </CardHeader>
+                        <CardContent>{current.el}</CardContent>
+                      </Card>
+                    ) : (
+                      <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                        {adminSections.map((s) => {
+                          const Icon = s.icon;
+                          return (
+                            <button
+                              key={s.key}
+                              onClick={() => setAdminSection(s.key)}
+                              className="card-elevated p-5 text-left hover:border-accent/40 hover:-translate-y-0.5 transition-all"
+                            >
+                              <div className="size-10 rounded-xl bg-accent/15 flex items-center justify-center mb-3">
+                                <Icon className="size-5 text-accent-foreground" />
+                              </div>
+                              <div className="font-bold mb-1">{s.label}</div>
+                              <div className="text-xs text-muted-foreground text-pretty">{s.desc}</div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
           </main>
         </div>
       </div>
