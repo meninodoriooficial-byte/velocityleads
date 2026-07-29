@@ -59,7 +59,12 @@ export const ApiConfigManager = () => {
     if (error) {
       toast({ title: "Erro ao carregar APIs", description: error.message, variant: "destructive" });
     } else {
-      setConfigs((data as ApiConfig[]) || []);
+      // As chaves do Mercado Pago são gerenciadas na aba "Pagamentos".
+      // Aqui exibimos apenas as demais (OpenAI, Google, Casa dos Dados, etc.).
+      const visible = ((data as ApiConfig[]) || []).filter(
+        (c) => c.provider !== "mercado_pago"
+      );
+      setConfigs(visible);
     }
     setLoading(false);
   };
