@@ -13,6 +13,7 @@ import { Loader2 } from "lucide-react";
 export default function Auth() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
   const [session, setSession] = useState(null);
@@ -43,6 +44,15 @@ export default function Auth() {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    if (password !== confirmPassword) {
+      setLoading(false);
+      toast({
+        title: "Senhas não conferem",
+        description: "A senha e a confirmação de senha precisam ser iguais.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
       const { error } = await supabase.auth.signUp({
@@ -249,6 +259,17 @@ export default function Auth() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Mínimo 6 caracteres"
+                    required
+                    minLength={6}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password-confirm">Confirmar Senha</Label>
+                  <PasswordInput
+                    id="password-confirm"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Repita a senha"
                     required
                     minLength={6}
                   />
