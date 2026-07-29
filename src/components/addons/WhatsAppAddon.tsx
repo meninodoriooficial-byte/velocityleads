@@ -96,7 +96,15 @@ export const WhatsAppAddon = () => {
       return;
     }
     if (data.instance_name) setInstanceName(data.instance_name);
-    if (data.qr) setQr(data.qr);
+    if (typeof data.qr === "string" && data.qr.length > 20) {
+      setQr(data.qr);
+    } else {
+      setQr(null);
+      toast({
+        title: "QR Code indisponível",
+        description: "O servidor de WhatsApp não gerou o QR agora. Tente novamente em alguns instantes ou clique em 'Gerar novo QR Code'.",
+      });
+    }
     setState("connecting");
     startPolling();
     await fetchStatus();
@@ -227,7 +235,7 @@ export const WhatsAppAddon = () => {
             <Button onClick={fetchStatus} variant="ghost" size="sm">Atualizar status</Button>
           </div>
 
-          {qr && (
+          {typeof qr === "string" && qr.length > 20 && (
             <div className="rounded-lg border border-border/60 p-4 bg-muted/30 inline-block">
               <p className="text-sm font-semibold mb-2 flex items-center gap-2">
                 <QrCode className="size-4" /> Escaneie no WhatsApp → Aparelhos conectados
