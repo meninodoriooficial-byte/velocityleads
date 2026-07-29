@@ -732,7 +732,7 @@ Faça a varredura conforme suas instruções e devolva os dados estruturados via
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "google/gemini-3-flash-preview",
+      model: "google/gemini-3.6-flash",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: prompt },
@@ -787,7 +787,7 @@ Faça a varredura conforme suas instruções e devolva os dados estruturados via
     if (resp.status === 402) throw new Error("Créditos esgotados no workspace Lovable AI.");
     const t = await resp.text();
     console.log("AI gateway error", resp.status, t);
-    return null;
+    throw new Error(`Lovable AI ${resp.status}: ${t.slice(0, 200)}`);
   }
   const data = await resp.json();
   const toolCall = data?.choices?.[0]?.message?.tool_calls?.[0];
