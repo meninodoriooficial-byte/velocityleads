@@ -9,7 +9,7 @@ const CNPJ_SITES = [
   "site:consultasocio.com.br",
   "site:cnpj.biz",
   "site:econodata.com.br",
-  "site:empresascnpj.com.br",
+  "site:empresascnpj.com",
   "site:jusbrasil.com.br",
 ];
 
