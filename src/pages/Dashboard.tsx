@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/components/ui/use-toast";
 import { SearchForm } from "@/components/SearchForm";
-import { TrendingUp, Users, Sparkles, CheckCircle2, KeyRound, History, AlertTriangle, Package, CreditCard, Zap, Target, ArrowUpRight, Bot, MessageCircle, Mail, Download, Puzzle } from "lucide-react";
+import { TrendingUp, Users, Sparkles, CheckCircle2, KeyRound, History, AlertTriangle, Package, CreditCard, Zap, Target, ArrowUpRight, Bot, MessageCircle, Mail, Download, Trash2, Puzzle } from "lucide-react";
 import { ResultsSection } from "@/components/ResultsSection";
 import { ApiConfigManager } from "@/components/admin/ApiConfigManager";
 import { ApiErrorLogs } from "@/components/admin/ApiErrorLogs";
@@ -226,6 +226,18 @@ export default function Dashboard() {
     }
   };
 
+  
+  const handleDeleteSearch = async (searchId: string) => {
+    if (!window.confirm('Tem certeza? Os leads serão removidos permanentemente.')) return;
+    try {
+      await supabase.from('search_results').delete().eq('search_id', searchId);
+      await supabase.from('searches').delete().eq('id', searchId);
+      toast({ title: 'Busca removida', description: 'Lista e leads excluídos.' });
+      fetchUserSearches();
+    } catch (err) {
+      toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+    }
+  };
   const usagePercentage = profile ? (profile.searches_used / profile.plan_searches_limit) * 100 : 0;
   const remaining = Math.max(0, (profile?.plan_searches_limit || 0) - (profile?.searches_used || 0));
 
