@@ -21,6 +21,8 @@ interface ApiConfig {
   is_active: boolean;
   provider: string | null;
   priority: number;
+  last_test_ok: boolean | null;
+  last_tested_at: string | null;
 }
 
 // Campos editáveis em api_configs (não inclui chave criptografada)
@@ -74,7 +76,7 @@ export const ApiConfigManager = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("api_configs")
-      .select("id, key_name, display_name, description, api_key_last4, is_active, provider, priority")
+      .select("id, key_name, display_name, description, api_key_last4, is_active, provider, priority, last_test_ok, last_tested_at")
       .order("provider", { ascending: true })
       .order("priority", { ascending: true });
     if (error) {
@@ -453,14 +455,18 @@ export const ApiConfigManager = () => {
                         if (!config.is_active) {
                           return <Badge variant="secondary">Inativa</Badge>;
                         }
-                        if (testResult?.ok) {
+                        // Prioriza o teste feito agora nesta sessão; se não houver,
+                        // cai para o último resultado persistido no banco (last_test_ok),
+                        // para o badge continuar verde mesmo após recarregar a página.
+                        const ok = testResult ? testResult.ok : config.last_test_ok;
+                        if (ok === true) {
                           return (
                             <Badge className="bg-green-600 hover:bg-green-600 text-white border-transparent">
                               Ativa • OK
                             </Badge>
                           );
                         }
-                        if (testResult && !testResult.ok) {
+                        if (ok === false) {
                           return <Badge variant="destructive">Ativa • falha</Badge>;
                         }
                         return <Badge variant="default">Ativa</Badge>;

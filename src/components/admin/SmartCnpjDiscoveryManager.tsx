@@ -51,6 +51,8 @@ interface ProviderRow {
   total_errors: number;
   last_used_at: string | null;
   estimated_cost_cents: number;
+  last_test_ok: boolean | null;
+  last_tested_at: string | null;
 }
 
 export const SmartCnpjDiscoveryManager = () => {
@@ -306,6 +308,23 @@ export const SmartCnpjDiscoveryManager = () => {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium">{row.display_name}</span>
+                        {(() => {
+                          if (!row.is_enabled) {
+                            return <Badge variant="secondary" className="text-xs">Inativo</Badge>;
+                          }
+                          const ok = result?.ok ?? row.last_test_ok;
+                          if (ok === true) {
+                            return (
+                              <Badge className="text-xs bg-green-600 hover:bg-green-600 text-white border-transparent">
+                                Ativo • OK
+                              </Badge>
+                            );
+                          }
+                          if (ok === false) {
+                            return <Badge variant="destructive" className="text-xs">Ativo • falha</Badge>;
+                          }
+                          return <Badge variant="default" className="text-xs">Ativo</Badge>;
+                        })()}
                         <Badge variant={row.is_free ? "secondary" : "outline"} className="text-xs">
                           {row.is_free ? "Gratuito" : "Pago"}
                         </Badge>

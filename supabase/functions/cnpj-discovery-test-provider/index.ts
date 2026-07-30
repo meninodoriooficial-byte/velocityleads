@@ -58,6 +58,16 @@ serve(async (req) => {
     if (!provider) return result(false, "Provider desconhecido ou ainda não implementado");
 
     const test = await provider.testConnection();
+
+    try {
+      await supabase
+        .from("cnpj_discovery_providers")
+        .update({ last_test_ok: test.ok, last_tested_at: new Date().toISOString() })
+        .eq("slug", slug);
+    } catch (_e) {
+      // não crítico para o resultado do teste
+    }
+
     return result(test.ok, test.message, test.latencyMs);
   } catch (e) {
     console.error("cnpj-discovery-test-provider error", e);

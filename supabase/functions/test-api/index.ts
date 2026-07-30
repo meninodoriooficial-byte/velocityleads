@@ -96,6 +96,7 @@ serve(async (req) => {
           console.error('Failed to persist test error', e);
         }
       }
+      await persistTestResult(supabase, keyName, result.ok);
       return jsonResponse(result);
     }
 
@@ -115,6 +116,7 @@ serve(async (req) => {
           console.error('Failed to persist test error', e);
         }
       }
+      await persistTestResult(supabase, keyName, result.ok);
       return jsonResponse(result);
     }
 
@@ -134,20 +136,29 @@ serve(async (req) => {
           console.error('Failed to persist test error', e);
         }
       }
+      await persistTestResult(supabase, keyName, result.ok);
       return jsonResponse(result);
     }
 
     if (keyName === 'CNPJA_TOKEN') {
-      return jsonResponse(await testCnpja(apiKey));
+      const r = await testCnpja(apiKey);
+      await persistTestResult(supabase, keyName, r.ok);
+      return jsonResponse(r);
     }
     if (keyName === 'RECEITAWS_TOKEN') {
-      return jsonResponse(await testReceitaWs(apiKey));
+      const r = await testReceitaWs(apiKey);
+      await persistTestResult(supabase, keyName, r.ok);
+      return jsonResponse(r);
     }
     if (keyName === 'ECONODATA_TOKEN') {
-      return jsonResponse(await testEconodata(apiKey));
+      const r = await testEconodata(apiKey);
+      await persistTestResult(supabase, keyName, r.ok);
+      return jsonResponse(r);
     }
     if (keyName === 'BRASILAPI_ENABLED') {
-      return jsonResponse(await testBrasilApi());
+      const r = await testBrasilApi();
+      await persistTestResult(supabase, keyName, r.ok);
+      return jsonResponse(r);
     }
 
     return jsonResponse({
@@ -207,6 +218,17 @@ async function testGooglePlaces(apiKey: string) {
     };
   } catch (e: any) {
     return { ok: false, status: 'network_error', message: `Erro de rede: ${e.message}` };
+  }
+}
+
+async function persistTestResult(supabase: any, keyName: string, ok: boolean) {
+  try {
+    await supabase
+      .from('api_configs')
+      .update({ last_test_ok: ok, last_tested_at: new Date().toISOString() })
+      .eq('key_name', keyName);
+  } catch (e) {
+    console.error('Failed to persist last_test_ok', e);
   }
 }
 
