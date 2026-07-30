@@ -27,6 +27,17 @@ const FACTORIES: Record<string, (supabase: SupabaseClient) => ISearchProvider> =
 };
 
 /**
+ * Instancia um único provider pelo slug, independentemente de estar
+ * habilitado ou não em cnpj_discovery_providers — usado pelo botão
+ * "Testar conexão" no Super Admin, que precisa funcionar mesmo antes
+ * de o provider ser ativado.
+ */
+export function getProviderBySlug(slug: string, supabase: SupabaseClient): ISearchProvider | null {
+  const factory = FACTORIES[slug];
+  return factory ? factory(supabase) : null;
+}
+
+/**
  * Monta a lista de providers respeitando a ordem (sort_order) e o
  * liga/desliga cadastrados em cnpj_discovery_providers. Este é o único
  * lugar que o enrich-lead precisa chamar para obter a lista pronta.
