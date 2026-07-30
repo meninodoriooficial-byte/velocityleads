@@ -7,6 +7,17 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Sempre retorna HTTP 200 — erros são sinalizados via ok:false no corpo.
+// Um status não-2xx faz o supabase-js descartar o corpo da resposta e
+// mostrar só "Edge Function returned a non-2xx status code" no cliente,
+// escondendo a mensagem real. Padrão idêntico ao já usado em test-api.
+function result(ok: boolean, message: string, latencyMs = 0) {
+  return new Response(JSON.stringify({ ok, message, latencyMs }), {
+    status: 200,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -14,7 +25,7 @@ serve(async (req) => {
 
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) return json({ ok: false, error: "Não autenticado" }, 401);
+    if (!authHeader) return result(false, "Não autenticado");
 
     const userClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -23,7 +34,7 @@ serve(async (req) => {
     );
     const token = authHeader.replace("Bearer ", "");
     const { data: claimsData, error: claimsErr } = await userClient.auth.getClaims(token);
-    if (claimsErr || !claimsData?.claims?.sub) return json({ ok: false, error: "Sessão inválida" }, 401);
+    if (claimsErr || !claimsData?.claims?.sub) return result(false, "Sessão inválida");
     const userId = claimsData.claims.sub as string;
 
     const supabase = createClient(
@@ -37,26 +48,19 @@ serve(async (req) => {
       .eq("user_id", userId)
       .eq("role", "admin")
       .maybeSingle();
-    if (!roleRow) return json({ ok: false, error: "Acesso restrito a administradores" }, 403);
+    if (!roleRow) return result(false, "Acesso restrito a administradores");
 
     const body = await req.json().catch(() => ({}));
     const slug: string = body.slug;
-    if (!slug) return json({ ok: false, error: "slug obrigatório" }, 400);
+    if (!slug) return result(false, "slug obrigatório");
 
     const provider = getProviderBySlug(slug, supabase);
-    if (!provider) return json({ ok: false, error: "Provider desconhecido ou ainda não implementado" }, 404);
+    if (!provider) return result(false, "Provider desconhecido ou ainda não implementado");
 
-    const result = await provider.testConnection();
-    return json(result, 200);
+    const test = await provider.testConnection();
+    return result(test.ok, test.message, test.latencyMs);
   } catch (e) {
     console.error("cnpj-discovery-test-provider error", e);
-    return json({ ok: false, error: String(e) }, 500);
+    return result(false, `Erro interno: ${e instanceof Error ? e.message : String(e)}`);
   }
 });
-
-function json(body: unknown, status: number) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
