@@ -118,7 +118,7 @@ serve(async (req) => {
       return jsonResponse(result);
     }
 
-    if (keyName === 'OPENAI_API_KEY' || keyName === 'LOVABLE_API_KEY') {
+    if (keyName === 'OPENAI_API_KEY') {
       const result = await testOpenAI(apiKey);
       if (!result.ok) {
         try {

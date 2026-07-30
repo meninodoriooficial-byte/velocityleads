@@ -131,12 +131,12 @@ Deno.serve(async (req) => {
     const greeting = await session.readResponse("boas-vindas");
     if (greeting.code !== 220) throw new Error(`Conexão recusada: ${greeting.text}`);
 
-    await session.command("EHLO lovable.local", [250], "EHLO");
+    await session.command("EHLO velocityleads.local", [250], "EHLO");
 
     if (useStartTls) {
       await session.command("STARTTLS", [220], "STARTTLS");
       await session.upgradeToTls(hostname);
-      await session.command("EHLO lovable.local", [250], "EHLO após STARTTLS");
+      await session.command("EHLO velocityleads.local", [250], "EHLO após STARTTLS");
     }
 
     await session.command("AUTH LOGIN", [334], "Autenticação");

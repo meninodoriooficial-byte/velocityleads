@@ -600,7 +600,7 @@ async function scrapeSiteDeep(rawUrl: string) {
       const resp = await fetch(url, {
         signal: ctrl.signal,
         headers: {
-          "User-Agent": "Mozilla/5.0 (compatible; LeadFinderBot/1.0; +https://lovable.dev)",
+          "User-Agent": "Mozilla/5.0 (compatible; LeadFinderBot/1.0; +https://velocityleads.com.br)",
           Accept: "text/html,application/xhtml+xml",
         },
         redirect: "follow",
@@ -677,95 +677,6 @@ function isUsableEmail(email: string): boolean {
   return true;
 }
 
-async function fetchAIEnrichment(result: any, apiKey: string, customSystemPrompt?: string | null) {
-  const systemPrompt =
-    (customSystemPrompt && customSystemPrompt.trim().length > 0)
-      ? customSystemPrompt
-      : "Você é um analista de dados B2B brasileiro. Retorne apenas dados plausíveis baseados em informações públicas conhecidas. Se não souber, deixe null.";
-
-  const prompt = `Dados da empresa para pesquisar:
-
-Nome: ${result.business_name}
-Tipo: ${result.business_type || "—"}
-Endereço: ${result.address || "—"}
-Site conhecido: ${result.website || "—"}
-Telefone conhecido: ${result.phone || "—"}
-
-Faça a varredura conforme suas instruções e devolva os dados estruturados via a função save_enrichment.`;
-
-  const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "google/gemini-3.6-flash",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: prompt },
-      ],
-      tools: [
-        {
-          type: "function",
-          function: {
-            name: "save_enrichment",
-            description: "Salva dados enriquecidos sobre a empresa coletados em fontes públicas",
-            parameters: {
-              type: "object",
-              properties: {
-                cnpj: { type: ["string", "null"], description: "CNPJ formatado, se identificado com alta confiança" },
-                razao_social: { type: ["string", "null"] },
-                nome_fantasia: { type: ["string", "null"] },
-                site: { type: ["string", "null"], description: "URL do site oficial" },
-                emails: { type: "array", items: { type: "string" }, description: "E-mails de contato encontrados" },
-                telefones: { type: "array", items: { type: "string" }, description: "Telefones adicionais (fixo/WhatsApp)" },
-                redes_sociais: {
-                  type: "object",
-                  properties: {
-                    instagram: { type: ["string", "null"] },
-                    facebook: { type: ["string", "null"] },
-                    linkedin: { type: ["string", "null"] },
-                    youtube: { type: ["string", "null"] },
-                    tiktok: { type: ["string", "null"] },
-                  },
-                  additionalProperties: false,
-                },
-                socios: { type: "array", items: { type: "string" }, description: "Nomes de sócios/responsáveis públicos" },
-                descricao: { type: "string", description: "Breve descrição (1-2 frases) da empresa" },
-                segmento: { type: "string" },
-                porte_estimado: { type: "string", enum: ["MEI", "Pequeno", "Médio", "Grande", "Desconhecido"] },
-                publico_alvo: { type: "string" },
-                produtos_servicos: { type: "array", items: { type: "string" } },
-                diferenciais: { type: "array", items: { type: "string" } },
-                pitch_abordagem: { type: "string", description: "Sugestão curta de pitch comercial personalizado" },
-              },
-              required: ["descricao", "segmento"],
-              additionalProperties: false,
-            },
-          },
-        },
-      ],
-      tool_choice: { type: "function", function: { name: "save_enrichment" } },
-    }),
-  });
-
-  if (!resp.ok) {
-    if (resp.status === 429) throw new Error("Rate limit do Lovable AI excedido. Tente novamente em instantes.");
-    if (resp.status === 402) throw new Error("Créditos esgotados no workspace Lovable AI.");
-    const t = await resp.text();
-    console.log("AI gateway error", resp.status, t);
-    throw new Error(`Lovable AI ${resp.status}: ${t.slice(0, 200)}`);
-  }
-  const data = await resp.json();
-  const toolCall = data?.choices?.[0]?.message?.tool_calls?.[0];
-  if (!toolCall?.function?.arguments) return null;
-  try {
-    return JSON.parse(toolCall.function.arguments);
-  } catch {
-    return null;
-  }
-}
 
 /**
  * Scraping da busca pública do casadosdados.com.br para descobrir o CNPJ

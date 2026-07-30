@@ -120,46 +120,7 @@ const MANUALS: Record<string, Manual> = {
     docsLabel: "Site oficial casadosdados",
   },
 
-  lovable_ai: {
-    title: "Lovable AI Gateway",
-    summary:
-      "Gateway de IA da Lovable. A chave é provisionada automaticamente — você não precisa criar nada manualmente.",
-    keyName: "LOVABLE_API_KEY (gerenciada pela plataforma)",
-    cost:
-      "Cobrado em créditos do workspace Lovable. Cada modelo tem preço diferente (ver docs).",
-    steps: [
-      {
-        title: "1. Verificar se Lovable Cloud está ativo",
-        description:
-          "Este projeto já tem Lovable Cloud habilitado, então a LOVABLE_API_KEY é injetada automaticamente nas Edge Functions. Não há nada a fazer.",
-      },
-      {
-        title: "2. Verificar saldo de créditos",
-        description:
-          "Acesse o workspace Lovable → Settings → Billing/Credits. Confirme que há créditos disponíveis.",
-      },
-      {
-        title: "3. (Se necessário) Recarregar créditos",
-        description:
-          "No mesmo painel, clique em 'Add credits' e escolha o pacote desejado. A chave continua a mesma após a recarga.",
-      },
-      {
-        title: "4. (Avançado) Rotacionar a chave",
-        description:
-          "Caso suspeite de vazamento, peça ao agente para rotacionar a LOVABLE_API_KEY. NÃO cadastre essa chave no painel admin desta aplicação — ela é usada diretamente pelo backend.",
-      },
-    ],
-    tips: [
-      "Modelos recomendados: google/gemini-2.5-flash para enriquecimento e google/gemini-2.5-flash-lite para classificações simples.",
-      "Erro 402 = créditos esgotados. Erro 429 = rate limit (aguarde e tente novamente).",
-    ],
-    warnings: [
-      "Não cadastre LOVABLE_API_KEY como provider no painel admin — ela é gerenciada pela plataforma.",
-    ],
-    docsUrl: "https://docs.lovable.dev/features/ai",
-    docsLabel: "Documentação Lovable AI",
-  },
-};
+  };
 
 const GENERIC_MANUAL: Manual = {
   title: "Integração genérica",

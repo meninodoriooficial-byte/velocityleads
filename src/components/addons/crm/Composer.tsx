@@ -107,7 +107,7 @@ export function Composer({ conversationId, contactName, phone, onSent }: Props) 
     const { data, error } = await supabase.functions.invoke("crm-ai", { body: { conversationId, mode: "suggest" } });
     setAiBusy(false);
     if (error || !data?.ok) {
-      toast({ title: "IA indisponível", description: data?.error || error?.message || "Erro de conexão. Verifique se a chave LOVABLE_API_KEY está configurada no Supabase.", variant: "destructive" });
+      toast({ title: "IA indisponível", description: data?.error || error?.message || "Erro de conexão. Verifique se a chave OPENAI_API_KEY está configurada no Supabase.", variant: "destructive" });
       return;
     }
     setText(data.text || "");
