@@ -73,110 +73,109 @@ serve(async (req) => {
     const enrichment: Record<string, unknown> = {};
     let sourceUsed = "";
 
-    // 1) Tentar Casa dos Dados
-    const cddKey = await getDecryptedKey(supabase, "CASADOSDADOS_API_KEY");
-    if (cddKey) {
+    const sources: string[] = [];
+
+    // Chaves das APIs de enriquecimento (lidas do cofre; só retornam se ativas)
+    const cnpjaKey = await getDecryptedKey(supabase, "CNPJA_TOKEN");
+    const receitawsKey = await getDecryptedKey(supabase, "RECEITAWS_TOKEN");
+    const openaiKey = await getDecryptedKey(supabase, "OPENAI_API_KEY");
+    const brasilApiOn = await isActive(supabase, "BRASILAPI_ENABLED");
+
+    // =====================================================================
+    // ETAPA 1 — Descobrir o CNPJ a partir do nome/endereço do lead.
+    // Ordem: CNPJá busca (preciso) -> OpenAI (reforço), SEMPRE validando
+    // o CNPJ contra a BrasilAPI para não aceitar palpite errado.
+    // =====================================================================
+    let cnpj: string | null = null;
+    let cnpjSource = "";
+
+    const existingCnpj = extractExistingCnpj(result);
+    if (existingCnpj) { cnpj = existingCnpj; cnpjSource = "lead"; }
+
+    if (!cnpj && cnpjaKey) {
       try {
-        const cddData = await fetchCasaDosDados(
-          {
-            name: result.business_name,
-            atividade: result.business_type,
-            address: result.address,
-          },
-          cddKey
-        );
-        if (cddData) {
-          enrichment.casadosdados = cddData;
-          sourceUsed = "casadosdados";
+        const found = await cnpjaSearchByName(result.business_name, extractUF(result.address), cnpjaKey);
+        if (found) { cnpj = found; cnpjSource = "cnpja_search"; }
+      } catch (e) { console.error("cnpja search error", e); }
+    }
+
+    if (!cnpj && openaiKey) {
+      try {
+        const guess = await openaiGuessCnpj(result, openaiKey);
+        if (guess) {
+          const valid = await validateCnpjMatchesName(guess, result.business_name);
+          if (valid) { cnpj = guess; cnpjSource = "openai_validado"; }
         }
-      } catch (e) {
-        console.error("Casa dos Dados error:", e);
+      } catch (e) { console.error("openai cnpj guess error", e); }
+    }
+
+    if (cnpj) sources.push(`cnpj:${cnpjSource}`);
+
+    // =====================================================================
+    // ETAPA 2 — Com o CNPJ, enriquecer em CASCATA/TRANSBORDO.
+    // =====================================================================
+    if (cnpj) {
+      if (cnpjaKey) {
+        try {
+          const c = await cnpjaGetOffice(cnpj, cnpjaKey);
+          if (c) { enrichment.cnpja = c; sources.push("cnpja"); }
+        } catch (e) { console.error("cnpja office error", e); }
+      }
+      if (brasilApiOn) {
+        try {
+          const brasil = await fetchBrasilApi(cnpj);
+          if (brasil) { enrichment.brasilapi = brasil; sources.push("brasilapi"); }
+        } catch (e) { console.error("BrasilAPI error:", e); }
+      }
+      if (receitawsKey) {
+        try {
+          const rw = await fetchReceitaWs(cnpj, receitawsKey);
+          if (rw) { enrichment.receitaws = rw; sources.push("receitaws"); }
+        } catch (e) { console.error("ReceitaWS error:", e); }
       }
     }
 
-    // 1b) Fallback: scraping público do casadosdados.com.br para descobrir CNPJ
-    //     quando a API não retornou nada (ou não há chave configurada).
-    if (!(enrichment.casadosdados as any)?.cnpj) {
-      try {
-        const scrapedCnpj = await scrapeCasaDosDadosPublic(
-          result.business_name,
-          result.address
-        );
-        if (scrapedCnpj) {
-          enrichment.casadosdados = {
-            ...(enrichment.casadosdados as any || {}),
-            cnpj: scrapedCnpj,
-            fonte: "scrape_publico",
-          };
-          sourceUsed = sourceUsed ? `${sourceUsed}+cdd_scrape` : "cdd_scrape";
-        }
-      } catch (e) {
-        console.error("CDD scrape fallback error:", e);
-      }
-    }
+    // =====================================================================
+    // ETAPA 3 — Consolidar + scraping do site + OpenAI marketing
+    // =====================================================================
+    const consolidated = consolidateCnpjData(enrichment);
+    if (consolidated) enrichment.consolidado = consolidated;
 
-    // 2) BrasilAPI (grátis) — usa o CNPJ obtido em (1) para puxar quadro societário,
-    //     situação cadastral, CNAEs secundários, capital, e-mail/telefone oficial da Receita.
-    const cnpjFromCdd = ((enrichment.casadosdados as any)?.cnpj || "")
-      .toString()
-      .replace(/\D/g, "");
-    if (cnpjFromCdd && cnpjFromCdd.length === 14) {
-      try {
-        const brasil = await fetchBrasilApi(cnpjFromCdd);
-        if (brasil) {
-          enrichment.brasilapi = brasil;
-          sourceUsed = sourceUsed ? `${sourceUsed}+brasilapi` : "brasilapi";
-        }
-      } catch (e) {
-        console.error("BrasilAPI error:", e);
-      }
-    }
-
-    // 3) Scraper aprimorado do site — visita páginas de contato e extrai e-mails / redes
-    const siteUrl =
-      result.website ||
-      (enrichment.casadosdados as any)?.site ||
-      null;
+    const siteUrl = result.website || (consolidated as any)?.site || null;
     if (siteUrl) {
       try {
         const scraped = await scrapeSiteDeep(siteUrl);
         if (scraped && (scraped.emails?.length || scraped.phones?.length || scraped.instagram || scraped.facebook || scraped.linkedin)) {
           enrichment.scraped = scraped;
-          sourceUsed = sourceUsed ? `${sourceUsed}+scrape` : "scrape";
+          sources.push("scrape");
         }
-      } catch (e) {
-        console.error("scrape error:", e);
-      }
+      } catch (e) { console.error("scrape error:", e); }
     }
 
-    // 4) Complementar/Fallback com Lovable AI
-    const lovableKey = Deno.env.get("LOVABLE_API_KEY");
     let aiError: string | null = null;
-    if (lovableKey) {
+    if (openaiKey) {
       try {
         const customPrompt = await getSystemSetting(supabase, "ai_enrichment_prompt");
-        const aiData = await fetchAIEnrichment(result, lovableKey, customPrompt);
-        if (aiData) {
-          enrichment.ai = aiData;
-          sourceUsed = sourceUsed ? `${sourceUsed}+ai` : "ai";
-        }
+        const aiData = await fetchAIEnrichmentOpenAI(result, openaiKey, customPrompt);
+        if (aiData) { enrichment.ai = aiData; sources.push("ai"); }
       } catch (e: any) {
         aiError = e?.message || String(e);
         console.error("AI enrichment error:", e);
       }
     } else {
-      aiError = "LOVABLE_API_KEY não configurada";
+      aiError = "OpenAI não configurada/ativa";
     }
+
+    sourceUsed = sources.join("+");
 
     if (!sourceUsed) {
       return new Response(
         JSON.stringify({
           success: false,
           source: "none",
-          error:
-            aiError
-              ? `Não foi possível enriquecer este lead: ${aiError}`
-              : "Nenhum dado adicional encontrado para este lead nas fontes públicas.",
+          error: aiError
+            ? `Não foi possível enriquecer este lead: ${aiError}`
+            : "Nenhum dado adicional encontrado. Verifique se ao menos uma API de enriquecimento (CNPJá, ReceitaWS, BrasilAPI ou OpenAI) está ativa.",
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -193,6 +192,7 @@ serve(async (req) => {
       JSON.stringify({ success: true, source: sourceUsed, enriched_data: enrichment }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
+
   } catch (error: any) {
     console.error("enrich-lead error:", error);
     return new Response(JSON.stringify({ error: error?.message || "Erro interno" }), {
@@ -243,8 +243,7 @@ function buildResultUpdate(
   enrichment: Record<string, any>,
   sourceUsed: string
 ) {
-  const cdd = enrichment.casadosdados as any;
-  const brasil = enrichment.brasilapi as any;
+  const con = enrichment.consolidado as any;
   const scraped = enrichment.scraped as any;
   const ai = enrichment.ai as any;
   const update: Record<string, any> = {
@@ -252,62 +251,31 @@ function buildResultUpdate(
     enriched_at: new Date().toISOString(),
     enriched_source: sourceUsed,
   };
-  if (cdd) {
-    if (!result.phone && cdd.telefone) update.phone = cdd.telefone;
-    if (!result.email && cdd.email) update.email = cdd.email;
-    if (!result.owner_name && cdd.proprietario) update.owner_name = cdd.proprietario;
-    const social = { ...(result.social_media || {}) };
-    let socialChanged = false;
-    if (!social.instagram && cdd.instagram) {
-      social.instagram = cdd.instagram;
-      socialChanged = true;
-    }
-    if (!social.facebook && cdd.facebook) {
-      social.facebook = cdd.facebook;
-      socialChanged = true;
-    }
-    if (socialChanged) update.social_media = social;
-  }
-  if (brasil) {
-    if (!update.phone && !result.phone && brasil.telefone) update.phone = brasil.telefone;
-    if (!update.email && !result.email && brasil.email) update.email = brasil.email;
-    if (!update.owner_name && !result.owner_name && brasil.proprietario) {
-      update.owner_name = brasil.proprietario;
-    }
+  // Dados cadastrais consolidados (CNPJ, sócios, contatos da Receita)
+  if (con) {
+    if (!result.phone && con.telefone) update.phone = con.telefone;
+    if (!result.email && con.email) update.email = con.email;
+    if (!result.owner_name && con.proprietario) update.owner_name = con.proprietario;
   }
   if (scraped) {
-    if (!update.email && !result.email && scraped.emails?.[0]) {
-      update.email = scraped.emails[0];
-    }
-    if (!update.phone && !result.phone && scraped.phones?.[0]) {
-      update.phone = scraped.phones[0];
-    }
+    if (!update.email && !result.email && scraped.emails?.[0]) update.email = scraped.emails[0];
+    if (!update.phone && !result.phone && scraped.phones?.[0]) update.phone = scraped.phones[0];
     const social = { ...(update.social_media || result.social_media || {}) };
     let changed = false;
     for (const k of ["instagram", "facebook", "linkedin", "youtube", "tiktok"] as const) {
-      if (!social[k] && (scraped as any)[k]) {
-        social[k] = (scraped as any)[k];
-        changed = true;
-      }
+      if (!social[k] && (scraped as any)[k]) { social[k] = (scraped as any)[k]; changed = true; }
     }
     if (changed) update.social_media = social;
   }
   if (ai) {
-    if (!update.email && !result.email && Array.isArray(ai.emails) && ai.emails[0]) {
-      update.email = ai.emails[0];
-    }
-    if (!update.phone && !result.phone && Array.isArray(ai.telefones) && ai.telefones[0]) {
-      update.phone = ai.telefones[0];
-    }
+    if (!update.email && !result.email && Array.isArray(ai.emails) && ai.emails[0]) update.email = ai.emails[0];
+    if (!update.phone && !result.phone && Array.isArray(ai.telefones) && ai.telefones[0]) update.phone = ai.telefones[0];
     if (!result.website && ai.site) update.website = ai.site;
     const social = { ...(update.social_media || result.social_media || {}) };
     let changed = false;
     const socials = ai.redes_sociais || {};
     for (const k of ["instagram", "facebook", "linkedin", "youtube", "tiktok"]) {
-      if (!social[k] && socials[k]) {
-        social[k] = socials[k];
-        changed = true;
-      }
+      if (!social[k] && socials[k]) { social[k] = socials[k]; changed = true; }
     }
     if (changed) update.social_media = social;
   }
@@ -886,4 +854,244 @@ async function scrapeCasaDosDadosPublic(
     console.log("scrapeCasaDosDadosPublic throw", e);
     return null;
   }
+}
+// ============================================================================
+// NOVOS HELPERS — enriquecimento em cascata (CNPJá, ReceitaWS, OpenAI)
+// ============================================================================
+
+/** Verifica se uma api_config está ativa (para fontes sem chave, ex. BrasilAPI). */
+async function isActive(supabase: any, keyName: string): Promise<boolean> {
+  try {
+    const { data } = await supabase
+      .from("api_configs")
+      .select("is_active")
+      .eq("key_name", keyName)
+      .maybeSingle();
+    return !!data?.is_active;
+  } catch { return false; }
+}
+
+/** Extrai CNPJ já salvo no lead (colunas ou enriched_data anterior). */
+function extractExistingCnpj(result: any): string | null {
+  const candidates = [
+    result?.cnpj,
+    result?.enriched_data?.cnpj,
+    result?.enriched_data?.consolidado?.cnpj,
+    result?.enriched_data?.cnpja?.cnpj,
+    result?.enriched_data?.brasilapi?.cnpj,
+  ];
+  for (const c of candidates) {
+    const d = (c || "").toString().replace(/\D/g, "");
+    if (d.length === 14) return d;
+  }
+  return null;
+}
+
+/** CNPJá — busca o escritório por razão social + UF, retorna o CNPJ (14 dígitos). */
+async function cnpjaSearchByName(name: string, uf: string | null, apiKey: string): Promise<string | null> {
+  if (!name) return null;
+  const params = new URLSearchParams();
+  params.set("search.term", name);
+  if (uf) params.set("address.state.in", uf);
+  params.set("limit", "5");
+  const url = `https://api.cnpja.com/office?${params.toString()}`;
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 12000);
+  const resp = await fetch(url, {
+    headers: { Authorization: apiKey, Accept: "application/json" },
+    signal: ctrl.signal,
+  }).finally(() => clearTimeout(t));
+  if (!resp.ok) { console.log("cnpja search HTTP", resp.status); return null; }
+  const data = await resp.json();
+  const records = data?.records || data?.data || [];
+  const first = Array.isArray(records) ? records[0] : null;
+  const raw = first?.taxId || first?.cnpj || first?.company?.taxId || null;
+  const digits = raw ? raw.toString().replace(/\D/g, "") : null;
+  return digits && digits.length === 14 ? digits : null;
+}
+
+/** CNPJá — dados cadastrais completos a partir do CNPJ. */
+async function cnpjaGetOffice(cnpjDigits: string, apiKey: string) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 12000);
+  const resp = await fetch(`https://api.cnpja.com/office/${cnpjDigits}`, {
+    headers: { Authorization: apiKey, Accept: "application/json" },
+    signal: ctrl.signal,
+  }).finally(() => clearTimeout(t));
+  if (!resp.ok) { console.log("cnpja office HTTP", resp.status); return null; }
+  const d = await resp.json();
+  const company = d.company || {};
+  const socios = (company.members || []).map((m: any) => ({
+    nome: m?.person?.name || null,
+    qualificacao: m?.role?.text || null,
+  }));
+  const ie = (d.registrations || []).find((r: any) => r?.enabled) || (d.registrations || [])[0] || null;
+  return {
+    cnpj: d.taxId || cnpjDigits,
+    razao_social: company.name || null,
+    nome_fantasia: d.alias || null,
+    capital_social: company.equity ?? null,
+    natureza_juridica: company.nature?.text || null,
+    porte: company.size?.text || null,
+    situacao_cadastral: d.status?.text || null,
+    data_abertura: d.founded || null,
+    atividade_principal: d.mainActivity?.text || null,
+    cnae_principal_codigo: d.mainActivity?.id || null,
+    atividades_secundarias: (d.sideActivities || []).map((a: any) => a.text).filter(Boolean),
+    endereco_completo: d.address
+      ? [d.address.street, d.address.number, d.address.details, d.address.district, d.address.city, d.address.state, d.address.zip].filter(Boolean).join(", ")
+      : null,
+    telefone: (d.phones || [])[0] ? `(${d.phones[0].area}) ${d.phones[0].number}` : null,
+    email: (d.emails || [])[0]?.address || null,
+    socios,
+    proprietario: socios?.[0]?.nome || null,
+    inscricao_estadual: ie ? `${ie.number}${ie.state ? ` (${ie.state})` : ""}` : null,
+    opcao_pelo_simples: d.company?.simples?.optant ?? null,
+    opcao_pelo_mei: d.company?.simei?.optant ?? null,
+    tipo_empresa: company.nature?.text || company.size?.text || null,
+  };
+}
+
+/** ReceitaWS — consulta CNPJ (usa token Bearer se houver). */
+async function fetchReceitaWs(cnpjDigits: string, apiKey: string) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 12000);
+  const resp = await fetch(`https://receitaws.com.br/v1/cnpj/${cnpjDigits}`, {
+    headers: { Authorization: `Bearer ${apiKey}`, Accept: "application/json" },
+    signal: ctrl.signal,
+  }).finally(() => clearTimeout(t));
+  if (!resp.ok) { console.log("receitaws HTTP", resp.status); return null; }
+  const d = await resp.json();
+  if (d?.status === "ERROR") { console.log("receitaws ERROR", d?.message); return null; }
+  const socios = (d.qsa || []).map((s: any) => ({ nome: s.nome, qualificacao: s.qual }));
+  return {
+    cnpj: d.cnpj || cnpjDigits,
+    razao_social: d.nome || null,
+    nome_fantasia: d.fantasia || null,
+    situacao_cadastral: d.situacao || null,
+    data_abertura: d.abertura || null,
+    capital_social: d.capital_social || null,
+    porte: d.porte || null,
+    natureza_juridica: d.natureza_juridica || null,
+    atividade_principal: d.atividade_principal?.[0]?.text || null,
+    atividades_secundarias: (d.atividades_secundarias || []).map((a: any) => a.text).filter(Boolean),
+    endereco_completo: [d.logradouro, d.numero, d.complemento, d.bairro, d.municipio, d.uf, d.cep].filter(Boolean).join(", "),
+    email: d.email || null,
+    telefone: d.telefone || null,
+    socios,
+    proprietario: socios?.[0]?.nome || null,
+    opcao_pelo_simples: d.simples?.optante ?? null,
+    opcao_pelo_mei: d.simei?.optante ?? null,
+    tipo_empresa: d.tipo || d.natureza_juridica || null,
+  };
+}
+
+/** OpenAI — infere o CNPJ a partir do nome/endereço (será validado depois). */
+async function openaiGuessCnpj(result: any, apiKey: string): Promise<string | null> {
+  const prompt = `Empresa: ${result.business_name}\nEndereço: ${result.address || "—"}\nTelefone: ${result.phone || "—"}\nSite: ${result.website || "—"}\n\nCom base em informações públicas, qual é o CNPJ desta empresa? Responda APENAS com o CNPJ (14 dígitos, só números) se tiver alta confiança. Se não souber, responda exatamente "null".`;
+  const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: "Você identifica CNPJs de empresas brasileiras a partir de dados públicos. Só responde com alta confiança." },
+        { role: "user", content: prompt },
+      ],
+      temperature: 0,
+      max_tokens: 30,
+    }),
+  });
+  if (!resp.ok) { console.log("openai guess HTTP", resp.status); return null; }
+  const data = await resp.json();
+  const text = (data?.choices?.[0]?.message?.content || "").trim();
+  const digits = text.replace(/\D/g, "");
+  return digits.length === 14 ? digits : null;
+}
+
+/** Valida se o CNPJ corresponde ao nome buscado, via BrasilAPI (grátis). */
+async function validateCnpjMatchesName(cnpjDigits: string, name: string): Promise<boolean> {
+  try {
+    const resp = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpjDigits}`, { headers: { Accept: "application/json" } });
+    if (!resp.ok) return false;
+    const d = await resp.json();
+    const razao = (d.razao_social || "").toLowerCase();
+    const fantasia = (d.nome_fantasia || "").toLowerCase();
+    const alvo = (name || "").toLowerCase();
+    if (!alvo) return false;
+    // Considera válido se houver interseção de tokens relevantes (>=1 palavra com 4+ letras).
+    const tokens = alvo.split(/\s+/).filter((w) => w.length >= 4);
+    return tokens.some((w) => razao.includes(w) || fantasia.includes(w));
+  } catch { return false; }
+}
+
+/** Consolida os dados de CNPJ das várias fontes (transbordo: preenche o vazio). */
+function consolidateCnpjData(enrichment: Record<string, any>) {
+  const sources = [enrichment.cnpja, enrichment.brasilapi, enrichment.receitaws].filter(Boolean);
+  if (sources.length === 0) return null;
+  const pick = (field: string) => {
+    for (const s of sources) {
+      const v = (s as any)?.[field];
+      if (v !== null && v !== undefined && v !== "" && !(Array.isArray(v) && v.length === 0)) return v;
+    }
+    return null;
+  };
+  // Sócios: usa a lista mais completa
+  let socios: any[] = [];
+  for (const s of sources) {
+    const arr = (s as any)?.socios || [];
+    if (Array.isArray(arr) && arr.length > socios.length) socios = arr;
+  }
+  return {
+    cnpj: pick("cnpj"),
+    razao_social: pick("razao_social"),
+    nome_fantasia: pick("nome_fantasia"),
+    inscricao_estadual: pick("inscricao_estadual"),
+    capital_social: pick("capital_social"),
+    natureza_juridica: pick("natureza_juridica"),
+    porte: pick("porte"),
+    tipo_empresa: pick("tipo_empresa"),
+    situacao_cadastral: pick("situacao_cadastral"),
+    data_abertura: pick("data_abertura"),
+    atividade_principal: pick("atividade_principal"),
+    atividades_secundarias: pick("atividades_secundarias") || [],
+    endereco_completo: pick("endereco_completo"),
+    email: pick("email"),
+    telefone: pick("telefone"),
+    opcao_pelo_simples: pick("opcao_pelo_simples"),
+    opcao_pelo_mei: pick("opcao_pelo_mei"),
+    socios,
+    proprietario: pick("proprietario"),
+  };
+}
+
+/** OpenAI — enriquecimento de marketing (descrição, pitch, redes). */
+async function fetchAIEnrichmentOpenAI(result: any, apiKey: string, customSystemPrompt?: string | null) {
+  const systemPrompt = (customSystemPrompt && customSystemPrompt.trim().length > 0)
+    ? customSystemPrompt
+    : "Você é um analista de dados B2B brasileiro. Retorne apenas dados plausíveis baseados em informações públicas conhecidas. Se não souber, deixe null.";
+  const prompt = `Dados da empresa:\nNome: ${result.business_name}\nTipo: ${result.business_type || "—"}\nEndereço: ${result.address || "—"}\nSite: ${result.website || "—"}\nTelefone: ${result.phone || "—"}\n\nRetorne um JSON com: descricao (1-2 frases), segmento, porte_estimado (MEI/Pequeno/Médio/Grande/Desconhecido), publico_alvo, produtos_servicos (array), diferenciais (array), pitch_abordagem (frase curta), redes_sociais (objeto com instagram/facebook/linkedin/youtube/tiktok), emails (array), telefones (array), site. Responda APENAS o JSON, sem markdown.`;
+  const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: prompt },
+      ],
+      temperature: 0.3,
+      response_format: { type: "json_object" },
+    }),
+  });
+  if (!resp.ok) {
+    if (resp.status === 429) throw new Error("Rate limit da OpenAI excedido.");
+    if (resp.status === 401) throw new Error("Chave OpenAI inválida.");
+    const t = await resp.text();
+    throw new Error(`OpenAI ${resp.status}: ${t.slice(0, 150)}`);
+  }
+  const data = await resp.json();
+  const content = data?.choices?.[0]?.message?.content;
+  if (!content) return null;
+  try { return JSON.parse(content); } catch { return null; }
 }
