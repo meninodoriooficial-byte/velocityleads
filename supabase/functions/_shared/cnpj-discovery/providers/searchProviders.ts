@@ -94,7 +94,17 @@ function createGoogleCseProvider(
       try {
         const url = `https://www.googleapis.com/customsearch/v1?key=${encodeURIComponent(creds.key)}&cx=${encodeURIComponent(creds.cx)}&q=teste`;
         const res = await fetchWithAbort(url, {}, new AbortController().signal, 5000);
-        return { ok: res.ok, message: res.ok ? "Conexão OK" : `HTTP ${res.status}`, latencyMs: Date.now() - start };
+        if (res.ok) return { ok: true, message: "Conexão OK", latencyMs: Date.now() - start };
+        // Traz o motivo real que o Google devolveu, em vez de só o código HTTP.
+        const bodyText = await res.text().catch(() => "");
+        let detail = bodyText;
+        try {
+          const parsed = JSON.parse(bodyText);
+          detail = parsed?.error?.message || bodyText;
+        } catch (_e) {
+          // corpo não era JSON, usa o texto cru mesmo
+        }
+        return { ok: false, message: `HTTP ${res.status}: ${detail}`.slice(0, 300), latencyMs: Date.now() - start };
       } catch (e) {
         return { ok: false, message: String(e), latencyMs: Date.now() - start };
       }
