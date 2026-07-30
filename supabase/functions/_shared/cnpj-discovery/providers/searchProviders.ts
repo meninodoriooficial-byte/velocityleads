@@ -23,10 +23,12 @@ async function getSharedCredential(
   supabase: SupabaseClient,
   providerName: string,
 ): Promise<string | null> {
-  const { data } = await supabase
-    .rpc("get_provider_keys_decrypted", { _provider: providerName })
-    .catch(() => ({ data: null }));
-  return (data?.[0]?.api_key as string | undefined) ?? null;
+  try {
+    const { data } = await supabase.rpc("get_provider_keys_decrypted", { _provider: providerName });
+    return (data?.[0]?.api_key as string | undefined) ?? null;
+  } catch (_e) {
+    return null;
+  }
 }
 
 function createGoogleCseProvider(
@@ -323,7 +325,7 @@ export function createInternalApisProvider(supabase: SupabaseClient): ISearchPro
     displayName: "APIs internas existentes",
 
     async isConfigured() {
-      const cnpja = await getSharedCredential(supabase, "enrich_cnpja").catch(() => null);
+      const cnpja = await getSharedCredential(supabase, "enrich_cnpja");
       const { data } = await supabase
         .from("api_configs")
         .select("key_name")

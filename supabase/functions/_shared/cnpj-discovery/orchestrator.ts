@@ -78,7 +78,11 @@ export async function discoverCnpj(
       .maybeSingle();
 
     if (cached) {
-      await supabase.rpc("increment_cnpj_discovery_cache_hit", { p_cache_type: type, p_cache_key: key }).catch(() => {});
+      try {
+        await supabase.rpc("increment_cnpj_discovery_cache_hit", { p_cache_type: type, p_cache_key: key });
+      } catch (_e) {
+        // não crítico
+      }
       await logAttempt(supabase, { input, providerSlug: null, durationMs: Date.now() - start, cnpjsFound: 1, chosenCnpj: cached.cnpj, score: cached.score, reason: "cache hit", source: "cache" });
       return {
         cnpj: cached.cnpj,
@@ -174,7 +178,12 @@ export async function discoverCnpj(
   const scored: ScoredCandidate[] = [];
 
   for (const cnpj of uniqueCnpjs) {
-    const record = await deps.validateCnpj(cnpj).catch(() => null);
+    let record: CnpjRecord | null = null;
+    try {
+      record = await deps.validateCnpj(cnpj);
+    } catch (_e) {
+      record = null;
+    }
     if (!record) continue;
     const candidate = allCandidates.find((c) => c.cnpj === cnpj)!;
     scored.push(scoreCandidate(input, cnpj, record, candidate.sourceProvider));
@@ -231,14 +240,16 @@ async function upsertCache(supabase: SupabaseClient, input: DiscoveryInput, cnpj
   rows.push({ cache_type: "name_address", cache_key: `${canonicalName(input.businessName)}|${canonicalName(input.address)}` });
 
   for (const row of rows) {
-    await supabase
-      .from("cnpj_discovery_cache")
-      .upsert(
-        { ...row, cnpj, score, payload: input as unknown as Record<string, unknown> },
-        { onConflict: "cache_type,cache_key" },
-      )
-      .then(() => {})
-      .catch(() => {});
+    try {
+      await supabase
+        .from("cnpj_discovery_cache")
+        .upsert(
+          { ...row, cnpj, score, payload: input as unknown as Record<string, unknown> },
+          { onConflict: "cache_type,cache_key" },
+        );
+    } catch (_e) {
+      // Falha ao gravar cache nunca deve derrubar o fluxo principal.
+    }
   }
 }
 
@@ -247,13 +258,15 @@ async function updateProviderStats(
   slug: string,
   stats: { durationMs: number; success: boolean },
 ) {
-  await supabase.rpc("bump_cnpj_discovery_provider_stats", {
-    p_slug: slug,
-    p_duration_ms: stats.durationMs,
-    p_success: stats.success,
-  }).catch(() => {
-    // RPC opcional — não falha o fluxo se ainda não existir.
-  });
+  try {
+    await supabase.rpc("bump_cnpj_discovery_provider_stats", {
+      p_slug: slug,
+      p_duration_ms: stats.durationMs,
+      p_success: stats.success,
+    });
+  } catch (_e) {
+    // RPC opcional (ver migration 002) — não falha o fluxo se ainda não existir.
+  }
 }
 
 async function logAttempt(
@@ -270,21 +283,21 @@ async function logAttempt(
     error?: string | null;
   },
 ) {
-  await supabase
-    .from("cnpj_discovery_logs")
-    .insert({
-      provider_slug: entry.providerSlug,
-      query: entry.input.businessName,
-      duration_ms: entry.durationMs,
-      cnpjs_found: entry.cnpjsFound,
-      chosen_cnpj: entry.chosenCnpj ?? null,
-      score: entry.score ?? null,
-      reason: entry.reason,
-      source: entry.source,
-      error: entry.error ?? null,
-    })
-    .then(() => {})
-    .catch(() => {
-      // Log nunca deve derrubar o fluxo principal.
-    });
+  try {
+    await supabase
+      .from("cnpj_discovery_logs")
+      .insert({
+        provider_slug: entry.providerSlug,
+        query: entry.input.businessName,
+        duration_ms: entry.durationMs,
+        cnpjs_found: entry.cnpjsFound,
+        chosen_cnpj: entry.chosenCnpj ?? null,
+        score: entry.score ?? null,
+        reason: entry.reason,
+        source: entry.source,
+        error: entry.error ?? null,
+      });
+  } catch (_e) {
+    // Log nunca deve derrubar o fluxo principal.
+  }
 }

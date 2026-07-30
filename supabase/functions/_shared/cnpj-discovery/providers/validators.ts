@@ -122,8 +122,13 @@ export async function validateWithReceitaWs(
 
   // Reaproveita token compartilhado se estiver configurado em api_configs
   // (provider = 'enrich_receitaws' — mesmo nome já usado pelo enrich-lead atual)
-  const { data: keys } = await supabase.rpc("get_provider_keys_decrypted", { _provider: "enrich_receitaws" }).catch(() => ({ data: null }));
-  const token = keys?.[0]?.api_key as string | undefined;
+  let token: string | undefined;
+  try {
+    const { data: keys } = await supabase.rpc("get_provider_keys_decrypted", { _provider: "enrich_receitaws" });
+    token = keys?.[0]?.api_key as string | undefined;
+  } catch (_e) {
+    token = undefined;
+  }
 
   const url = token
     ? `https://receitaws.com.br/v1/cnpj/${digits}?token=${encodeURIComponent(token)}`
