@@ -335,35 +335,123 @@ export function createBrightDataProvider(supabase: SupabaseClient): ISearchProvi
   };
 }
 
+// ---------------------------------------------------------------------
+// Helpers do provider internal_apis — busca por NOME no CNPJá.
+// Extraidos de enrich-lead/index.ts. IMPORTANTE: o parametro correto da
+// API do CNPJa e "names.in" (o "search.term" antigo retorna HTTP 400,
+// o que fazia a busca por nome falhar silenciosamente e cair no OpenAI).
+// ---------------------------------------------------------------------
+function extractUFInternal(address?: string | null): string | null {
+  if (!address) return null;
+  const m = address.match(/\b([A-Z]{2})\b(?!.*\b[A-Z]{2}\b)/);
+  return m ? m[1] : null;
+}
+
+function searchNameVariationsInternal(name: string): string[] {
+  const set = new Set<string>();
+  set.add(name);
+  const semSufixo = name.replace(/\s+(LTDA|ME|EPP|SA|EIRELI|S\/A)\s*$/i, "").trim();
+  if (semSufixo && semSufixo !== name) set.add(semSufixo);
+  const parts = name.split(/\s+/);
+  if (parts.length > 2) set.add(parts.slice(0, -1).join(" "));
+  if (parts.length > 3) set.add(parts.slice(0, -2).join(" "));
+  return [...set].filter((s) => s.length >= 3);
+}
+
+function nameMatchInternal(registeredName: string, tradingName: string, searchName: string): boolean {
+  const razao = (registeredName || "").toLowerCase();
+  const fantasia = (tradingName || "").toLowerCase();
+  const alvo = (searchName || "").toLowerCase();
+  if (!alvo) return false;
+  if (razao.includes(alvo) || fantasia.includes(alvo)) return true;
+  const targetTokens = alvo.split(/\s+/).filter((w) => w.length >= 4);
+  const sourceTokens = [...new Set([...razao.split(/\s+/), ...fantasia.split(/\s+/)])].filter((w) => w.length >= 4);
+  if (targetTokens.length === 0) return true;
+  const hits = targetTokens.filter((t) => sourceTokens.some((s) => s.includes(t) || t.includes(s))).length;
+  return hits / targetTokens.length >= 0.5;
+}
+
+async function cnpjaSearchByNameInternal(
+  name: string,
+  uf: string | null,
+  apiKey: string,
+  signal: AbortSignal,
+): Promise<{ cnpj: string; matched: string } | null> {
+  if (!name) return null;
+  for (const term of searchNameVariationsInternal(name)) {
+    if (signal.aborted) break;
+    const params = new URLSearchParams();
+    params.set("names.in", term);
+    if (uf) params.set("address.state.in", uf);
+    params.set("limit", "5");
+    let resp: Response;
+    try {
+      resp = await fetch(`https://api.cnpja.com/office?${params.toString()}`, {
+        headers: { Authorization: apiKey, Accept: "application/json" },
+        signal,
+      });
+    } catch (_e) {
+      continue;
+    }
+    if (!resp.ok) continue;
+    const data = await resp.json().catch(() => null);
+    const records: Array<Record<string, unknown>> = (data?.records || data?.data || []) as Array<Record<string, unknown>>;
+    if (!Array.isArray(records) || records.length === 0) continue;
+    for (const record of records) {
+      const company = (record?.company ?? {}) as Record<string, unknown>;
+      const raw = (record?.taxId ?? record?.cnpj ?? company?.taxId ?? null) as string | null;
+      const digits = raw ? raw.toString().replace(/\D/g, "") : null;
+      if (!digits || digits.length !== 14) continue;
+      const razao = (company?.name as string) || "";
+      const fantasia = (record?.alias as string) || "";
+      if (nameMatchInternal(razao, fantasia, name)) return { cnpj: digits, matched: razao || fantasia };
+    }
+  }
+  return null;
+}
+
 export function createInternalApisProvider(supabase: SupabaseClient): ISearchProvider {
   return {
     slug: "internal_apis",
-    displayName: "APIs internas existentes",
+    displayName: "APIs internas (CNPJa busca por nome)",
 
     async isConfigured() {
       const cnpja = await getSharedCredential(supabase, "enrich_cnpja");
-      const { data } = await supabase
-        .from("api_configs")
-        .select("key_name")
-        .in("key_name", ["CNPJA_TOKEN", "OPENAI_API_KEY"])
-        .eq("is_active", true);
-      return !!cnpja || (data?.length ?? 0) > 0;
+      return !!cnpja;
     },
 
-    async discover(input: DiscoveryInput): Promise<CnpjCandidate[]> {
-      // Ponto de integração (Fase 4): reaproveitar aqui exatamente as funções
-      // cnpjaSearchByName / openaiGuessCnpj já existentes em
-      // supabase/functions/enrich-lead/index.ts, extraídas para não duplicar.
-      return [];
+    async discover(input: DiscoveryInput, signal: AbortSignal): Promise<CnpjCandidate[]> {
+      const cnpja = await getSharedCredential(supabase, "enrich_cnpja");
+      if (!cnpja) return [];
+      const uf = input.state || extractUFInternal(input.address);
+      let found = await cnpjaSearchByNameInternal(input.businessName, uf, cnpja, signal);
+      if (!found) found = await cnpjaSearchByNameInternal(input.businessName, null, cnpja, signal);
+      if (!found) return [];
+      return [{
+        cnpj: found.cnpj,
+        sourceProvider: "internal_apis",
+        sourceUrl: `https://api.cnpja.com/office/${found.cnpj}`,
+        rawSnippet: `CNPJa (busca por nome): ${found.matched}`,
+      }];
     },
 
     async testConnection() {
-      const configured = await this.isConfigured();
-      return {
-        ok: configured,
-        message: configured ? "APIs internas (CNPJá/OpenAI) configuradas" : "Nenhuma API interna configurada",
-        latencyMs: 0,
-      };
+      const start = Date.now();
+      const cnpja = await getSharedCredential(supabase, "enrich_cnpja");
+      if (!cnpja) return { ok: false, message: "CNPJa nao configurado em Configuracoes de APIs", latencyMs: Date.now() - start };
+      try {
+        const resp = await fetchWithAbort(
+          "https://api.cnpja.com/office?names.in=Magazine%20Luiza&limit=1",
+          { headers: { Authorization: cnpja, Accept: "application/json" } },
+          new AbortController().signal,
+          10000,
+        );
+        if (resp.ok) return { ok: true, message: "CNPJa OK - busca por nome funcionando", latencyMs: Date.now() - start };
+        const t = await resp.text().catch(() => "");
+        return { ok: false, message: `CNPJa HTTP ${resp.status}: ${t}`.slice(0, 250), latencyMs: Date.now() - start };
+      } catch (e) {
+        return { ok: false, message: String(e), latencyMs: Date.now() - start };
+      }
     },
   };
 }
