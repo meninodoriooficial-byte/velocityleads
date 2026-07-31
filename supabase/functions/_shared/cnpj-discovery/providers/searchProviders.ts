@@ -347,26 +347,52 @@ function extractUFInternal(address?: string | null): string | null {
   return m ? m[1] : null;
 }
 
+// Palavras genericas de ramo/descricao que atrapalham a busca por marca.
+const GENERIC_WORDS_INTERNAL =
+  /\b(banho|tosa|clinica|veterinaria|veterinario|pet|petshop|shop|store|loja|agropecuaria|comercio|servicos|de|do|da|no|na|em|e|ltda|me|epp|eireli|sa)\b/gi;
+
+const GENERIC_WORDS_SET_INTERNAL = new Set(
+  "banho tosa clinica veterinaria veterinario pet petshop shop store loja agropecuaria comercio servicos de do da no na em e ltda me epp eireli sa".split(" "),
+);
+
+function stripAccentsLowerInternal(s?: string | null): string {
+  return (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
 function searchNameVariationsInternal(name: string): string[] {
   const set = new Set<string>();
-  set.add(name);
-  const semSufixo = name.replace(/\s+(LTDA|ME|EPP|SA|EIRELI|S\/A)\s*$/i, "").trim();
-  if (semSufixo && semSufixo !== name) set.add(semSufixo);
-  const parts = name.split(/\s+/);
-  if (parts.length > 2) set.add(parts.slice(0, -1).join(" "));
-  if (parts.length > 3) set.add(parts.slice(0, -2).join(" "));
-  return [...set].filter((s) => s.length >= 3);
+  const clean = name.trim();
+  set.add(clean);
+  // Formato Google Places "Nome - Bairro/descricao": pega a parte antes do traco.
+  const beforeDash = clean.split(/\s+[-–]\s+/)[0].trim();
+  if (beforeDash && beforeDash !== clean) set.add(beforeDash);
+  // Remove sufixo legal.
+  const base = beforeDash.replace(/\s+(LTDA|ME|EPP|SA|EIRELI|S\/A)\s*$/i, "").trim();
+  if (base) set.add(base);
+  // Isola a "marca" removendo palavras genericas de ramo (ex: "Animamor
+  // Clinica veterinaria" -> "Animamor", que e como o CNPJa acha).
+  const brand = base.replace(GENERIC_WORDS_INTERNAL, " ").replace(/\s+/g, " ").trim();
+  if (brand && brand.length >= 3 && brand !== base) set.add(brand);
+  // Primeiras palavras (marca costuma vir no inicio).
+  const parts = beforeDash.split(/\s+/);
+  if (parts.length >= 2) set.add(parts.slice(0, 2).join(" "));
+  if (parts[0] && parts[0].length >= 3) set.add(parts[0]);
+  // Ordena da mais especifica (mais longa) para a mais curta.
+  return [...set].filter((s) => s.length >= 3).sort((a, b) => b.length - a.length);
 }
 
 function nameMatchInternal(registeredName: string, tradingName: string, searchName: string): boolean {
-  const razao = (registeredName || "").toLowerCase();
-  const fantasia = (tradingName || "").toLowerCase();
-  const alvo = (searchName || "").toLowerCase();
+  const razao = stripAccentsLowerInternal(registeredName);
+  const fantasia = stripAccentsLowerInternal(tradingName);
+  const alvo = stripAccentsLowerInternal(searchName);
   if (!alvo) return false;
   if (razao.includes(alvo) || fantasia.includes(alvo)) return true;
-  const targetTokens = alvo.split(/\s+/).filter((w) => w.length >= 4);
+  const targetTokens = alvo.split(/\s+/).filter((w) => w.length >= 4 && !GENERIC_WORDS_SET_INTERNAL.has(w));
   const sourceTokens = [...new Set([...razao.split(/\s+/), ...fantasia.split(/\s+/)])].filter((w) => w.length >= 4);
-  if (targetTokens.length === 0) return true;
+  if (targetTokens.length === 0) {
+    // Sem token distintivo (só palavras genéricas): exige o nome inteiro contido.
+    return razao.includes(alvo) || fantasia.includes(alvo);
+  }
   const hits = targetTokens.filter((t) => sourceTokens.some((s) => s.includes(t) || t.includes(s))).length;
   return hits / targetTokens.length >= 0.5;
 }
