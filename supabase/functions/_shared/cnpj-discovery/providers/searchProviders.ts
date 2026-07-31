@@ -47,9 +47,15 @@ function createGoogleCseProvider(
       .maybeSingle();
 
     const key = await getSharedCredential(supabase, slug);
-    const cxMatch = cfg?.description?.match(/cx=([\w:-]+)/);
-    if (!key || !cxMatch) return null;
-    return { key, cx: cxMatch[1] };
+    // Pega TODOS os "cx=..." da descrição, ignora o placeholder de ajuda
+    // ("SEU_CX_AQUI") e usa o último valor real. Isso evita capturar o
+    // exemplo que aparece no texto de instrução antes do cx verdadeiro.
+    const cxAll = [...(cfg?.description?.matchAll(/cx=([\w:-]+)/g) ?? [])]
+      .map((m) => m[1])
+      .filter((v) => v && v !== "SEU_CX_AQUI");
+    const cx = cxAll.length ? cxAll[cxAll.length - 1] : undefined;
+    if (!key || !cx) return null;
+    return { key, cx };
   }
 
   return {
