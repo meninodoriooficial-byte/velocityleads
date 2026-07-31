@@ -506,3 +506,98 @@ export function createInternalApisProvider(supabase: SupabaseClient): ISearchPro
     },
   };
 }
+
+// ---------------------------------------------------------------------
+// GEMINI GROUNDING — usa a Generative Language API (Gemini) com a
+// ferramenta google_search para pesquisar o CNPJ na web em tempo real.
+// Retorna candidatos (sem record) para o orquestrador validar e pontuar
+// — o grounding pode trazer empresa errada, o score filtra.
+// ---------------------------------------------------------------------
+const GEMINI_MODEL = "gemini-flash-latest";
+
+export function createGeminiGroundingProvider(supabase: SupabaseClient): ISearchProvider {
+  async function callGemini(prompt: string, signal: AbortSignal): Promise<string> {
+    const key = await getSharedCredential(supabase, "gemini");
+    if (!key) throw new ProviderError("gemini_grounding", "config", "Chave Gemini não configurada");
+    const resp = await fetchWithAbort(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          tools: [{ google_search: {} }],
+        }),
+      },
+      signal,
+      22000,
+    );
+    if (!resp.ok) {
+      const t = await resp.text().catch(() => "");
+      throw new ProviderError("gemini_grounding", "http", `HTTP ${resp.status}: ${t}`.slice(0, 200));
+    }
+    const data = await resp.json();
+    const parts = data?.candidates?.[0]?.content?.parts ?? [];
+    return parts.map((p: Record<string, unknown>) => (p?.text as string) || "").join("\n");
+  }
+
+  return {
+    slug: "gemini_grounding",
+    displayName: "Gemini (busca no Google)",
+
+    async isConfigured() {
+      const key = await getSharedCredential(supabase, "gemini");
+      return !!key;
+    },
+
+    async discover(input: DiscoveryInput, signal: AbortSignal): Promise<CnpjCandidate[]> {
+      const key = await getSharedCredential(supabase, "gemini");
+      if (!key) return [];
+      const partes: string[] = [`empresa "${input.businessName}"`];
+      if (input.address) partes.push(`localizada em "${input.address}"`);
+      if (input.phone) partes.push(`telefone ${input.phone}`);
+      if (input.website) partes.push(`site ${input.website}`);
+      const prompt =
+        `Encontre o CNPJ da ${partes.join(", ")}. ` +
+        `Priorize o nome da empresa ao identificar. Consulte fontes como cnpj.biz, ` +
+        `informecadastral.com.br, consultasocio.com.br, econodata.com.br, jusbrasil.com.br. ` +
+        `Responda SOMENTE com o(s) numero(s) de CNPJ encontrado(s), um por linha, no ` +
+        `formato XX.XXX.XXX/XXXX-XX ou apenas digitos. Se nao encontrar, responda "NENHUM".`;
+
+      let text: string;
+      try {
+        text = await callGemini(prompt, signal);
+      } catch (e) {
+        if (e instanceof ProviderError) throw e;
+        throw new ProviderError("gemini_grounding", "internal", String(e));
+      }
+
+      const cnpjs = extractCnpjsFromText(text);
+      const seen = new Set<string>();
+      const out: CnpjCandidate[] = [];
+      for (const c of cnpjs) {
+        if (seen.has(c)) continue;
+        seen.add(c);
+        out.push({
+          cnpj: c,
+          sourceProvider: "gemini_grounding",
+          rawSnippet: `Gemini grounding: ${text.slice(0, 120)}`,
+        });
+      }
+      return out;
+    },
+
+    async testConnection() {
+      const start = Date.now();
+      const key = await getSharedCredential(supabase, "gemini");
+      if (!key) return { ok: false, message: "Chave Gemini não configurada em Configurações de APIs", latencyMs: Date.now() - start };
+      try {
+        const text = await callGemini('Responda apenas: OK', new AbortController().signal);
+        return { ok: true, message: `Gemini OK (${text.trim().slice(0, 40)})`, latencyMs: Date.now() - start };
+      } catch (e) {
+        const msg = e instanceof ProviderError ? e.message : String(e);
+        return { ok: false, message: msg.slice(0, 250), latencyMs: Date.now() - start };
+      }
+    },
+  };
+}

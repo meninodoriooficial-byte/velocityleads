@@ -12,6 +12,7 @@ import {
   createZenRowsProvider,
   createBrightDataProvider,
   createInternalApisProvider,
+  createGeminiGroundingProvider,
 } from "./searchProviders.ts";
 
 const FACTORIES: Record<string, (supabase: SupabaseClient) => ISearchProvider> = {
@@ -20,6 +21,7 @@ const FACTORIES: Record<string, (supabase: SupabaseClient) => ISearchProvider> =
   brasilapi: () => createBrasilApiProvider(),
   receitaws: (supabase) => createReceitaWsProvider(supabase),
   internal_apis: createInternalApisProvider,
+  gemini_grounding: createGeminiGroundingProvider,
   serpapi: createSerpApiProvider,
   dataforseo: createDataForSeoProvider,
   zenrows: createZenRowsProvider,
