@@ -2,7 +2,7 @@
 // SMART CNPJ DISCOVERY — Providers de busca (descoberta de candidatos)
 // =====================================================================
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { CnpjCandidate, DiscoveryInput, ISearchProvider, ProviderError } from "../types.ts";
+import { CnpjCandidate, CnpjRecord, DiscoveryInput, ISearchProvider, ProviderError } from "../types.ts";
 import { extractCnpjsFromText } from "../normalize.ts";
 import { buildDiscoveryQueries } from "../queryBuilder.ts";
 
@@ -371,19 +371,37 @@ function nameMatchInternal(registeredName: string, tradingName: string, searchNa
   return hits / targetTokens.length >= 0.5;
 }
 
+function mapCnpjaRecord(record: Record<string, unknown>, digits: string): CnpjRecord {
+  const company = (record?.company ?? {}) as Record<string, unknown>;
+  const address = (record?.address ?? {}) as Record<string, unknown>;
+  return {
+    cnpj: digits,
+    razaoSocial: (company?.name as string) ?? null,
+    nomeFantasia: (record?.alias as string) ?? null,
+    cidade: (address?.city as string) ?? null,
+    estado: (address?.state as string) ?? null,
+    cep: (address?.zip as string) ?? null,
+    rua: (address?.street as string) ?? null,
+    numero: (address?.number as string) ?? null,
+    bairro: (address?.district as string) ?? null,
+  };
+}
+
 async function cnpjaSearchByNameInternal(
   name: string,
   uf: string | null,
   apiKey: string,
   signal: AbortSignal,
-): Promise<{ cnpj: string; matched: string } | null> {
-  if (!name) return null;
+): Promise<CnpjCandidate[]> {
+  if (!name) return [];
+  const out: CnpjCandidate[] = [];
+  const seen = new Set<string>();
   for (const term of searchNameVariationsInternal(name)) {
     if (signal.aborted) break;
     const params = new URLSearchParams();
     params.set("names.in", term);
     if (uf) params.set("address.state.in", uf);
-    params.set("limit", "5");
+    params.set("limit", "10");
     let resp: Response;
     try {
       resp = await fetch(`https://api.cnpja.com/office?${params.toString()}`, {
@@ -401,13 +419,23 @@ async function cnpjaSearchByNameInternal(
       const company = (record?.company ?? {}) as Record<string, unknown>;
       const raw = (record?.taxId ?? record?.cnpj ?? company?.taxId ?? null) as string | null;
       const digits = raw ? raw.toString().replace(/\D/g, "") : null;
-      if (!digits || digits.length !== 14) continue;
+      if (!digits || digits.length !== 14 || seen.has(digits)) continue;
       const razao = (company?.name as string) || "";
       const fantasia = (record?.alias as string) || "";
-      if (nameMatchInternal(razao, fantasia, name)) return { cnpj: digits, matched: razao || fantasia };
+      if (!nameMatchInternal(razao, fantasia, name)) continue;
+      seen.add(digits);
+      out.push({
+        cnpj: digits,
+        sourceProvider: "internal_apis",
+        sourceUrl: `https://api.cnpja.com/office/${digits}`,
+        rawSnippet: `CNPJa: ${razao || fantasia}`,
+        record: mapCnpjaRecord(record, digits),
+      });
     }
+    // Achou candidatos com este termo -> nao precisa testar variacoes mais amplas.
+    if (out.length > 0) break;
   }
-  return null;
+  return out;
 }
 
 export function createInternalApisProvider(supabase: SupabaseClient): ISearchProvider {
@@ -424,15 +452,12 @@ export function createInternalApisProvider(supabase: SupabaseClient): ISearchPro
       const cnpja = await getSharedCredential(supabase, "enrich_cnpja");
       if (!cnpja) return [];
       const uf = input.state || extractUFInternal(input.address);
+      // 1a tentativa com UF (mais preciso); se nao achar, Brasil inteiro.
+      // Retorna TODOS os candidatos (ex: varias filiais) para o orquestrador
+      // pontuar e escolher o que casa com o endereco do lead.
       let found = await cnpjaSearchByNameInternal(input.businessName, uf, cnpja, signal);
-      if (!found) found = await cnpjaSearchByNameInternal(input.businessName, null, cnpja, signal);
-      if (!found) return [];
-      return [{
-        cnpj: found.cnpj,
-        sourceProvider: "internal_apis",
-        sourceUrl: `https://api.cnpja.com/office/${found.cnpj}`,
-        rawSnippet: `CNPJa (busca por nome): ${found.matched}`,
-      }];
+      if (found.length === 0) found = await cnpjaSearchByNameInternal(input.businessName, null, cnpja, signal);
+      return found;
     },
 
     async testConnection() {

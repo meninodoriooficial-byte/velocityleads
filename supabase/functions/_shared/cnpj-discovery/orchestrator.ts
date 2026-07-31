@@ -178,14 +178,18 @@ export async function discoverCnpj(
   const scored: ScoredCandidate[] = [];
 
   for (const cnpj of uniqueCnpjs) {
-    let record: CnpjRecord | null = null;
-    try {
-      record = await deps.validateCnpj(cnpj);
-    } catch (_e) {
-      record = null;
+    const candidate = allCandidates.find((c) => c.cnpj === cnpj)!;
+    // Usa o registro que o provider já trouxe (ex: CNPJá retorna dados
+    // completos na própria busca). Só revalida em outra API se não veio.
+    let record: CnpjRecord | null = candidate.record ?? null;
+    if (!record) {
+      try {
+        record = await deps.validateCnpj(cnpj);
+      } catch (_e) {
+        record = null;
+      }
     }
     if (!record) continue;
-    const candidate = allCandidates.find((c) => c.cnpj === cnpj)!;
     scored.push(scoreCandidate(input, cnpj, record, candidate.sourceProvider));
   }
 

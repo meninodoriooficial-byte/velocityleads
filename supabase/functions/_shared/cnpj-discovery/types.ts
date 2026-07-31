@@ -24,6 +24,10 @@ export interface CnpjCandidate {
   sourceProvider: string; // slug do provider que encontrou (ex: 'serpapi')
   sourceUrl?: string;
   rawSnippet?: string;
+  // Registro oficial já obtido pelo provider (ex: CNPJá já retorna os dados
+  // completos na busca). Quando presente, o orquestrador usa direto e evita
+  // revalidar em outra API, preservando nome fantasia e endereço.
+  record?: CnpjRecord;
 }
 
 /** Dados oficiais do CNPJ retornados por uma fonte de validação (BrasilAPI/ReceitaWS/etc). */
