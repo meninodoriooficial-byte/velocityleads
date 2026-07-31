@@ -124,8 +124,33 @@ export async function discoverCnpj(
   // -------------------------------------------------------------
   // 3. Fallback entre providers, na ordem configurada
   // -------------------------------------------------------------
-  const allCandidates: CnpjCandidate[] = [];
+  // Avalia (valida + pontua) os candidatos de um provider. Usa o registro
+  // que o provider ja trouxe (ex: CNPJa) e so revalida em outra API quando
+  // nao veio (ex: Gemini, que retorna so o numero).
+  const scored: ScoredCandidate[] = [];
+  const seenCnpjs = new Set<string>();
   let providersTried = 0;
+  let totalCandidates = 0;
+
+  async function evaluateCandidates(candidates: CnpjCandidate[]) {
+    for (const cand of candidates) {
+      if (seenCnpjs.has(cand.cnpj)) continue;
+      seenCnpjs.add(cand.cnpj);
+      totalCandidates++;
+      let record: CnpjRecord | null = cand.record ?? null;
+      if (!record) {
+        try {
+          record = await deps.validateCnpj(cand.cnpj);
+        } catch (_e) {
+          record = null;
+        }
+      }
+      if (!record) continue;
+      scored.push(scoreCandidate(input, cand.cnpj, record, cand.sourceProvider));
+    }
+  }
+
+  let best: ScoredCandidate | undefined;
 
   for (const provider of deps.providers) {
     providersTried++;
@@ -140,71 +165,54 @@ export async function discoverCnpj(
       }
 
       const found = await provider.discover(input, controller.signal);
-      allCandidates.push(...found);
-
       await updateProviderStats(supabase, provider.slug, { durationMs: Date.now() - providerStart, success: true });
-      await logAttempt(supabase, { input, providerSlug: provider.slug, durationMs: Date.now() - providerStart, cnpjsFound: found.length, reason: found.length > 0 ? "candidatos encontrados" : "nenhum candidato", source: "provider" });
+      await evaluateCandidates(found);
 
-      // Se já achou candidatos suficientes, não precisa continuar gastando
-      // providers pagos — mas só decide isso depois de validar/pontuar.
-      if (found.length > 0) break;
+      // Melhor candidato que passou do corte ATE AGORA (considerando todos
+      // os providers ja rodados).
+      best = scored
+        .filter((sc) => passesConfidenceThreshold(sc, minScore))
+        .sort((a, b) => b.score - a.score)[0];
+
+      const reason = found.length === 0
+        ? "nenhum candidato"
+        : (best ? "candidato aprovado (score suficiente)" : "candidatos abaixo do corte — continua fallback");
+      await logAttempt(supabase, { input, providerSlug: provider.slug, durationMs: Date.now() - providerStart, cnpjsFound: found.length, reason, source: "provider" });
+
+      // Só para quando ja tem um candidato confiavel. Se os achados nao
+      // passaram no score, continua para o proximo provider (ex: Gemini),
+      // que pode achar a empresa certa.
+      if (best) break;
     } catch (err) {
       const providerErr = err instanceof ProviderError ? err : new ProviderError(provider.slug, "internal", String(err));
       await updateProviderStats(supabase, provider.slug, { durationMs: Date.now() - providerStart, success: false });
       await logAttempt(supabase, { input, providerSlug: provider.slug, durationMs: Date.now() - providerStart, cnpjsFound: 0, reason: "erro — fallback para próximo provider", source: "provider", error: `${providerErr.kind}: ${providerErr.message}` });
-      // Nunca interrompe o fluxo — passa para o próximo provider.
       continue;
     } finally {
       clearTimeout(timeout);
     }
   }
 
-  if (allCandidates.length === 0) {
-    await logAttempt(supabase, { input, providerSlug: null, durationMs: Date.now() - start, cnpjsFound: 0, reason: `todos os ${providersTried} providers esgotados sem candidatos`, source: "none" });
-    return {
-      cnpj: null,
-      score: null,
-      source: "none",
-      reason: "nenhum candidato encontrado em nenhum provider",
-      candidatesEvaluated: 0,
-      durationMs: Date.now() - start,
-    };
-  }
-
-  // -------------------------------------------------------------
-  // 4. Validar cada candidato e calcular score
-  // -------------------------------------------------------------
-  const uniqueCnpjs = Array.from(new Set(allCandidates.map((c) => c.cnpj)));
-  const scored: ScoredCandidate[] = [];
-
-  for (const cnpj of uniqueCnpjs) {
-    const candidate = allCandidates.find((c) => c.cnpj === cnpj)!;
-    // Usa o registro que o provider já trouxe (ex: CNPJá retorna dados
-    // completos na própria busca). Só revalida em outra API se não veio.
-    let record: CnpjRecord | null = candidate.record ?? null;
-    if (!record) {
-      try {
-        record = await deps.validateCnpj(cnpj);
-      } catch (_e) {
-        record = null;
-      }
-    }
-    if (!record) continue;
-    scored.push(scoreCandidate(input, cnpj, record, candidate.sourceProvider));
-  }
-
-  const best = scored
-    .filter((s) => passesConfidenceThreshold(s, minScore))
-    .sort((a, b) => b.score - a.score)[0];
-
   if (!best) {
-    await logAttempt(supabase, { input, providerSlug: null, durationMs: Date.now() - start, cnpjsFound: uniqueCnpjs.length, reason: `nenhum candidato atingiu confiança mínima (${minScore})`, source: "none" });
+    if (totalCandidates === 0) {
+      await logAttempt(supabase, { input, providerSlug: null, durationMs: Date.now() - start, cnpjsFound: 0, reason: `todos os ${providersTried} providers esgotados sem candidatos`, source: "none" });
+      return {
+        cnpj: null,
+        score: null,
+        source: "none",
+        reason: "nenhum candidato encontrado em nenhum provider",
+        candidatesEvaluated: 0,
+        durationMs: Date.now() - start,
+      };
+    }
+    const bestSeen = [...scored].sort((a, b) => b.score - a.score)[0];
+    await logAttempt(supabase, { input, providerSlug: null, durationMs: Date.now() - start, cnpjsFound: totalCandidates, reason: `nenhum candidato atingiu confiança mínima (${minScore})`, source: "none" });
     return {
       cnpj: null,
-      score: scored[0]?.score ?? null,
+      score: bestSeen?.score ?? null,
       source: "none",
-      reason: `${uniqueCnpjs.length} candidato(s) encontrados, nenhum com confiança suficiente`,
-      candidatesEvaluated: uniqueCnpjs.length,
+      reason: `${totalCandidates} candidato(s) avaliados, nenhum com confiança suficiente`,
+      candidatesEvaluated: totalCandidates,
       durationMs: Date.now() - start,
     };
   }
@@ -214,7 +222,7 @@ export async function discoverCnpj(
     input,
     providerSlug: best.sourceProvider,
     durationMs: Date.now() - start,
-    cnpjsFound: uniqueCnpjs.length,
+    cnpjsFound: totalCandidates,
     chosenCnpj: best.cnpj,
     score: best.score,
     reason: `melhor score (campos: ${best.matchedFields.join(", ") || "nenhum"})`,
@@ -227,7 +235,7 @@ export async function discoverCnpj(
     source: "provider",
     sourceProvider: best.sourceProvider,
     reason: `selecionado por score (${best.score}/100), campos batidos: ${best.matchedFields.join(", ") || "nenhum"}`,
-    candidatesEvaluated: uniqueCnpjs.length,
+    candidatesEvaluated: totalCandidates,
     durationMs: Date.now() - start,
   };
 }
