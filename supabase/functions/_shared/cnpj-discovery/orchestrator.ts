@@ -203,6 +203,8 @@ export async function discoverCnpj(
         reason: "nenhum candidato encontrado em nenhum provider",
         candidatesEvaluated: 0,
         durationMs: Date.now() - start,
+        userMessage: "Com esse nome e endereço não foi encontrado nenhum CNPJ. O nome pode estar registrado de forma diferente na Receita (ex: no nome do proprietário), ou a empresa não estar nas bases consultadas.",
+        warningLevel: "warning",
       };
     }
     const bestSeen = [...scored].sort((a, b) => b.score - a.score)[0];
@@ -214,6 +216,8 @@ export async function discoverCnpj(
       reason: `${totalCandidates} candidato(s) avaliados, nenhum com confiança suficiente`,
       candidatesEvaluated: totalCandidates,
       durationMs: Date.now() - start,
+      userMessage: `Foram encontrados ${totalCandidates} possível(is) CNPJ(s) com nome parecido, mas nenhum corresponde ao endereço informado (melhor confiança: ${bestSeen?.score ?? 0}%). Provavelmente é uma empresa homônima em outro endereço ou cidade.`,
+      warningLevel: "warning",
     };
   }
 
@@ -229,6 +233,7 @@ export async function discoverCnpj(
     source: "provider",
   });
 
+  const camposBatidos = best.matchedFields.join(", ") || "nenhum campo";
   return {
     cnpj: best.cnpj,
     score: best.score,
@@ -237,6 +242,10 @@ export async function discoverCnpj(
     reason: `selecionado por score (${best.score}/100), campos batidos: ${best.matchedFields.join(", ") || "nenhum"}`,
     candidatesEvaluated: totalCandidates,
     durationMs: Date.now() - start,
+    userMessage: best.score >= 80
+      ? `CNPJ encontrado com alta confiança (${best.score}%). Bateram: ${camposBatidos}.`
+      : `CNPJ encontrado, mas confira: confiança ${best.score}% (bateram apenas: ${camposBatidos}). Recomendado validar manualmente.`,
+    warningLevel: best.score >= 80 ? "ok" : "info",
   };
 }
 

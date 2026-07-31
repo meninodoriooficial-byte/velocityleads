@@ -64,6 +64,10 @@ export interface DiscoveryResult {
   reason: string;
   candidatesEvaluated: number;
   durationMs: number;
+  // Mensagem amigavel para o usuario final (aviso do porque nao achou ou
+  // com qual confianca achou), e o nivel do aviso para colorir na UI.
+  userMessage?: string;
+  warningLevel?: "ok" | "info" | "warning";
 }
 
 /** Contrato único que todo provider de busca deve implementar. */
